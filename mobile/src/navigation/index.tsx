@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
@@ -22,7 +23,10 @@ import ProfileScreen from '../screens/common/ProfileScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
-const tabOpts = { tabBarActiveTintColor: colors.primary };
+
+const tabOpts = {
+  tabBarActiveTintColor: colors.primary,
+};
 
 const PatientTabs = () => (
   <Tab.Navigator screenOptions={tabOpts}>
@@ -32,6 +36,7 @@ const PatientTabs = () => (
     <Tab.Screen name="Profil" component={ProfileScreen} />
   </Tab.Navigator>
 );
+
 const DoctorTabs = () => (
   <Tab.Navigator screenOptions={tabOpts}>
     <Tab.Screen name="Tableau de bord" component={DoctorDashboardScreen} />
@@ -39,6 +44,7 @@ const DoctorTabs = () => (
     <Tab.Screen name="Profil" component={ProfileScreen} />
   </Tab.Navigator>
 );
+
 const AdminTabs = () => (
   <Tab.Navigator screenOptions={tabOpts}>
     <Tab.Screen name="Clinique" component={ClinicManagementScreen} />
@@ -48,29 +54,74 @@ const AdminTabs = () => (
 
 export default function RootNavigator() {
   const { user, loading } = useAuth();
-  if (loading) return <ActivityIndicator style={{ flex: 1 }} color={colors.primary} />;
+
+  if (loading) {
+    return (
+      <ActivityIndicator
+        style={{ flex: 1 }}
+        color={colors.primary}
+      />
+    );
+  }
 
   return (
     <NavigationContainer>
       <Stack.Navigator>
+
         {!user ? (
           <>
-            <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Inscription' }} />
+            <Stack.Screen
+              name="Login"
+              component={LoginScreen}
+              options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+              name="Register"
+              component={RegisterScreen}
+              options={{ title: 'Inscription' }}
+            />
           </>
         ) : (
           <>
             <Stack.Screen
               name="Main"
-              component={user.role === 'doctor' ? DoctorTabs : user.role === 'admin' ? AdminTabs : PatientTabs}
+              component={
+                user.role === 'doctor'
+                  ? DoctorTabs
+                  : user.role === 'admin'
+                    ? AdminTabs
+                    : SlotPickerScreen
+              }
               options={{ headerShown: false }}
             />
-            <Stack.Screen name="DoctorProfile" component={DoctorProfileScreen} options={{ title: 'Médecin' }} />
-            <Stack.Screen name="SlotPicker" component={SlotPickerScreen} options={{ title: 'Choisir un créneau' }} />
-            <Stack.Screen name="BookingConfirm" component={BookingConfirmScreen} options={{ title: 'Confirmation' }} />
-            <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} options={{ title: 'Rendez-vous' }} />
+
+            <Stack.Screen
+              name="DoctorProfile"
+              component={DoctorProfileScreen}
+              options={{ title: 'Médecin' }}
+            />
+
+            <Stack.Screen
+              name="SlotPicker"
+              component={SlotPickerScreen}
+              options={{ title: 'Choisir un créneau' }}
+            />
+
+            <Stack.Screen
+              name="BookingConfirm"
+              component={BookingConfirmScreen}
+              options={{ title: 'Confirmation' }}
+            />
+
+            <Stack.Screen
+              name="AppointmentDetail"
+              component={AppointmentDetailScreen}
+              options={{ title: 'Rendez-vous' }}
+            />
           </>
         )}
+
       </Stack.Navigator>
     </NavigationContainer>
   );

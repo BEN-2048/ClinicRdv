@@ -1,4 +1,4 @@
-stages: [test]
+﻿stages: [test]
 
 backend-test:
   stage: test
@@ -13,9 +13,11 @@ backend-test:
 
 mobile-typecheck:
   stage: test
-  image: node:20
+  image: node:24
   script:
     - cd mobile
     - npm install
     - npx tsc --noEmit
   allow_failure: true
+
+
