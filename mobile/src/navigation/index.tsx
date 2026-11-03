@@ -105,7 +105,7 @@ export default function RootNavigator() {
             <Stack.Screen
               name="SlotPicker"
               component={SlotPickerScreen}
-              options={{ title: 'Choisir un créneau' }}
+              options={{ title: 'Choisir un crÃ©neau' }}
             />
 
             <Stack.Screen
@@ -126,3 +126,4 @@ export default function RootNavigator() {
     </NavigationContainer>
   );
 }
+
