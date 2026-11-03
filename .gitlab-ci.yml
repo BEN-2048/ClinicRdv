@@ -1,0 +1,21 @@
+stages: [test]
+
+backend-test:
+  stage: test
+  image: node:20
+  script:
+    - cd backend
+    - npm install
+    - npm test
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+mobile-typecheck:
+  stage: test
+  image: node:20
+  script:
+    - cd mobile
+    - npm install
+    - npx tsc --noEmit
+  allow_failure: true
