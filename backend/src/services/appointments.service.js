@@ -3,9 +3,22 @@ const { getAvailableSlots } = require('./slots.service');
 
 const httpError = (status, message) => Object.assign(new Error(message), { status });
 
+const clinicDateFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Africa/Lubumbashi',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+const getClinicDate = (date) => {
+  const parts = clinicDateFormatter.formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+};
+
 exports.book = async (patientId, { doctorId, startsAt, reason }) => {
   const iso = new Date(startsAt).toISOString();
-  const slots = await getAvailableSlots(doctorId, iso.slice(0, 10));
+  const slots = await getAvailableSlots(doctorId, getClinicDate(new Date(iso)));
   if (!slots) throw httpError(404, 'Médecin introuvable');
   const slot = slots.find((s) => s.startsAt === iso);
   if (!slot || !slot.available) throw httpError(409, 'Créneau indisponible');

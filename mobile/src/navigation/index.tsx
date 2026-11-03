@@ -91,7 +91,7 @@ export default function RootNavigator() {
                   ? DoctorTabs
                   : user.role === 'admin'
                     ? AdminTabs
-                    : SlotPickerScreen
+                    : PatientTabs
               }
               options={{ headerShown: false }}
             />
