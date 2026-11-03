@@ -1,22 +1,62 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
   StyleSheet, SafeAreaView, StatusBar,
 } from 'react-native';
 import { colors } from '../../theme/colors';
+import { DoctorsApi } from '../../api/services';
 
-const doctors = [
-  { id: 1, name: 'Dr. Kabila', specialty: 'Généraliste', initials: 'DK', fee: 20, experience: 8, available: true },
-  { id: 2, name: 'Dr. Mutombo', specialty: 'Pédiatre', initials: 'DM', fee: 20, experience: 6, available: true },
-  { id: 3, name: 'Dr. Ilunga', specialty: 'Cardiologue', initials: 'DI', fee: 20, experience: 12, available: false },
-];
+type ApiDoctor = {
+  id: number;
+  first_name: string;
+  last_name: string;
+  specialty: string;
+  fee: string | number;
+  consultation_minutes: number;
+  languages: string[] | null;
+};
 
-const specialties = ['Tous', 'Généraliste', 'Pédiatre', 'Cardiologue'];
+type Doctor = ApiDoctor & { name: string; initials: string };
+
 
 export default function DoctorListScreen() {
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const specialties = useMemo(() => ['Tous', ...Array.from(new Set(doctors.map((doctor) => doctor.specialty)))], [doctors]);
   const [search, setSearch] = useState('');
   const [specialty, setSpecialty] = useState('Tous');
   const [selectedDoctor, setSelectedDoctor] = useState<number | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadDoctors = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await DoctorsApi.list();
+        const result: Doctor[] = (response.data as ApiDoctor[]).map((doctor) => ({
+          ...doctor,
+          name: `${doctor.first_name} ${doctor.last_name}`.trim(),
+          initials: `${doctor.first_name.charAt(0)}${doctor.last_name.charAt(0)}`.toUpperCase(),
+        }));
+
+        if (active) setDoctors(result);
+      } catch (error) {
+        console.error('Erreur de chargement des médecins :', error);
+        if (active) setError('Impossible de charger les médecins. Vérifiez votre connexion.');
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    loadDoctors();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filteredDoctors = useMemo(() => doctors.filter((doctor) => {
     const query = search.trim().toLowerCase();
@@ -67,6 +107,9 @@ export default function DoctorListScreen() {
             {filteredDoctors.length} médecin(s) trouvé(s)
           </Text>
 
+          {loading && <Text style={styles.empty}>Chargement des médecins...</Text>}
+          {error && <Text style={styles.empty}>{error}</Text>}
+
           {filteredDoctors.map((doctor) => (
             <View key={doctor.id} style={styles.card}>
               <View style={styles.doctorRow}>
@@ -77,28 +120,22 @@ export default function DoctorListScreen() {
                   <Text style={styles.doctorName}>{doctor.name}</Text>
                   <Text style={styles.specialty}>{doctor.specialty}</Text>
                   <Text style={styles.experience}>
-                    {doctor.experience} ans d'expérience
+                    Consultation : {doctor.consultation_minutes} minutes
                   </Text>
                 </View>
               </View>
 
               <View style={styles.detailsRow}>
                 <Text style={styles.fee}>{doctor.fee} USD / consultation</Text>
-                <Text style={[
-                  styles.availability,
-                  !doctor.available && styles.unavailable,
-                ]}>
-                  {doctor.available ? '● Disponible' : '● Indisponible'}
-                </Text>
+                <Text style={styles.availability}>Créneaux à consulter</Text>
               </View>
 
               {selectedDoctor === doctor.id && (
                 <View style={styles.profile}>
                   <Text style={styles.profileTitle}>Informations du médecin</Text>
                   <Text style={styles.profileText}>Spécialité : {doctor.specialty}</Text>
-                  <Text style={styles.profileText}>Consultation : 30 minutes</Text>
-                  <Text style={styles.profileText}>Lundi au vendredi</Text>
-                  <Text style={styles.profileText}>08h–12h et 14h–17h</Text>
+                  <Text style={styles.profileText}>Consultation : {doctor.consultation_minutes} minutes</Text>
+                  <Text style={styles.profileText}>Horaires : consulter les créneaux disponibles</Text>
                 </View>
               )}
 
@@ -115,13 +152,9 @@ export default function DoctorListScreen() {
             </View>
           ))}
 
-          {filteredDoctors.length === 0 && (
+          {!loading && !error && filteredDoctors.length === 0 && (
             <Text style={styles.empty}>Aucun médecin trouvé.</Text>
           )}
-
-          <Text style={styles.footer}>
-            Données fictives utilisées pour la démonstration.
-          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
