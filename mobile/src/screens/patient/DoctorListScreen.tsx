@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
   StyleSheet, SafeAreaView, StatusBar,
 } from 'react-native';
 import { colors } from '../../theme/colors';
+import { useNavigation } from '@react-navigation/native';
 import { DoctorsApi } from '../../api/services';
 
 type ApiDoctor = {
@@ -20,6 +21,7 @@ type Doctor = ApiDoctor & { name: string; initials: string };
 
 
 export default function DoctorListScreen() {
+  const navigation = useNavigation<any>();
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +55,7 @@ export default function DoctorListScreen() {
 
     loadDoctors();
 
-    return () => {
+  return () => {
       active = false;
     };
   }, []);
@@ -65,7 +67,8 @@ export default function DoctorListScreen() {
       doctor.specialty.toLowerCase().includes(query);
     return matchesSearch &&
       (specialty === 'Tous' || doctor.specialty === specialty);
-  }), [search, specialty]);
+  }), [doctors, search, specialty]);
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -141,9 +144,7 @@ export default function DoctorListScreen() {
 
               <TouchableOpacity
                 style={styles.button}
-                onPress={() => setSelectedDoctor(
-                  selectedDoctor === doctor.id ? null : doctor.id
-                )}
+                onPress={() => navigation.navigate('DoctorProfile', { doctorId: doctor.id })}
               >
                 <Text style={styles.buttonText}>
                   {selectedDoctor === doctor.id ? 'Fermer la fiche' : 'Voir le profil'}
@@ -240,3 +241,8 @@ const styles = StyleSheet.create({
     fontSize: 11, marginTop: 14, marginBottom: 30,
   },
 });
+
+
+
+
+

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+﻿import React, { createContext, useContext, useEffect, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { AuthApi } from '../api/services';
 
@@ -14,7 +14,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    SecureStore.getItemAsync('user').then((u) => { if (u) setUser(JSON.parse(u)); setLoading(false); });
+    Promise.all([SecureStore.deleteItemAsync('token'), SecureStore.deleteItemAsync('user')]).finally(() => setLoading(false));
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -30,3 +30,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
   return <AuthContext.Provider value={{ user, loading, login, logout }}>{children}</AuthContext.Provider>;
 }
+
