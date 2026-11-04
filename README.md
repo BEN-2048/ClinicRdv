@@ -38,7 +38,7 @@ cp .env.example .env             # coller l'URL Neon dans DATABASE_URL, définir
 npm install
 ```
 
-L'URL de connexion (transmise par le responsable de la base, à ne jamais committer) se trouve dans le tableau de bord Neon → *Connect* → *Connection string*, option **Pooled connection** cochée. Elle se termine par `?sslmode=require`.
+L'URL de connexion (transmise par le responsable de la base, à ne jamais committer) se trouve dans le tableau de bord Neon → *Connect* → *Connection string*, option **Pooled connection** cochée. Remplacer `sslmode=require` par `sslmode=verify-full` à la fin de l’URL (même sécurité, sans avertissement de `pg`).
 
 La base partagée est déjà initialisée. Uniquement pour une base neuve :
 ```bash
