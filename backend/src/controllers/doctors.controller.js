@@ -33,3 +33,61 @@ exports.slots = async (req, res, next) => {
     res.json(slots);
   } catch (e) { next(e); }
 };
+
+exports.dashboard = async (req, res, next) => {
+  try {
+    // Récupérer le médecin associé au compte connecté
+    const doctorResult = await pool.query(
+      `SELECT
+          d.id,
+          d.user_id,
+          u.first_name,
+          u.last_name,
+          u.email,
+          s.name AS specialty,
+          d.fee,
+          d.active
+       FROM doctors d
+       JOIN users u ON u.id = d.user_id
+       JOIN specialties s ON s.id = d.specialty_id
+       WHERE d.user_id = $1`,
+      [req.user.id]
+    );
+
+    if (!doctorResult.rowCount) {
+      return res.status(404).json({
+        error: 'Profil médecin introuvable',
+      });
+    }
+
+    const doctor = doctorResult.rows[0];
+
+    // Récupérer les rendez-vous et les informations des patients
+    const appointmentsResult = await pool.query(
+      `SELECT
+          a.id,
+          a.starts_at,
+          a.ends_at,
+          a.status,
+          a.reason,
+          a.patient_id,
+          p.first_name AS patient_first_name,
+          p.last_name AS patient_last_name
+       FROM appointments a
+       JOIN users p ON p.id = a.patient_id
+       WHERE a.doctor_id = $1
+       ORDER BY a.starts_at ASC`,
+      [doctor.id]
+    );
+
+    // Renvoyer les données du tableau de bord
+    res.json({
+      doctor,
+      appointments: appointmentsResult.rows,
+    });
+
+  } catch (e) {
+    next(e);
+  }
+};
+
