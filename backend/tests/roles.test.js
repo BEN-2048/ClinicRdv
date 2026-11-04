@@ -90,6 +90,14 @@ describe('rendez-vous', () => {
   });
 });
 
+describe('tableau de bord médecin', () => {
+  test("/doctors/me/dashboard n'est pas capturée par /doctors/:id", async () => {
+    const res = await request(app).get('/api/doctors/me/dashboard').set('Authorization', token('patient'));
+    expect(res.status).toBe(403);
+    expect(pool.query).not.toHaveBeenCalled();
+  });
+});
+
 describe('inscription publique', () => {
   test('impossible de choisir le rôle secretary', async () => {
     pool.query.mockResolvedValueOnce({
