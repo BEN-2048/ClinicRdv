@@ -8,6 +8,7 @@ export const DoctorsApi = {
   list: (params?: object) => api.get('/doctors', { params }),
   get: (id: number) => api.get(`/doctors/${id}`),
   slots: (id: number, date: string) => api.get(`/doctors/${id}/slots`, { params: { date } }),
+  dashboard: () => api.get('/doctors/me/dashboard'),
 };
 export const AppointmentsApi = {
   book: (doctorId: number, startsAt: string, reason?: string) =>
