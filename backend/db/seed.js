@@ -14,6 +14,7 @@ async function user(email, role, first, last, hash) {
 (async () => {
   const hash = await bcrypt.hash('Test1234!', 10);
   await user('admin@clinic.test', 'admin', 'Admin', 'Clinique', hash);
+  await user('secretaire@clinic.test', 'secretary', 'Grace', 'Kalenga', hash);
   await user('patient@clinic.test', 'patient', 'Marie', 'Mbuyi', hash);
 
   const specs = ['Généraliste', 'Pédiatre', 'Dentiste', 'Cardiologue', 'Dermatologue'];
