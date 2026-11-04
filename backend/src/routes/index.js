@@ -6,9 +6,13 @@ const auth = require('../controllers/auth.controller');
 const doctors = require('../controllers/doctors.controller');
 const appts = require('../controllers/appointments.controller');
 const admin = require('../controllers/admin.controller');
+const users = require('../controllers/users.controller');
 
 router.post('/auth/register', validate(s.register), auth.register);
 router.post('/auth/login', validate(s.login), auth.login);
+
+router.get('/users/me', authenticate, users.getMe);
+router.patch('/users/me', authenticate, validate(s.updateProfile), users.updateMe);
 
 router.get('/doctors', authenticate, doctors.list);
 router.get(

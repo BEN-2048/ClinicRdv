@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
-import { AuthApi } from '../api/services';
+import { AuthApi, UsersApi } from '../api/services';
 
 export type Role = 'patient' | 'doctor' | 'admin' | 'secretary';
 
@@ -11,6 +11,13 @@ export type User = {
   role: Role;
   first_name: string;
   last_name: string;
+  phone?: string | null;
+};
+
+type UpdateUserData = {
+  firstName?: string;
+  lastName?: string;
+  phone?: string | null;
 };
 
 type Ctx = {
@@ -18,6 +25,8 @@ type Ctx = {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
+  updateUser: (data: UpdateUserData) => Promise<void>;
 };
 
 const AuthContext = createContext<Ctx>(null as unknown as Ctx);
@@ -32,34 +41,49 @@ export function AuthProvider({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Restaurer la session au démarrage
-  // Restaurer la session au démarrage
-useEffect(() => {
-  const restoreSession = async () => {
-    try {
-      const savedUser = await SecureStore.getItemAsync('user');
-      const savedToken = await SecureStore.getItemAsync('token');
+  const refreshUser = async (): Promise<void> => {
+    const { data } = await UsersApi.getMe();
+    const updatedUser = data.user as User;
 
-      if (savedUser && savedToken) {
-        setUser(JSON.parse(savedUser) as User);
-      } else {
-        await SecureStore.deleteItemAsync('token');
-        await SecureStore.deleteItemAsync('user');
-      }
-    } catch (error) {
-      console.error('Erreur de restauration de session :', error);
-      await SecureStore.deleteItemAsync('token');
-      await SecureStore.deleteItemAsync('user');
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
+    await SecureStore.setItemAsync('user', JSON.stringify(updatedUser));
+    setUser(updatedUser);
   };
 
-  restoreSession();
-}, []);
+  const updateUser = async (data: UpdateUserData): Promise<void> => {
+    const { data: response } = await UsersApi.updateMe(data);
+    const updatedUser = response.user as User;
 
-  const login = async (email: string, password: string) => {
+    await SecureStore.setItemAsync('user', JSON.stringify(updatedUser));
+    setUser(updatedUser);
+  };
+
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        const [token, savedUser] = await Promise.all([
+          SecureStore.getItemAsync('token'),
+          SecureStore.getItemAsync('user'),
+        ]);
+
+        if (token && savedUser) {
+          await refreshUser();
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('Erreur de restauration de session :', error);
+        await SecureStore.deleteItemAsync('token');
+        await SecureStore.deleteItemAsync('user');
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    restoreSession();
+  }, []);
+
+  const login = async (email: string, password: string): Promise<void> => {
     const { data } = await AuthApi.login(email, password);
 
     await SecureStore.setItemAsync('token', data.token);
@@ -68,7 +92,7 @@ useEffect(() => {
     setUser(data.user);
   };
 
-  const logout = async () => {
+  const logout = async (): Promise<void> => {
     await SecureStore.deleteItemAsync('token');
     await SecureStore.deleteItemAsync('user');
 
@@ -76,9 +100,17 @@ useEffect(() => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        logout,
+        refreshUser,
+        updateUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
-
