@@ -1,15 +1,33 @@
+
 import { api } from './client';
 
 export const AuthApi = {
   login: (email: string, password: string) => api.post('/auth/login', { email, password }),
   register: (data: object) => api.post('/auth/register', data),
 };
+
 export const DoctorsApi = {
   list: (params?: object) => api.get('/doctors', { params }),
   get: (id: number) => api.get(`/doctors/${id}`),
   slots: (id: number, date: string) => api.get(`/doctors/${id}/slots`, { params: { date } }),
   dashboard: () => api.get('/doctors/me/dashboard'),
+
+  workingHours: () => api.get('/doctors/me/working-hours'),
+  updateWorkingHours: (data: object) =>
+    api.put('/doctors/me/working-hours', data),
+
+  leaves: () => api.get('/doctors/me/leaves'),
+  addLeave: (data: object) => api.post('/doctors/me/leaves', data),
+  deleteLeave: (id: number) =>
+    api.delete(`/doctors/me/leaves/${id}`),
+
+  blockedSlots: () => api.get('/doctors/me/blocked-slots'),
+  addBlockedSlot: (data: object) =>
+    api.post('/doctors/me/blocked-slots', data),
+  deleteBlockedSlot: (id: number) =>
+    api.delete(`/doctors/me/blocked-slots/${id}`),
 };
+
 export const AppointmentsApi = {
   book: (doctorId: number, startsAt: string, reason?: string) =>
     api.post('/appointments', { doctorId, startsAt, reason }),
@@ -19,20 +37,54 @@ export const AppointmentsApi = {
 };
 
 export type AppointmentStatus = 'pending' | 'confirmed' | 'cancelled' | 'done';
-export type WorkingHour = { weekday: number; startTime: string; endTime: string };
+
+export type WorkingHour = {
+  weekday: number;
+  startTime: string;
+  endTime: string;
+};
+
 export type StaffDoctor = {
-  id: number; user_id: number; email: string; first_name: string; last_name: string; phone: string | null;
-  specialty_id: number; specialty: string; bio: string | null; fee: string; consultation_minutes: number;
-  languages: string; active: boolean;
+  id: number;
+  user_id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string | null;
+  specialty_id: number;
+  specialty: string;
+  bio: string | null;
+  fee: string;
+  consultation_minutes: number;
+  languages: string;
+  active: boolean;
 };
+
 export type StaffAppointment = {
-  id: number; patient_id: number; doctor_id: number; starts_at: string; ends_at: string;
-  status: AppointmentStatus; reason: string | null; doctor_name: string; specialty: string;
-  patient_name: string; patient_phone: string | null;
+  id: number;
+  patient_id: number;
+  doctor_id: number;
+  starts_at: string;
+  ends_at: string;
+  status: AppointmentStatus;
+  reason: string | null;
+  doctor_name: string;
+  specialty: string;
+  patient_name: string;
+  patient_phone: string | null;
 };
+
 export type DoctorInput = {
-  email?: string; password?: string; firstName?: string; lastName?: string; phone?: string | null;
-  specialtyId?: number; bio?: string | null; fee?: number; consultationMinutes?: number; languages?: string;
+  email?: string;
+  password?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string | null;
+  specialtyId?: number;
+  bio?: string | null;
+  fee?: number;
+  consultationMinutes?: number;
+  languages?: string;
   active?: boolean;
 };
 
