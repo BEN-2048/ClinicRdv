@@ -62,3 +62,12 @@ exports.adminAppointmentsQuery = z.object({
 });
 exports.statsQuery = z.object({ from: isoDate.optional(), to: isoDate.optional() });
 exports.patientsQuery = z.object({ q: z.string().max(80).optional() });
+
+exports.updateProfile = z.object({
+  firstName: z.string().trim().min(1).max(80).optional(),
+  lastName: z.string().trim().min(1).max(80).optional(),
+  phone: z.string().trim().max(30).nullable().optional(),
+}).strict().refine(
+  (data) => Object.keys(data).length > 0,
+  { message: 'Au moins un champ doit être fourni' }
+);
