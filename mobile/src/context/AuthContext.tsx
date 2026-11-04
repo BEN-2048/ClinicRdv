@@ -33,30 +33,31 @@ export function AuthProvider({
   const [loading, setLoading] = useState(true);
 
   // Restaurer la session au démarrage
-  useEffect(() => {
-    const restoreSession = async () => {
-      try {
-        const savedUser = await SecureStore.getItemAsync('user');
-        const savedToken = await SecureStore.getItemAsync('token');
+  // Restaurer la session au démarrage
+useEffect(() => {
+  const restoreSession = async () => {
+    try {
+      const savedUser = await SecureStore.getItemAsync('user');
+      const savedToken = await SecureStore.getItemAsync('token');
 
-        if (savedUser && savedToken) {
-          setUser(JSON.parse(savedUser) as User);
-        } else {
-          await SecureStore.deleteItemAsync('token');
-          await SecureStore.deleteItemAsync('user');
-        }
-      } catch (error) {
-        console.error('Erreur de restauration de session :', error);
+      if (savedUser && savedToken) {
+        setUser(JSON.parse(savedUser) as User);
+      } else {
         await SecureStore.deleteItemAsync('token');
         await SecureStore.deleteItemAsync('user');
-        setUser(null);
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (error) {
+      console.error('Erreur de restauration de session :', error);
+      await SecureStore.deleteItemAsync('token');
+      await SecureStore.deleteItemAsync('user');
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    restoreSession();
-  }, []);
+  restoreSession();
+}, []);
 
   const login = async (email: string, password: string) => {
     const { data } = await AuthApi.login(email, password);
@@ -80,3 +81,4 @@ export function AuthProvider({
     </AuthContext.Provider>
   );
 }
+
