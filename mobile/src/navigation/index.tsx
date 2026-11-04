@@ -4,7 +4,7 @@ import { ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useAuth } from '../context/AuthContext';
+import { Role, useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
 
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -20,6 +20,13 @@ import DoctorAgendaScreen from '../screens/doctor/DoctorAgendaScreen';
 import AppointmentDetailScreen from '../screens/doctor/AppointmentDetailScreen';
 import ClinicManagementScreen from '../screens/admin/ClinicManagementScreen';
 import ProfileScreen from '../screens/common/ProfileScreen';
+import SecretaryDashboardScreen from '../screens/secretary/SecretaryDashboardScreen';
+import SecretaryAppointmentsScreen from '../screens/secretary/SecretaryAppointmentsScreen';
+import SecretaryDoctorsScreen from '../screens/secretary/SecretaryDoctorsScreen';
+import SecretaryStatsScreen from '../screens/secretary/SecretaryStatsScreen';
+import SecretaryBookScreen from '../screens/secretary/SecretaryBookScreen';
+import SecretaryDoctorFormScreen from '../screens/secretary/SecretaryDoctorFormScreen';
+import SecretaryDoctorScheduleScreen from '../screens/secretary/SecretaryDoctorScheduleScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -51,6 +58,23 @@ const AdminTabs = () => (
     <Tab.Screen name="Profil" component={ProfileScreen} />
   </Tab.Navigator>
 );
+
+const SecretaryTabs = () => (
+  <Tab.Navigator screenOptions={{ ...tabOpts, headerShown: false }}>
+    <Tab.Screen name="Accueil" component={SecretaryDashboardScreen} />
+    <Tab.Screen name="Rendez-vous" component={SecretaryAppointmentsScreen} />
+    <Tab.Screen name="Médecins" component={SecretaryDoctorsScreen} />
+    <Tab.Screen name="Statistiques" component={SecretaryStatsScreen} />
+    <Tab.Screen name="Profil" component={ProfileScreen} />
+  </Tab.Navigator>
+);
+
+const tabsForRole: Record<Role, React.ComponentType> = {
+  patient: PatientTabs,
+  doctor: DoctorTabs,
+  admin: AdminTabs,
+  secretary: SecretaryTabs,
+};
 
 export default function RootNavigator() {
   const { user, loading } = useAuth();
@@ -86,13 +110,7 @@ export default function RootNavigator() {
           <>
             <Stack.Screen
               name="Main"
-              component={
-                user.role === 'doctor'
-                  ? DoctorTabs
-                  : user.role === 'admin'
-                    ? AdminTabs
-                    : PatientTabs
-              }
+              component={tabsForRole[user.role] ?? PatientTabs}
               options={{ headerShown: false }}
             />
 
@@ -105,7 +123,7 @@ export default function RootNavigator() {
             <Stack.Screen
               name="SlotPicker"
               component={SlotPickerScreen}
-              options={{ title: 'Choisir un crÃ©neau' }}
+              options={{ title: 'Choisir un créneau' }}
             />
 
             <Stack.Screen
@@ -118,6 +136,24 @@ export default function RootNavigator() {
               name="AppointmentDetail"
               component={AppointmentDetailScreen}
               options={{ title: 'Rendez-vous' }}
+            />
+
+            <Stack.Screen
+              name="SecretaryBook"
+              component={SecretaryBookScreen}
+              options={{ title: 'Nouveau rendez-vous' }}
+            />
+
+            <Stack.Screen
+              name="SecretaryDoctorForm"
+              component={SecretaryDoctorFormScreen}
+              options={{ title: 'Médecin' }}
+            />
+
+            <Stack.Screen
+              name="SecretaryDoctorSchedule"
+              component={SecretaryDoctorScheduleScreen}
+              options={{ title: 'Horaires' }}
             />
           </>
         )}

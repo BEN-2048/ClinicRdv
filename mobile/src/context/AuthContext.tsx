@@ -2,7 +2,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { AuthApi } from '../api/services';
 
-export type Role = 'patient' | 'doctor' | 'admin';
+export type Role = 'patient' | 'doctor' | 'admin' | 'secretary';
 type User = { id: number; email: string; role: Role; first_name: string; last_name: string };
 type Ctx = { user: User | null; loading: boolean; login: (e: string, p: string) => Promise<void>; logout: () => Promise<void> };
 
