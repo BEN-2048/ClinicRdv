@@ -15,12 +15,12 @@ import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../api/client';
 import { colors } from '../../theme/colors';
 
-type LoginRole = 'patient' | 'doctor' | 'admin';
+type LoginRole = 'patient' | 'doctor' | 'secretary';
 
 const roles: { key: LoginRole; label: string }[] = [
   { key: 'patient', label: 'Patient' },
   { key: 'doctor', label: 'Médecin' },
-  { key: 'admin', label: 'Secrétaire' },
+  { key: 'secretary', label: 'Secrétaire' },
 ];
 
 export default function LoginScreen({ navigation }: any) {

@@ -3,7 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { AuthApi } from '../api/services';
 
-export type Role = 'patient' | 'doctor' | 'admin';
+export type Role = 'patient' | 'doctor' | 'admin' | 'secretary';
 
 export type User = {
   id: number;
