@@ -16,3 +16,12 @@ export const AppointmentsApi = {
   cancel: (id: number) => api.patch(`/appointments/${id}/cancel`),
   reschedule: (id: number, startsAt: string) => api.patch(`/appointments/${id}/reschedule`, { startsAt }),
 };
+
+export const UsersApi = {
+  getMe: () => api.get('/users/me'),
+  updateMe: (data: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string | null;
+  }) => api.patch('/users/me', data),
+};

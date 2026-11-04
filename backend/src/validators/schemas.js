@@ -26,3 +26,12 @@ exports.workingHours = z.object({
 });
 exports.leave = z.object({ startDate: z.string(), endDate: z.string(), reason: z.string().optional() });
 exports.block = z.object({ startsAt: z.string().datetime(), endsAt: z.string().datetime(), reason: z.string().optional() });
+
+exports.updateProfile = z.object({
+  firstName: z.string().trim().min(1).max(80).optional(),
+  lastName: z.string().trim().min(1).max(80).optional(),
+  phone: z.string().trim().max(30).nullable().optional(),
+}).strict().refine(
+  (data) => Object.keys(data).length > 0,
+  { message: 'Au moins un champ doit être fourni' }
+);
