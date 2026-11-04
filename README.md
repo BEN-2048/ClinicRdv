@@ -29,14 +29,26 @@ clinicrdv/
 Node.js 20+, PostgreSQL 16 (ou Docker), application **Expo Go** sur le téléphone.
 
 ### 1. Base de données
+
+L'équipe partage une base PostgreSQL distante hébergée sur **Neon** : aucune installation de PostgreSQL n'est nécessaire.
+
 ```bash
-docker compose up -d db          # ou un PostgreSQL local
 cd backend
-cp .env.example .env             # adapter DATABASE_URL et JWT_SECRET
+cp .env.example .env             # coller l'URL Neon dans DATABASE_URL, définir JWT_SECRET
 npm install
-npm run db:init                  # crée les tables
-npm run db:seed                  # données fictives + comptes de test
 ```
+
+L'URL de connexion (transmise par le responsable de la base, à ne jamais committer) se trouve dans le tableau de bord Neon → *Connect* → *Connection string*, option **Pooled connection** cochée. Remplacer `sslmode=require` par `sslmode=verify-full` à la fin de l’URL (même sécurité, sans avertissement de `pg`).
+
+La base partagée est déjà initialisée. Uniquement pour une base neuve :
+```bash
+npm run db:init                  # crée les tables (refuse si elles existent déjà)
+npm run db:seed                  # données fictives + comptes de test (ignoré si déjà présentes)
+npm run db:reset                 # ⚠ supprime TOUTES les données puis recrée les tables
+```
+
+Pour travailler hors ligne avec une base locale : `docker compose up -d db` et
+`DATABASE_URL=postgres://clinic:clinic@localhost:5432/clinicrdv`.
 
 ### 2. Backend
 ```bash
@@ -56,6 +68,7 @@ npx expo start                   # scanner le QR code avec Expo Go
 | Rôle | E-mail |
 |------|--------|
 | Administrateur | admin@clinic.test |
+| Secrétaire | secretaire@clinic.test |
 | Patient | patient@clinic.test |
 | Médecin | kabila@clinic.test, mutombo@clinic.test, ilunga@clinic.test |
 
