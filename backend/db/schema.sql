@@ -5,7 +5,7 @@ DROP TABLE IF EXISTS notifications, waiting_list, consultation_notes, appointmen
   blocked_slots, leaves, working_hours, doctors, specialties, users CASCADE;
 DROP TYPE IF EXISTS user_role, appt_status;
 
-CREATE TYPE user_role AS ENUM ('patient', 'doctor', 'admin');
+CREATE TYPE user_role AS ENUM ('patient', 'doctor', 'admin', 'secretary');
 CREATE TYPE appt_status AS ENUM ('pending', 'confirmed', 'cancelled', 'done');
 
 CREATE TABLE users (

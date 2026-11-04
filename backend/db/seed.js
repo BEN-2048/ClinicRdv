@@ -1,8 +1,6 @@
 // Données fictives + comptes de test (mot de passe : Test1234!)
-require('dotenv').config();
 const bcrypt = require('bcrypt');
-const { Pool } = require('pg');
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = require('../src/config/db');
 
 async function user(email, role, first, last, hash) {
   const r = await pool.query(
@@ -12,8 +10,15 @@ async function user(email, role, first, last, hash) {
 }
 
 (async () => {
+  const existing = await pool.query("SELECT 1 FROM users WHERE email = 'admin@clinic.test'");
+  if (existing.rowCount > 0) {
+    console.log('Données de test déjà présentes, seed ignoré');
+    await pool.end();
+    return;
+  }
   const hash = await bcrypt.hash('Test1234!', 10);
   await user('admin@clinic.test', 'admin', 'Admin', 'Clinique', hash);
+  await user('secretaire@clinic.test', 'secretary', 'Grace', 'Kalenga', hash);
   await user('patient@clinic.test', 'patient', 'Marie', 'Mbuyi', hash);
 
   const specs = ['Généraliste', 'Pédiatre', 'Dentiste', 'Cardiologue', 'Dermatologue'];

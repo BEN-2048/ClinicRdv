@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const { getAvailableSlots } = require('./slots.service');
+const { isStaff } = require('../middleware/auth');
 
 const httpError = (status, message) => Object.assign(new Error(message), { status });
 
@@ -40,9 +41,9 @@ exports.cancel = async (id, user) => {
   const r = await pool.query(
     `UPDATE appointments SET status='cancelled'
       WHERE id=$1 AND status IN ('pending','confirmed')
-        AND ($2='admin' OR patient_id=$3
+        AND ($2::boolean OR patient_id=$3
              OR doctor_id=(SELECT id FROM doctors WHERE user_id=$3))
-      RETURNING *`, [id, user.role, user.id]);
+      RETURNING *`, [id, isStaff(user.role), user.id]);
   if (!r.rowCount) throw httpError(404, 'Rendez-vous introuvable');
   // TODO : notifier les patients de la liste d'attente (waiting_list)
   return r.rows[0];
@@ -50,13 +51,14 @@ exports.cancel = async (id, user) => {
 
 exports.reschedule = async (id, user, startsAt) => {
   const cur = await pool.query(
-    "SELECT * FROM appointments WHERE id=$1 AND patient_id=$2 AND status IN ('pending','confirmed')",
-    [id, user.id]);
+    `SELECT * FROM appointments
+      WHERE id=$1 AND ($3::boolean OR patient_id=$2) AND status IN ('pending','confirmed')`,
+    [id, user.id, isStaff(user.role)]);
   if (!cur.rowCount) throw httpError(404, 'Rendez-vous introuvable');
   const a = cur.rows[0];
   await exports.cancel(id, user);
   try {
-    return await exports.book(user.id, { doctorId: a.doctor_id, startsAt, reason: a.reason });
+    return await exports.book(a.patient_id, { doctorId: a.doctor_id, startsAt, reason: a.reason });
   } catch (e) {
     await pool.query("UPDATE appointments SET status='confirmed' WHERE id=$1", [id]); // restaure l'ancien RDV
     throw e;
@@ -76,3 +78,29 @@ exports.listForUser = async (user, { scope }) => {
       WHERE ${base} AND ${time} ORDER BY a.starts_at`, [user.id]);
   return r.rows;
 };
+
+exports.listAll = async ({ date, doctorId, status, patientId } = {}) => {
+  const r = await pool.query(
+    `SELECT a.*,
+            du.first_name || ' ' || du.last_name AS doctor_name, s.name AS specialty,
+            pu.first_name || ' ' || pu.last_name AS patient_name, pu.phone AS patient_phone
+       FROM appointments a
+       JOIN doctors d ON d.id=a.doctor_id JOIN users du ON du.id=d.user_id
+       JOIN specialties s ON s.id=d.specialty_id
+       JOIN users pu ON pu.id=a.patient_id
+      WHERE ($1::date IS NULL OR (a.starts_at AT TIME ZONE 'Africa/Lubumbashi')::date = $1::date)
+        AND ($2::int IS NULL OR a.doctor_id=$2)
+        AND ($3::appt_status IS NULL OR a.status=$3)
+        AND ($4::int IS NULL OR a.patient_id=$4)
+      ORDER BY a.starts_at`,
+    [date || null, doctorId || null, status || null, patientId || null]);
+  return r.rows;
+};
+
+exports.bookFor = async ({ patientId, ...data }) => {
+  const p = await pool.query("SELECT 1 FROM users WHERE id=$1 AND role='patient'", [patientId]);
+  if (!p.rowCount) throw httpError(404, 'Patient introuvable');
+  return exports.book(patientId, data);
+};
+
+exports.httpError = httpError;

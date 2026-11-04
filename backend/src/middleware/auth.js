@@ -15,3 +15,6 @@ exports.authenticate = (req, res, next) => {
 
 exports.requireRole = (...roles) => (req, res, next) =>
   roles.includes(req.user.role) ? next() : res.status(403).json({ error: 'Accès refusé' });
+
+exports.STAFF_ROLES = ['admin', 'secretary'];
+exports.isStaff = (role) => exports.STAFF_ROLES.includes(role);
