@@ -4,7 +4,8 @@ import { AuthApi } from '../api/services';
 
 export type Role = 'patient' | 'doctor' | 'admin';
 type User = { id: number; email: string; role: Role; first_name: string; last_name: string };
-type Ctx = { user: User | null; loading: boolean; login: (e: string, p: string) => Promise<void>; logout: () => Promise<void> };
+type RegisterData = { email: string; password: string; firstName: string; lastName: string; phone?: string };
+type Ctx = { user: User | null; loading: boolean; login: (e: string, p: string) => Promise<void>; register: (data: RegisterData) => Promise<void>; logout: () => Promise<void> };
 
 const AuthContext = createContext<Ctx>(null as unknown as Ctx);
 export const useAuth = () => useContext(AuthContext);
@@ -23,11 +24,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await SecureStore.setItemAsync('user', JSON.stringify(data.user));
     setUser(data.user);
   };
+  const register = async (data: RegisterData) => {
+    const response = await AuthApi.register(data);
+    await SecureStore.setItemAsync('token', response.data.token);
+    await SecureStore.setItemAsync('user', JSON.stringify(response.data.user));
+    setUser(response.data.user);
+  };
   const logout = async () => {
     await SecureStore.deleteItemAsync('token');
     await SecureStore.deleteItemAsync('user');
     setUser(null);
   };
-  return <AuthContext.Provider value={{ user, loading, login, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, loading, login, register, logout }}>{children}</AuthContext.Provider>;
 }
+
 
