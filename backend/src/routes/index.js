@@ -13,6 +13,12 @@ router.post('/auth/login', validate(s.login), auth.login);
 router.get('/doctors', authenticate, doctors.list);
 router.get('/doctors/:id', authenticate, doctors.get);
 router.get('/doctors/:id/slots', authenticate, validate(s.slotsQuery, 'query'), doctors.slots);
+router.get(
+  '/doctors/me/dashboard',
+  authenticate,
+  requireRole('doctor'),
+  doctors.dashboard
+);
 
 router.post('/appointments', authenticate, requireRole('patient', 'admin'), validate(s.book), appts.book);
 router.get('/appointments/mine', authenticate, appts.mine);
