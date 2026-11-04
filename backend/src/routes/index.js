@@ -21,6 +21,67 @@ router.get(
   requireRole('doctor'),
   doctors.dashboard
 );
+// Gestion personnelle de l'agenda du médecin
+router.get(
+  '/doctors/me/working-hours',
+  authenticate,
+  requireRole('doctor'),
+  doctors.myWorkingHours
+);
+
+router.put(
+  '/doctors/me/working-hours',
+  authenticate,
+  requireRole('doctor'),
+  validate(s.workingHours),
+  doctors.updateMyWorkingHours
+);
+
+// Absences
+router.get(
+  '/doctors/me/leaves',
+  authenticate,
+  requireRole('doctor'),
+  doctors.myLeaves
+);
+
+router.post(
+  '/doctors/me/leaves',
+  authenticate,
+  requireRole('doctor'),
+  validate(s.leave),
+  doctors.addMyLeave
+);
+
+router.delete(
+  '/doctors/me/leaves/:leaveId',
+  authenticate,
+  requireRole('doctor'),
+  doctors.deleteMyLeave
+);
+
+// Créneaux bloqués
+router.get(
+  '/doctors/me/blocked-slots',
+  authenticate,
+  requireRole('doctor'),
+  doctors.myBlockedSlots
+);
+
+router.post(
+  '/doctors/me/blocked-slots',
+  authenticate,
+  requireRole('doctor'),
+  validate(s.block),
+  doctors.addMyBlockedSlot
+);
+
+router.delete(
+  '/doctors/me/blocked-slots/:blockId',
+  authenticate,
+  requireRole('doctor'),
+  doctors.deleteMyBlockedSlot
+);
 router.get('/doctors/:id', authenticate, doctors.get);
 router.get('/doctors/:id/slots', authenticate, validate(s.slotsQuery, 'query'), doctors.slots);
 
