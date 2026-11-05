@@ -382,3 +382,34 @@ export const UsersApi = {
   }) =>
     api.patch('/users/me', data),
 };
+
+export type WaitingTimeSlot = 'all_day' | 'morning' | 'afternoon' | 'evening';
+export type WaitingMinNotice = '2h' | '24h' | 'any';
+export type WaitingPreferences = {
+  timeSlots: WaitingTimeSlot[];
+  weekdays: number[];
+  minNotice: WaitingMinNotice;
+  notifyPush: boolean;
+  notifySms: boolean;
+};
+export type WaitingAlert = WaitingPreferences & {
+  id: number;
+  doctorId: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+export type WaitingQueue = { position: number; total: number };
+export type WaitingDoctorState = WaitingQueue & {
+  alert: WaitingAlert | null;
+  preferences?: WaitingAlert | null;
+};
+export type WaitingAlertSummary = WaitingAlert & WaitingQueue & { doctorName: string; specialty: string };
+
+export const WaitingListApi = {
+  mine: () => api.get<WaitingAlertSummary[]>('/waiting-list/mine'),
+  forDoctor: (doctorId: number) => api.get<WaitingDoctorState>(`/waiting-list/doctors/${doctorId}`),
+  save: (doctorId: number, prefs: WaitingPreferences) =>
+    api.put<WaitingDoctorState>(`/waiting-list/doctors/${doctorId}`, prefs),
+  remove: (doctorId: number) => api.delete(`/waiting-list/doctors/${doctorId}`),
+};

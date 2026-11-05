@@ -139,6 +139,15 @@ export default function DoctorProfileScreen() {
           }
         />
 
+        <Button
+          title="M'alerter d'un désistement"
+          secondary
+          disabled={!doctor.active}
+          onPress={() =>
+            navigation.navigate('WaitingList', { doctorId: doctor.id })
+          }
+        />
+
         {!doctor.active && (
           <Text style={styles.error}>
             Ce médecin n'est actuellement pas disponible.

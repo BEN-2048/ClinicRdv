@@ -62,6 +62,7 @@ export default function SlotPickerScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const doctorId = Number(route.params?.doctorId);
+  const rescheduleId = route.params?.rescheduleId ? Number(route.params.rescheduleId) : null;
 
   const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
@@ -141,33 +142,32 @@ export default function SlotPickerScreen() {
   const bookAppointment = async () => {
     if (!selectedSlot || !doctor) return;
 
+    if (!rescheduleId) {
+      navigation.navigate('BookingReview', {
+        doctor,
+        slot: selectedSlot,
+        reason: reason.trim(),
+      });
+      return;
+    }
+
     setBooking(true);
 
     try {
-      const response = await AppointmentsApi.book(
-        doctor.id,
-        selectedSlot.startsAt,
-        reason.trim() || undefined
+      await AppointmentsApi.reschedule(rescheduleId, selectedSlot.startsAt);
+
+      Alert.alert(
+        'Rendez-vous reporté',
+        `Nouveau créneau : ${formatLongDate(selectedDate)} à ${formatLocalTime(selectedSlot.startsAt)}.`
       );
 
-      navigation.replace('BookingConfirm', {
-        appointment: response.data,
-        doctor: {
-          id: doctor.id,
-          name: `${doctor.first_name} ${doctor.last_name}`,
-          specialty: doctor.specialty,
-          fee: doctor.fee,
-          consultation_minutes: doctor.consultation_minutes,
-        },
-      });
+      navigation.goBack();
     } catch (err: any) {
-      const message =
-        err?.response?.data?.error ||
-        'La réservation a échoué. Veuillez réessayer.';
+      Alert.alert(
+        'Report impossible',
+        err?.response?.data?.error || 'Le report a échoué. Veuillez réessayer.'
+      );
 
-      Alert.alert('Réservation impossible', message);
-
-      // Recharger les disponibilités après un conflit.
       await loadSlots(selectedDate);
     } finally {
       setBooking(false);
@@ -212,7 +212,10 @@ export default function SlotPickerScreen() {
 
   return (
     <View style={ui.page}>
-      <Header title="Réserver une consultation" subtitle="Choisissez votre date et votre heure" />
+      <Header
+        title={rescheduleId ? 'Reporter le rendez-vous' : 'Réserver une consultation'}
+        subtitle="Choisissez votre date et votre heure"
+      />
 
       <ScrollView contentContainerStyle={ui.content}>
         <View style={[ui.card, ui.line]}>
@@ -295,17 +298,21 @@ export default function SlotPickerScreen() {
           </Text>
         )}
 
-        <Text style={ui.h2}>3. Motif de consultation</Text>
-        <TextInput
-          value={reason}
-          onChangeText={setReason}
-          placeholder="Décrivez brièvement le motif (facultatif)"
-          placeholderTextColor={colors.muted}
-          multiline
-          maxLength={500}
-          style={styles.reason}
-          textAlignVertical="top"
-        />
+        {!rescheduleId && (
+          <>
+            <Text style={ui.h2}>3. Motif de consultation</Text>
+            <TextInput
+              value={reason}
+              onChangeText={setReason}
+              placeholder="Décrivez brièvement le motif (facultatif)"
+              placeholderTextColor={colors.muted}
+              multiline
+              maxLength={500}
+              style={styles.reason}
+              textAlignVertical="top"
+            />
+          </>
+        )}
 
         <View style={ui.card}>
           <Text style={ui.label}>Récapitulatif</Text>
@@ -322,10 +329,16 @@ export default function SlotPickerScreen() {
         </View>
 
         <Button
-          title={booking ? 'Réservation en cours...' : 'Confirmer le rendez-vous'}
-          disabled={!selectedSlot || loadingSlots || booking || !doctor.active}
-          onPress={bookAppointment}
-        />
+  title={
+    booking
+      ? 'Enregistrement en cours...'
+      : rescheduleId
+        ? 'Confirmer le nouveau créneau'
+        : 'Continuer vers la confirmation'
+  }
+  disabled={!selectedSlot || loadingSlots || booking || !doctor.active}
+  onPress={bookAppointment}
+/>
 
         {!doctor.active && (
           <Text style={styles.error}>Ce médecin n'est pas disponible.</Text>

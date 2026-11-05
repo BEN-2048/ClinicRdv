@@ -8,6 +8,9 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { Role, useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
+import { fonts, palette } from '../theme/figma';
+import FigmaIcon, { FigmaIconName } from '../components/FigmaIcon';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
@@ -17,9 +20,15 @@ import DoctorListScreen from '../screens/patient/DoctorListScreen';
 import DoctorProfileScreen from '../screens/patient/DoctorProfileScreen';
 import SlotPickerScreen from '../screens/patient/SlotPickerScreen';
 import BookingConfirmScreen from '../screens/patient/BookingConfirmScreen';
+import BookingReviewScreen from '../screens/patient/BookingReviewScreen';
+import BookingConflictScreen from '../screens/patient/BookingConflictScreen';
 import MyAppointmentsScreen from '../screens/patient/MyAppointmentsScreen';
+<<<<<<< HEAD
 import NotificationsScreen from '../screens/patient/NotificationsScreen';
 
+=======
+import WaitingListScreen from '../screens/patient/WaitingListScreen';
+>>>>>>> origin/main
 import DoctorDashboardScreen from '../screens/doctor/DoctorDashboardScreen';
 import DoctorAgendaScreen from '../screens/doctor/DoctorAgendaScreen';
 import AppointmentDetailScreen from '../screens/doctor/AppointmentDetailScreen';
@@ -55,6 +64,7 @@ const tabOpts = {
   },
 };
 
+<<<<<<< HEAD
 // ============================================
 // NAVIGATION PATIENT
 // ============================================
@@ -106,6 +116,48 @@ const PatientTabs = () => (
     />
   </Tab.Navigator>
 );
+=======
+const patientTabIcons: Record<string, string> = {
+  Accueil: 'tab-home',
+  Médecins: 'tab-doctors',
+  'Mes RDV': 'tab-appointments',
+  Profil: 'tab-profile',
+};
+
+const PatientTabs = () => {
+  const insets = useSafeAreaInsets();
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarActiveTintColor: palette.primaryBright,
+        tabBarInactiveTintColor: palette.inkSoft,
+        tabBarLabelStyle: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16, letterSpacing: 0.24 },
+        tabBarIconStyle: { marginTop: 2 },
+        tabBarStyle: {
+          height: 64 + insets.bottom,
+          paddingTop: 8,
+          paddingBottom: 8 + insets.bottom,
+          backgroundColor: 'rgba(255,255,255,0.95)',
+          borderTopWidth: 0,
+          shadowColor: '#0F172A',
+          shadowOpacity: 0.06,
+          shadowRadius: 20,
+          shadowOffset: { width: 0, height: -4 },
+          elevation: 8,
+        },
+        tabBarIcon: ({ focused }) => (
+          <FigmaIcon name={`${patientTabIcons[route.name]}-${focused ? 'active' : 'inactive'}` as FigmaIconName} />
+        ),
+      })}
+    >
+      <Tab.Screen name="Accueil" component={HomeScreen} />
+      <Tab.Screen name="Médecins" component={DoctorListScreen} />
+      <Tab.Screen name="Mes RDV" component={MyAppointmentsScreen} options={{ headerShown: false }} />
+      <Tab.Screen name="Profil" component={ProfileScreen} />
+    </Tab.Navigator>
+  );
+};
+>>>>>>> origin/main
 
 // ============================================
 // NAVIGATION MÉDECIN
@@ -255,6 +307,33 @@ export default function RootNavigator() {
               name="SlotPicker"
               component={SlotPickerScreen}
               options={{ title: 'Choisir un créneau' }}
+            />
+
+            <Stack.Screen
+  name="BookingReview"
+  component={BookingReviewScreen}
+  options={{
+    title: 'Confirmation de réservation',
+    headerShown: false,
+  }}
+/>
+<Stack.Screen
+  name="BookingConflict"
+  component={BookingConflictScreen}
+  options={{
+    title: 'Conflit de réservation',
+    headerShown: false,
+  }}
+/>
+<Stack.Screen
+  name="WaitingList"
+  component={WaitingListScreen}
+  options={{
+    title: 'Alerte désistement',
+    headerTitleStyle: { fontFamily: fonts.semibold },
+    headerStyle: { backgroundColor: palette.page },
+    headerShadowVisible: false,
+  }}
             />
 
             <Stack.Screen

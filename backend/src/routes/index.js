@@ -17,6 +17,7 @@ const doctors = require('../controllers/doctors.controller');
 const appts = require('../controllers/appointments.controller');
 const admin = require('../controllers/admin.controller');
 const users = require('../controllers/users.controller');
+const waitingList = require('../controllers/waitingList.controller');
 
 
 // =========================================
@@ -249,6 +250,12 @@ router.put(
 // =========================================
 // ADMINISTRATION ET SECRÉTARIAT
 // =========================================
+
+const patientOnly = [authenticate, requireRole('patient')];
+router.get('/waiting-list/mine', ...patientOnly, waitingList.mine);
+router.get('/waiting-list/doctors/:doctorId', ...patientOnly, validate(s.waitingListParams, 'params'), waitingList.getForDoctor);
+router.put('/waiting-list/doctors/:doctorId', ...patientOnly, validate(s.waitingListParams, 'params'), validate(s.waitingListAlert), waitingList.upsert);
+router.delete('/waiting-list/doctors/:doctorId', ...patientOnly, validate(s.waitingListParams, 'params'), waitingList.deactivate);
 
 const staff = require('express').Router();
 
