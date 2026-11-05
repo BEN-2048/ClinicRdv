@@ -413,3 +413,7 @@ export const WaitingListApi = {
     api.put<WaitingDoctorState>(`/waiting-list/doctors/${doctorId}`, prefs),
   remove: (doctorId: number) => api.delete(`/waiting-list/doctors/${doctorId}`),
 };
+
+export const MedicalRecordApi = {
+  mine: () => api.get('/medical-record/me'),
+};

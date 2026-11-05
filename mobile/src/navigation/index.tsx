@@ -22,6 +22,7 @@ import BookingConfirmScreen from '../screens/patient/BookingConfirmScreen';
 import BookingReviewScreen from '../screens/patient/BookingReviewScreen';
 import BookingConflictScreen from '../screens/patient/BookingConflictScreen';
 import MyAppointmentsScreen from '../screens/patient/MyAppointmentsScreen';
+import MedicalRecordScreen from '../screens/patient/MedicalRecordScreen';
 import NotificationsScreen from '../screens/patient/NotificationsScreen';
 import WaitingListScreen from '../screens/patient/WaitingListScreen';
 
@@ -270,6 +271,12 @@ export default function RootNavigator() {
               name="SlotPicker"
               component={SlotPickerScreen}
               options={{ title: 'Choisir un créneau' }}
+            />
+
+            <Stack.Screen
+              name="MedicalRecord"
+              component={MedicalRecordScreen}
+              options={{ title: 'Dossier médical' }}
             />
 
             <Stack.Screen

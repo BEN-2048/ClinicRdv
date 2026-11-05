@@ -17,6 +17,7 @@ const doctors = require('../controllers/doctors.controller');
 const appts = require('../controllers/appointments.controller');
 const admin = require('../controllers/admin.controller');
 const users = require('../controllers/users.controller');
+const medicalRecord = require('../controllers/medicalRecord.controller');
 const waitingList = require('../controllers/waitingList.controller');
 
 
@@ -33,6 +34,7 @@ router.post('/auth/login', validate(s.login), auth.login);
 // =========================================
 
 router.get('/users/me', authenticate, users.getMe);
+router.get('/medical-record/me', authenticate, requireRole('patient'), medicalRecord.mine);
 
 router.patch(
   '/users/me',

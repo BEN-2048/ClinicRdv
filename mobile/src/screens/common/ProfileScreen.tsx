@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
+import { useNavigation } from '@react-navigation/native';
 import { Avatar, Button, ui } from '../../components/ClinicUI';
 import { colors } from '../../theme/colors';
 
@@ -21,6 +22,7 @@ const roleLabels = {
 };
 
 export default function ProfileScreen() {
+  const navigation = useNavigation<any>();
   const { user, refreshUser, updateUser, logout } = useAuth();
 
   const [editing, setEditing] = useState(false);
@@ -202,6 +204,18 @@ export default function ProfileScreen() {
         </Text>
       </View>
 
+      {user?.role === 'patient' && (
+        <Pressable
+          style={[ui.card, { marginTop: 12 }]}
+          onPress={() => navigation.navigate('MedicalRecord')}
+          accessibilityRole="button"
+        >
+          <Text style={styles.pendingTitle}>Mon dossier médical</Text>
+          <Text style={styles.pendingDescription}>
+            Consulter l'historique de vos consultations et vos informations médicales.
+          </Text>
+        </Pressable>
+      )}
       <Text style={styles.sectionTitle}>Assistance et informations</Text>
       <View style={ui.card}>
         <Text style={styles.pendingDescription}>
