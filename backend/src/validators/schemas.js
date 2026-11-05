@@ -71,3 +71,12 @@ exports.updateProfile = z.object({
   (data) => Object.keys(data).length > 0,
   { message: 'Au moins un champ doit être fourni' }
 );
+
+exports.waitingListParams = z.object({ doctorId: z.coerce.number().int().positive() });
+exports.waitingListAlert = z.object({
+  timeSlots: z.array(z.enum(['all_day', 'morning', 'afternoon', 'evening'])).min(1, 'Choisissez au moins une plage horaire'),
+  weekdays: z.array(z.number().int().min(1).max(5)).min(1, 'Choisissez au moins un jour').transform((d) => [...new Set(d)].sort()),
+  minNotice: z.enum(['2h', '24h', 'any']),
+  notifyPush: z.boolean(),
+  notifySms: z.boolean(),
+}).refine((o) => o.notifyPush || o.notifySms, 'Activez au moins un canal de notification');

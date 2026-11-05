@@ -94,11 +94,20 @@ CREATE TABLE waiting_list (
   id SERIAL PRIMARY KEY,
   patient_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   doctor_id INT NOT NULL REFERENCES doctors(id) ON DELETE CASCADE,
-  desired_date DATE NOT NULL,
+  desired_date DATE,
   notified BOOLEAN NOT NULL DEFAULT false,
+  time_slots TEXT[] NOT NULL DEFAULT '{all_day}',
+  weekdays SMALLINT[] NOT NULL DEFAULT '{1,2,3,4,5}',
+  min_notice VARCHAR(8) NOT NULL DEFAULT '24h' CONSTRAINT waiting_list_min_notice_check CHECK (min_notice IN ('2h', '24h', 'any')),
+  notify_push BOOLEAN NOT NULL DEFAULT true,
+  notify_sms BOOLEAN NOT NULL DEFAULT true,
+  active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (patient_id, doctor_id, desired_date)
 );
+CREATE UNIQUE INDEX waiting_list_alert_unique ON waiting_list (patient_id, doctor_id) WHERE desired_date IS NULL;
+CREATE INDEX idx_waiting_list_doctor_active ON waiting_list (doctor_id, created_at) WHERE active;
 
 CREATE TABLE notifications (
   id SERIAL PRIMARY KEY,
