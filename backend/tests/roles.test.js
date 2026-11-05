@@ -85,7 +85,7 @@ describe('rendez-vous', () => {
 
   test('GET /appointments/mine pour un patient reste filtré sur lui-même', async () => {
     await request(app).get('/api/appointments/mine').set('Authorization', token('patient', 3));
-    expect(pool.query.mock.calls[0][0]).toContain('a.patient_id=$1');
+    expect(pool.query.mock.calls[0][0]).toMatch(/a\.patient_id\s*=\s*\$1/);
     expect(pool.query.mock.calls[0][1]).toEqual([3]);
   });
 });
