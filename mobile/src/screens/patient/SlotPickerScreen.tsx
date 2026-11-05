@@ -138,41 +138,15 @@ export default function SlotPickerScreen() {
     setSelectedSlot(null);
   };
 
-  const bookAppointment = async () => {
-    if (!selectedSlot || !doctor) return;
+  const bookAppointment = () => {
+  if (!selectedSlot || !doctor) return;
 
-    setBooking(true);
-
-    try {
-      const response = await AppointmentsApi.book(
-        doctor.id,
-        selectedSlot.startsAt,
-        reason.trim() || undefined
-      );
-
-      navigation.replace('BookingConfirm', {
-        appointment: response.data,
-        doctor: {
-          id: doctor.id,
-          name: `${doctor.first_name} ${doctor.last_name}`,
-          specialty: doctor.specialty,
-          fee: doctor.fee,
-          consultation_minutes: doctor.consultation_minutes,
-        },
-      });
-    } catch (err: any) {
-      const message =
-        err?.response?.data?.error ||
-        'La réservation a échoué. Veuillez réessayer.';
-
-      Alert.alert('Réservation impossible', message);
-
-      // Recharger les disponibilités après un conflit.
-      await loadSlots(selectedDate);
-    } finally {
-      setBooking(false);
-    }
-  };
+  navigation.navigate('BookingReview', {
+    doctor,
+    slot: selectedSlot,
+    reason: reason.trim(),
+  });
+};
 
   if (loadingDoctor) {
     return (
@@ -322,10 +296,10 @@ export default function SlotPickerScreen() {
         </View>
 
         <Button
-          title={booking ? 'Réservation en cours...' : 'Confirmer le rendez-vous'}
-          disabled={!selectedSlot || loadingSlots || booking || !doctor.active}
-          onPress={bookAppointment}
-        />
+  title="Continuer vers la confirmation"
+  disabled={!selectedSlot || loadingSlots || !doctor.active}
+  onPress={bookAppointment}
+/>
 
         {!doctor.active && (
           <Text style={styles.error}>Ce médecin n'est pas disponible.</Text>

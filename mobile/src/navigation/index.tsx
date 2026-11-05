@@ -14,6 +14,8 @@ import DoctorListScreen from '../screens/patient/DoctorListScreen';
 import DoctorProfileScreen from '../screens/patient/DoctorProfileScreen';
 import SlotPickerScreen from '../screens/patient/SlotPickerScreen';
 import BookingConfirmScreen from '../screens/patient/BookingConfirmScreen';
+import BookingReviewScreen from '../screens/patient/BookingReviewScreen';
+import BookingConflictScreen from '../screens/patient/BookingConflictScreen';
 import MyAppointmentsScreen from '../screens/patient/MyAppointmentsScreen';
 import DoctorDashboardScreen from '../screens/doctor/DoctorDashboardScreen';
 import DoctorAgendaScreen from '../screens/doctor/DoctorAgendaScreen';
@@ -124,6 +126,23 @@ export default function RootNavigator() {
               name="SlotPicker"
               component={SlotPickerScreen}
               options={{ title: 'Choisir un créneau' }}
+            />
+
+            <Stack.Screen
+              name="BookingReview"
+              component={BookingReviewScreen}
+              options={{
+              title: 'Confirmation de réservation',
+              headerShown: false,
+            }}
+            />  
+            <Stack.Screen
+              name="BookingConflict"
+              component={BookingConflictScreen}
+              options={{
+              title: 'Conflit de réservation',
+              headerShown: false,
+            }}
             />
 
             <Stack.Screen
