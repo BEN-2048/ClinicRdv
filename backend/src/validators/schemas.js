@@ -72,6 +72,39 @@ exports.updateProfile = z.object({
   { message: 'Au moins un champ doit être fourni' }
 );
 
+
+// =========================================
+// FICHE DE CONSULTATION MÉDICALE
+// =========================================
+
+const optionalText = z.string().max(5000).nullable().optional();
+
+const optionalVital = z.number()
+  .finite()
+  .nonnegative()
+  .nullable()
+  .optional();
+
+exports.consultation = z.object({
+  chiefComplaint: optionalText,
+
+  bloodPressure: z.string().max(20).nullable().optional(),
+  heartRate: optionalVital,
+  temperature: optionalVital,
+  oxygenSaturation: optionalVital,
+  weight: optionalVital,
+  height: optionalVital,
+
+  medicalHistory: optionalText,
+  currentTreatments: optionalText,
+
+  clinicalExamination: optionalText,
+  diagnosis: optionalText,
+
+  notes: optionalText,
+  prescription: optionalText,
+}).strict();
+
 exports.waitingListParams = z.object({ doctorId: z.coerce.number().int().positive() });
 exports.waitingListAlert = z.object({
   timeSlots: z.array(z.enum(['all_day', 'morning', 'afternoon', 'evening'])).min(1, 'Choisissez au moins une plage horaire'),

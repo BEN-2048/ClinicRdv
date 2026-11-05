@@ -1,42 +1,232 @@
 
 import { api } from './client';
 
+// ============================================
+// AUTHENTIFICATION
+// ============================================
+
 export const AuthApi = {
-  login: (email: string, password: string) => api.post('/auth/login', { email, password }),
-  register: (data: object) => api.post('/auth/register', data),
+  login: (email: string, password: string) =>
+    api.post('/auth/login', { email, password }),
+
+  register: (data: object) =>
+    api.post('/auth/register', data),
 };
 
-export const DoctorsApi = {
-  list: (params?: object) => api.get('/doctors', { params }),
-  get: (id: number) => api.get(`/doctors/${id}`),
-  slots: (id: number, date: string) => api.get(`/doctors/${id}/slots`, { params: { date } }),
-  dashboard: () => api.get('/doctors/me/dashboard'),
+// ============================================
+// MÉDECINS
+// ============================================
 
-  workingHours: () => api.get('/doctors/me/working-hours'),
+export const DoctorsApi = {
+  list: (params?: object) =>
+    api.get('/doctors', { params }),
+
+  get: (id: number) =>
+    api.get(`/doctors/${id}`),
+
+  slots: (id: number, date: string) =>
+    api.get(`/doctors/${id}/slots`, { params: { date } }),
+
+  dashboard: () =>
+    api.get('/doctors/me/dashboard'),
+
+  workingHours: () =>
+    api.get('/doctors/me/working-hours'),
+
   updateWorkingHours: (data: object) =>
     api.put('/doctors/me/working-hours', data),
 
-  leaves: () => api.get('/doctors/me/leaves'),
-  addLeave: (data: object) => api.post('/doctors/me/leaves', data),
+  leaves: () =>
+    api.get('/doctors/me/leaves'),
+
+  addLeave: (data: object) =>
+    api.post('/doctors/me/leaves', data),
+
   deleteLeave: (id: number) =>
     api.delete(`/doctors/me/leaves/${id}`),
 
-  blockedSlots: () => api.get('/doctors/me/blocked-slots'),
+  blockedSlots: () =>
+    api.get('/doctors/me/blocked-slots'),
+
   addBlockedSlot: (data: object) =>
     api.post('/doctors/me/blocked-slots', data),
+
   deleteBlockedSlot: (id: number) =>
     api.delete(`/doctors/me/blocked-slots/${id}`),
 };
 
+// ============================================
+// TYPES DE LA FICHE DE CONSULTATION
+// ============================================
+
+export type ConsultationInput = {
+  chiefComplaint?: string | null;
+  bloodPressure?: string | null;
+  heartRate?: number | null;
+  temperature?: number | null;
+  oxygenSaturation?: number | null;
+  weight?: number | null;
+  height?: number | null;
+  medicalHistory?: string | null;
+  currentTreatments?: string | null;
+  clinicalExamination?: string | null;
+  diagnosis?: string | null;
+  notes?: string | null;
+  prescription?: string | null;
+};
+
+export type ConsultationResponse = {
+  appointment_id: number;
+  starts_at: string;
+  ends_at: string;
+  appointment_status: AppointmentStatus;
+  appointment_reason: string | null;
+
+  patient_id: number;
+  patient_first_name: string;
+  patient_last_name: string;
+  patient_email: string;
+  patient_phone: string | null;
+
+  doctor_id: number;
+
+  consultation_id: number | null;
+  chief_complaint: string | null;
+  blood_pressure: string | null;
+  heart_rate: number | null;
+  temperature: number | null;
+  oxygen_saturation: number | null;
+  weight: number | null;
+  height: number | null;
+  medical_history: string | null;
+  current_treatments: string | null;
+  clinical_examination: string | null;
+  diagnosis: string | null;
+  notes: string | null;
+  prescription: string | null;
+  consultation_status: 'draft' | 'completed' | null;
+  consultation_created_at: string | null;
+  consultation_updated_at: string | null;
+  completed_at: string | null;
+};
+
+// ============================================
+// RENDEZ-VOUS
+// ============================================
+
 export const AppointmentsApi = {
   book: (doctorId: number, startsAt: string, reason?: string) =>
     api.post('/appointments', { doctorId, startsAt, reason }),
-  mine: (scope?: 'upcoming' | 'past') => api.get('/appointments/mine', { params: { scope } }),
-  cancel: (id: number) => api.patch(`/appointments/${id}/cancel`),
-  reschedule: (id: number, startsAt: string) => api.patch(`/appointments/${id}/reschedule`, { startsAt }),
+
+  mine: (scope?: 'upcoming' | 'past') =>
+    api.get('/appointments/mine', { params: { scope } }),
+
+  cancel: (id: number) =>
+    api.patch(`/appointments/${id}/cancel`),
+
+  reschedule: (id: number, startsAt: string) =>
+    api.patch(`/appointments/${id}/reschedule`, { startsAt }),
+
+  // ============================================
+  // FICHE DE CONSULTATION MÉDICALE
+  // ============================================
+
+  // Récupérer la fiche de consultation
+  consultation: (id: number) =>
+    api.get<ConsultationResponse>(
+      `/appointments/${id}/consultation`
+    ),
+
+  // Enregistrer un brouillon
+  saveConsultation: (id: number, data: ConsultationInput) =>
+    api.put(
+      `/appointments/${id}/consultation`,
+      data
+    ),
+
+  // Terminer la consultation
+  completeConsultation: (id: number, data: ConsultationInput) =>
+    api.patch(
+      `/appointments/${id}/complete`,
+      data
+    ),
 };
 
-export type AppointmentStatus = 'pending' | 'confirmed' | 'cancelled' | 'done';
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+export type NotificationType =
+  | 'general'
+  | 'appointment_reminder'
+  | 'waiting_list'
+  | 'prescription'
+  | 'appointment_confirmed'
+  | 'appointment_cancelled';
+
+export type PatientNotification = {
+  id: number;
+  user_id: number;
+  title: string;
+  body: string | null;
+  type: NotificationType;
+  appointment_id: number | null;
+  read: boolean;
+  read_at: string | null;
+  send_at: string;
+  created_at: string;
+};
+
+export type NotificationPreferences = {
+  sms_enabled: boolean;
+  email_enabled: boolean;
+  updated_at?: string;
+};
+
+export type NotificationsResponse = {
+  items: PatientNotification[];
+  unreadCount: number;
+};
+
+export const NotificationsApi = {
+  // Récupérer les notifications
+  list: (type?: NotificationType | 'all') =>
+    api.get<NotificationsResponse>('/notifications', {
+      params: type ? { type } : {},
+    }),
+
+  // Marquer une notification comme lue
+  markAsRead: (id: number) =>
+    api.patch<PatientNotification>(`/notifications/${id}/read`),
+
+  // Marquer toutes les notifications comme lues
+  markAllAsRead: () =>
+    api.patch<{ updatedCount: number }>('/notifications/read-all'),
+
+  // Récupérer les préférences SMS et e-mail
+  getPreferences: () =>
+    api.get<NotificationPreferences>('/notifications/preferences'),
+
+  // Modifier les préférences
+  updatePreferences: (
+    smsEnabled: boolean,
+    emailEnabled: boolean
+  ) =>
+    api.put<NotificationPreferences>(
+      '/notifications/preferences',
+      { smsEnabled, emailEnabled }
+    ),
+};
+
+// ============================================
+// TYPES GÉNÉRAUX
+// ============================================
+
+export type AppointmentStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'cancelled'
+  | 'done';
 
 export type WorkingHour = {
   weekday: number;
@@ -88,40 +278,109 @@ export type DoctorInput = {
   active?: boolean;
 };
 
+// ============================================
+// ADMINISTRATION / SECRÉTARIAT
+// ============================================
+
 export const StaffApi = {
-  dashboard: () => api.get('/admin/dashboard'),
-  stats: (params?: { from?: string; to?: string }) => api.get('/admin/stats', { params }),
-  patients: (q?: string) => api.get('/admin/patients', { params: { q: q || undefined } }),
-  specialties: () => api.get('/admin/specialties'),
+  dashboard: () =>
+    api.get('/admin/dashboard'),
 
-  doctors: () => api.get<StaffDoctor[]>('/admin/doctors'),
-  doctor: (id: number) => api.get<StaffDoctor>(`/admin/doctors/${id}`),
-  createDoctor: (data: DoctorInput) => api.post<StaffDoctor>('/admin/doctors', data),
-  updateDoctor: (id: number, data: DoctorInput) => api.patch<StaffDoctor>(`/admin/doctors/${id}`, data),
+  stats: (params?: { from?: string; to?: string }) =>
+    api.get('/admin/stats', { params }),
 
-  workingHours: (id: number) => api.get(`/admin/doctors/${id}/working-hours`),
-  setWorkingHours: (id: number, hours: WorkingHour[], consultationMinutes: number) =>
-    api.put(`/admin/doctors/${id}/working-hours`, { hours, consultationMinutes }),
-  leaves: (id: number) => api.get(`/admin/doctors/${id}/leaves`),
-  addLeave: (id: number, startDate: string, endDate: string, reason?: string) =>
-    api.post(`/admin/doctors/${id}/leaves`, { startDate, endDate, reason: reason || undefined }),
-  deleteLeave: (id: number, leaveId: number) => api.delete(`/admin/doctors/${id}/leaves/${leaveId}`),
+  patients: (q?: string) =>
+    api.get('/admin/patients', {
+      params: { q: q || undefined },
+    }),
 
-  appointments: (params?: { date?: string; doctorId?: number; status?: AppointmentStatus }) =>
+  specialties: () =>
+    api.get('/admin/specialties'),
+
+  doctors: () =>
+    api.get<StaffDoctor[]>('/admin/doctors'),
+
+  doctor: (id: number) =>
+    api.get<StaffDoctor>(`/admin/doctors/${id}`),
+
+  createDoctor: (data: DoctorInput) =>
+    api.post<StaffDoctor>('/admin/doctors', data),
+
+  updateDoctor: (id: number, data: DoctorInput) =>
+    api.patch<StaffDoctor>(`/admin/doctors/${id}`, data),
+
+  workingHours: (id: number) =>
+    api.get(`/admin/doctors/${id}/working-hours`),
+
+  setWorkingHours: (
+    id: number,
+    hours: WorkingHour[],
+    consultationMinutes: number
+  ) =>
+    api.put(`/admin/doctors/${id}/working-hours`, {
+      hours,
+      consultationMinutes,
+    }),
+
+  leaves: (id: number) =>
+    api.get(`/admin/doctors/${id}/leaves`),
+
+  addLeave: (
+    id: number,
+    startDate: string,
+    endDate: string,
+    reason?: string
+  ) =>
+    api.post(`/admin/doctors/${id}/leaves`, {
+      startDate,
+      endDate,
+      reason: reason || undefined,
+    }),
+
+  deleteLeave: (id: number, leaveId: number) =>
+    api.delete(`/admin/doctors/${id}/leaves/${leaveId}`),
+
+  appointments: (params?: {
+    date?: string;
+    doctorId?: number;
+    status?: AppointmentStatus;
+  }) =>
     api.get<StaffAppointment[]>('/admin/appointments', { params }),
-  book: (patientId: number, doctorId: number, startsAt: string, reason?: string) =>
-    api.post('/admin/appointments', { patientId, doctorId, startsAt, reason: reason || undefined }),
-  cancel: (id: number) => api.patch(`/admin/appointments/${id}/cancel`),
-  reschedule: (id: number, startsAt: string) => api.patch(`/admin/appointments/${id}/reschedule`, { startsAt }),
+
+  book: (
+    patientId: number,
+    doctorId: number,
+    startsAt: string,
+    reason?: string
+  ) =>
+    api.post('/admin/appointments', {
+      patientId,
+      doctorId,
+      startsAt,
+      reason: reason || undefined,
+    }),
+
+  cancel: (id: number) =>
+    api.patch(`/admin/appointments/${id}/cancel`),
+
+  reschedule: (id: number, startsAt: string) =>
+    api.patch(`/admin/appointments/${id}/reschedule`, { startsAt }),
 };
 
+// ============================================
+// UTILISATEURS
+// ============================================
+
 export const UsersApi = {
-  getMe: () => api.get('/users/me'),
+  getMe: () =>
+    api.get('/users/me'),
+
   updateMe: (data: {
     firstName?: string;
     lastName?: string;
     phone?: string | null;
-  }) => api.patch('/users/me', data),
+  }) =>
+    api.patch('/users/me', data),
 };
 
 export type WaitingTimeSlot = 'all_day' | 'morning' | 'afternoon' | 'evening';

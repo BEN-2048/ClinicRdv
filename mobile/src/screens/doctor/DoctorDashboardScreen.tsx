@@ -1,15 +1,15 @@
-
 import React, { useCallback, useEffect, useState } from 'react';
-
 import {
   ActivityIndicator,
   ScrollView,
   RefreshControl,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { DoctorsApi } from '../../api/services';
 
@@ -80,6 +80,7 @@ const getStatus = (status: Appointment['status']) => {
 
 export default function DoctorDashboardScreen() {
   const { user } = useAuth();
+  const navigation = useNavigation<any>();
 
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -113,6 +114,13 @@ export default function DoctorDashboardScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     loadDashboard();
+  };
+
+  // Ouvrir la fiche de consultation du rendez-vous sélectionné.
+  const openAppointment = (appointmentId: number) => {
+    navigation.navigate('AppointmentDetail', {
+      appointmentId,
+    });
   };
 
   if (loading) {
@@ -308,7 +316,7 @@ export default function DoctorDashboardScreen() {
         </Text>
       </View>
 
-      {/* Prochains rendez-vous : inclut les rendez-vous futurs */}
+      {/* Prochains rendez-vous */}
       <Text style={styles.sectionTitle}>Prochains rendez-vous</Text>
 
       {appointments
@@ -328,7 +336,12 @@ export default function DoctorDashboardScreen() {
           const status = getStatus(appointment.status);
 
           return (
-            <View key={`upcoming-${appointment.id}`} style={styles.appointmentCard}>
+            <TouchableOpacity
+              key={`upcoming-${appointment.id}`}
+              style={styles.appointmentCard}
+              activeOpacity={0.75}
+              onPress={() => openAppointment(appointment.id)}
+            >
               <View style={styles.timeColumn}>
                 <Text style={styles.timeText}>
                   {new Date(appointment.starts_at).toLocaleDateString('fr-FR', {
@@ -360,7 +373,7 @@ export default function DoctorDashboardScreen() {
                   </Text>
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
           );
         })}
 
@@ -384,7 +397,12 @@ export default function DoctorDashboardScreen() {
           const status = getStatus(appointment.status);
 
           return (
-            <View key={appointment.id} style={styles.appointmentCard}>
+            <TouchableOpacity
+              key={appointment.id}
+              style={styles.appointmentCard}
+              activeOpacity={0.75}
+              onPress={() => openAppointment(appointment.id)}
+            >
               <View style={styles.timeColumn}>
                 <Text style={styles.timeText}>
                   {formatTime(appointment.starts_at)}
@@ -415,7 +433,7 @@ export default function DoctorDashboardScreen() {
                   </Text>
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
           );
         })
       )}
