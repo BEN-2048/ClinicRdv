@@ -142,47 +142,32 @@ export default function SlotPickerScreen() {
   const bookAppointment = async () => {
     if (!selectedSlot || !doctor) return;
 
-    setBooking(true);
-
-    if (rescheduleId) {
-      try {
-        await AppointmentsApi.reschedule(rescheduleId, selectedSlot.startsAt);
-        Alert.alert('Rendez-vous reporté', `Nouveau créneau : ${formatLongDate(selectedDate)} à ${formatLocalTime(selectedSlot.startsAt)}.`);
-        navigation.goBack();
-      } catch (err: any) {
-        Alert.alert('Report impossible', err?.response?.data?.error || 'Le report a échoué. Veuillez réessayer.');
-        await loadSlots(selectedDate);
-      } finally {
-        setBooking(false);
-      }
+    if (!rescheduleId) {
+      navigation.navigate('BookingReview', {
+        doctor,
+        slot: selectedSlot,
+        reason: reason.trim(),
+      });
       return;
     }
 
+    setBooking(true);
+
     try {
-      const response = await AppointmentsApi.book(
-        doctor.id,
-        selectedSlot.startsAt,
-        reason.trim() || undefined
+      await AppointmentsApi.reschedule(rescheduleId, selectedSlot.startsAt);
+
+      Alert.alert(
+        'Rendez-vous reporté',
+        `Nouveau créneau : ${formatLongDate(selectedDate)} à ${formatLocalTime(selectedSlot.startsAt)}.`
       );
 
-      navigation.replace('BookingConfirm', {
-        appointment: response.data,
-        doctor: {
-          id: doctor.id,
-          name: `${doctor.first_name} ${doctor.last_name}`,
-          specialty: doctor.specialty,
-          fee: doctor.fee,
-          consultation_minutes: doctor.consultation_minutes,
-        },
-      });
+      navigation.goBack();
     } catch (err: any) {
-      const message =
-        err?.response?.data?.error ||
-        'La réservation a échoué. Veuillez réessayer.';
+      Alert.alert(
+        'Report impossible',
+        err?.response?.data?.error || 'Le report a échoué. Veuillez réessayer.'
+      );
 
-      Alert.alert('Réservation impossible', message);
-
-      // Recharger les disponibilités après un conflit.
       await loadSlots(selectedDate);
     } finally {
       setBooking(false);
@@ -344,16 +329,16 @@ export default function SlotPickerScreen() {
         </View>
 
         <Button
-          title={
-            booking
-              ? 'Enregistrement en cours...'
-              : rescheduleId
-                ? 'Confirmer le nouveau créneau'
-                : 'Confirmer le rendez-vous'
-          }
-          disabled={!selectedSlot || loadingSlots || booking || !doctor.active}
-          onPress={bookAppointment}
-        />
+  title={
+    booking
+      ? 'Enregistrement en cours...'
+      : rescheduleId
+        ? 'Confirmer le nouveau créneau'
+        : 'Continuer vers la confirmation'
+  }
+  disabled={!selectedSlot || loadingSlots || booking || !doctor.active}
+  onPress={bookAppointment}
+/>
 
         {!doctor.active && (
           <Text style={styles.error}>Ce médecin n'est pas disponible.</Text>

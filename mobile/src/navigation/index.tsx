@@ -17,6 +17,8 @@ import DoctorListScreen from '../screens/patient/DoctorListScreen';
 import DoctorProfileScreen from '../screens/patient/DoctorProfileScreen';
 import SlotPickerScreen from '../screens/patient/SlotPickerScreen';
 import BookingConfirmScreen from '../screens/patient/BookingConfirmScreen';
+import BookingReviewScreen from '../screens/patient/BookingReviewScreen';
+import BookingConflictScreen from '../screens/patient/BookingConflictScreen';
 import MyAppointmentsScreen from '../screens/patient/MyAppointmentsScreen';
 import WaitingListScreen from '../screens/patient/WaitingListScreen';
 import DoctorDashboardScreen from '../screens/doctor/DoctorDashboardScreen';
@@ -163,14 +165,30 @@ export default function RootNavigator() {
             />
 
             <Stack.Screen
-              name="WaitingList"
-              component={WaitingListScreen}
-              options={{
-                title: 'Alerte désistement',
-                headerTitleStyle: { fontFamily: fonts.semibold },
-                headerStyle: { backgroundColor: palette.page },
-                headerShadowVisible: false,
-              }}
+  name="BookingReview"
+  component={BookingReviewScreen}
+  options={{
+    title: 'Confirmation de réservation',
+    headerShown: false,
+  }}
+/>
+<Stack.Screen
+  name="BookingConflict"
+  component={BookingConflictScreen}
+  options={{
+    title: 'Conflit de réservation',
+    headerShown: false,
+  }}
+/>
+<Stack.Screen
+  name="WaitingList"
+  component={WaitingListScreen}
+  options={{
+    title: 'Alerte désistement',
+    headerTitleStyle: { fontFamily: fonts.semibold },
+    headerStyle: { backgroundColor: palette.page },
+    headerShadowVisible: false,
+  }}
             />
 
             <Stack.Screen
