@@ -1,12 +1,21 @@
-﻿import React, { useCallback, useState } from 'react';
+﻿
+import React, { useCallback, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, ActivityIndicator,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { Header, Button, Avatar, ui } from '../../components/ClinicUI';
-import { DoctorsApi, AppointmentsApi } from '../../api/services';
+import {
+  DoctorsApi,
+  AppointmentsApi,
+  NotificationsApi,
+} from '../../api/services';
 import { colors } from '../../theme/colors';
 
 type Doctor = {
@@ -29,8 +38,11 @@ type Appointment = {
 
 export default function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
+
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [appointment, setAppointment] = useState<Appointment | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+
   const [loading, setLoading] = useState(true);
   const [doctorsError, setDoctorsError] = useState(false);
   const [appointmentsError, setAppointmentsError] = useState(false);
@@ -42,36 +54,48 @@ export default function HomeScreen({ navigation }: any) {
       async function loadHome() {
         setLoading(true);
 
-        const [doctorsResult, appointmentsResult] = await Promise.allSettled([
+        const [
+          doctorsResult,
+          appointmentsResult,
+          notificationsResult,
+        ] = await Promise.allSettled([
           DoctorsApi.list(),
           AppointmentsApi.mine('upcoming'),
+          NotificationsApi.list('all'),
         ]);
 
         if (!active) return;
 
+        // Chargement des médecins
         if (doctorsResult.status === 'fulfilled') {
           const data = doctorsResult.value.data;
           const items = Array.isArray(data) ? data : [];
 
-          setDoctors(items.slice(0, 2).map((d: any) => ({
-            ...d,
-            name: `${d.first_name} ${d.last_name}`.trim(),
-            initials: `${d.first_name?.[0] || ''}${d.last_name?.[0] || ''}`.toUpperCase(),
-          })));
+          setDoctors(
+            items.slice(0, 2).map((d: any) => ({
+              ...d,
+              name: `${d.first_name} ${d.last_name}`.trim(),
+              initials: `${d.first_name?.[0] || ''}${d.last_name?.[0] || ''}`.toUpperCase(),
+            }))
+          );
+
           setDoctorsError(false);
         } else {
           setDoctors([]);
           setDoctorsError(true);
         }
 
+        // Chargement du prochain rendez-vous
         if (appointmentsResult.status === 'fulfilled') {
           const data = appointmentsResult.value.data;
           const items: Appointment[] = Array.isArray(data) ? data : [];
 
           const next = items
             .filter(a => ['pending', 'confirmed'].includes(a.status))
-            .sort((a, b) =>
-              new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
+            .sort(
+              (a, b) =>
+                new Date(a.starts_at).getTime() -
+                new Date(b.starts_at).getTime()
             )[0] || null;
 
           setAppointment(next);
@@ -79,6 +103,15 @@ export default function HomeScreen({ navigation }: any) {
         } else {
           setAppointment(null);
           setAppointmentsError(true);
+        }
+
+        // Chargement du nombre de notifications non lues
+        if (notificationsResult.status === 'fulfilled') {
+          setUnreadCount(
+            notificationsResult.value.data.unreadCount || 0
+          );
+        } else {
+          setUnreadCount(0);
         }
 
         setLoading(false);
@@ -94,11 +127,22 @@ export default function HomeScreen({ navigation }: any) {
 
   const openDoctors = () => navigation.navigate('Médecins');
 
+  const openNotifications = () => {
+    navigation.navigate('Notifications');
+  };
+
   return (
     <View style={ui.page}>
-      <Header title="ClinicRDV" subtitle="Accueil" />
+      {/* En-tête avec la cloche de notifications */}
+      <Header
+        title="ClinicRDV"
+        subtitle="Accueil"
+        unreadCount={unreadCount}
+        onRightPress={openNotifications}
+      />
 
       <ScrollView contentContainerStyle={ui.content}>
+        {/* Message de bienvenue */}
         <Text style={s.greet}>
           Bonjour {user?.first_name || 'Patient'}
         </Text>
@@ -107,6 +151,7 @@ export default function HomeScreen({ navigation }: any) {
           Prenez soin de votre santé aujourd'hui.
         </Text>
 
+        {/* Bouton de prise de rendez-vous */}
         <View style={{ marginTop: 16 }}>
           <Button
             title="Prendre un nouveau rendez-vous"
@@ -114,9 +159,13 @@ export default function HomeScreen({ navigation }: any) {
           />
         </View>
 
+        {/* Prochain rendez-vous */}
         <View style={s.heading}>
           <Text style={ui.h2}>Prochain rendez-vous</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Mes RDV')}>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Mes RDV')}
+          >
             <Text style={s.link}>Voir mes RDV</Text>
           </TouchableOpacity>
         </View>
@@ -131,29 +180,44 @@ export default function HomeScreen({ navigation }: any) {
           </View>
         ) : appointment ? (
           <View style={ui.card}>
-            <Text style={ui.label}>{appointment.doctor_name}</Text>
-            <Text style={ui.muted}>{appointment.specialty}</Text>
+            <Text style={ui.label}>
+              {appointment.doctor_name}
+            </Text>
+
+            <Text style={ui.muted}>
+              {appointment.specialty}
+            </Text>
 
             <View style={s.info}>
               <Text style={s.infoText}>
-                {new Date(appointment.starts_at).toLocaleDateString('fr-FR', {
-                  weekday: 'long',
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric',
-                })}
+                {new Date(appointment.starts_at).toLocaleDateString(
+                  'fr-FR',
+                  {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  }
+                )}
               </Text>
 
               <Text style={s.infoText}>
-                {new Date(appointment.starts_at).toLocaleTimeString('fr-FR', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
+                {new Date(appointment.starts_at).toLocaleTimeString(
+                  'fr-FR',
+                  {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  }
+                )}
               </Text>
             </View>
 
             <Text style={ui.muted}>
-              Statut : {appointment.status === 'confirmed' ? 'Confirmé' : 'En attente'}
+              Statut : {
+                appointment.status === 'confirmed'
+                  ? 'Confirmé'
+                  : 'En attente'
+              }
             </Text>
           </View>
         ) : (
@@ -164,8 +228,10 @@ export default function HomeScreen({ navigation }: any) {
           </View>
         )}
 
+        {/* Spécialités médicales */}
         <View style={s.heading}>
           <Text style={ui.h2}>Spécialités médicales</Text>
+
           <TouchableOpacity onPress={openDoctors}>
             <Text style={s.link}>Toutes</Text>
           </TouchableOpacity>
@@ -184,19 +250,29 @@ export default function HomeScreen({ navigation }: any) {
               onPress={openDoctors}
             >
               <Text style={s.specialIcon}>{symbol}</Text>
-              <Text style={s.specialText}>{label}</Text>
+
+              <Text style={s.specialText}>
+                {label}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <Text style={[ui.h2, ui.section]}>Médecins recommandés</Text>
+        {/* Médecins recommandés */}
+        <Text style={[ui.h2, ui.section]}>
+          Médecins recommandés
+        </Text>
 
         {loading ? (
           <ActivityIndicator color={colors.primary} />
         ) : doctorsError ? (
-          <Text style={ui.muted}>Impossible de charger les médecins.</Text>
+          <Text style={ui.muted}>
+            Impossible de charger les médecins.
+          </Text>
         ) : doctors.length === 0 ? (
-          <Text style={ui.muted}>Aucun médecin disponible.</Text>
+          <Text style={ui.muted}>
+            Aucun médecin disponible.
+          </Text>
         ) : (
           doctors.map(doctor => (
             <View style={ui.card} key={doctor.id}>
@@ -207,8 +283,13 @@ export default function HomeScreen({ navigation }: any) {
                 />
 
                 <View style={{ flex: 1 }}>
-                  <Text style={ui.label}>{doctor.name}</Text>
-                  <Text style={ui.muted}>{doctor.specialty}</Text>
+                  <Text style={ui.label}>
+                    {doctor.name}
+                  </Text>
+
+                  <Text style={ui.muted}>
+                    {doctor.specialty}
+                  </Text>
                 </View>
 
                 <TouchableOpacity onPress={openDoctors}>
@@ -229,6 +310,7 @@ const s = StyleSheet.create({
     fontWeight: '900',
     color: colors.text,
   },
+
   heading: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -236,26 +318,31 @@ const s = StyleSheet.create({
     marginTop: 25,
     marginBottom: 8,
   },
+
   link: {
     color: colors.primary,
     fontWeight: '700',
     fontSize: 12,
   },
+
   info: {
     backgroundColor: '#F0F5FF',
     padding: 12,
     borderRadius: 10,
     marginVertical: 12,
   },
+
   infoText: {
     color: '#334B70',
     fontSize: 12,
     marginVertical: 3,
   },
+
   specialties: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
+
   specialty: {
     backgroundColor: '#fff',
     borderRadius: 14,
@@ -265,10 +352,12 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#EEF1F7',
   },
+
   specialIcon: {
     fontSize: 24,
     color: colors.primary,
   },
+
   specialText: {
     fontSize: 10,
     color: colors.text,
