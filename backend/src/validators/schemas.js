@@ -72,7 +72,6 @@ exports.updateProfile = z.object({
   { message: 'Au moins un champ doit être fourni' }
 );
 
-<<<<<<< HEAD
 
 // =========================================
 // FICHE DE CONSULTATION MÉDICALE
@@ -106,7 +105,6 @@ exports.consultation = z.object({
   prescription: optionalText,
 }).strict();
 
-=======
 exports.waitingListParams = z.object({ doctorId: z.coerce.number().int().positive() });
 exports.waitingListAlert = z.object({
   timeSlots: z.array(z.enum(['all_day', 'morning', 'afternoon', 'evening'])).min(1, 'Choisissez au moins une plage horaire'),
@@ -115,4 +113,3 @@ exports.waitingListAlert = z.object({
   notifyPush: z.boolean(),
   notifySms: z.boolean(),
 }).refine((o) => o.notifyPush || o.notifySms, 'Activez au moins un canal de notification');
->>>>>>> origin/main
