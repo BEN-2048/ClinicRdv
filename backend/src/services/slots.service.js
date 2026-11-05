@@ -50,11 +50,11 @@ function getLocalDay(dateStr) {
  * Calcule les créneaux selon les horaires locaux de Lubumbashi.
  * Les instants sont convertis en UTC pour PostgreSQL.
  */
-exports.getAvailableSlots = async (doctorId, dateStr) => {
+exports.getAvailableSlots = async (doctorId, dateStr, db = pool, excludeAppointmentId = null) => {
   const localDay = getLocalDay(dateStr);
   const { start, end, weekday, year, month, dayOfMonth } = localDay;
 
-  const doc = await pool.query(
+  const doc = await db.query(
     'SELECT consultation_minutes FROM doctors WHERE id=$1 AND active',
     [doctorId]
   );
@@ -63,26 +63,26 @@ exports.getAvailableSlots = async (doctorId, dateStr) => {
 
   const duration = doc.rows[0].consultation_minutes;
 
-  const onLeave = await pool.query(
+  const onLeave = await db.query(
     'SELECT 1 FROM leaves WHERE doctor_id=$1 AND $2::date BETWEEN start_date AND end_date',
     [doctorId, dateStr]
   );
 
   if (onLeave.rowCount) return [];
 
-  const wh = await pool.query(
+  const wh = await db.query(
     'SELECT start_time, end_time FROM working_hours WHERE doctor_id=$1 AND weekday=$2',
     [doctorId, weekday]
   );
 
-  const busy = await pool.query(
+  const busy = await db.query(
     `SELECT starts_at, ends_at FROM appointments
        WHERE doctor_id=$1 AND status IN ('pending','confirmed')
-         AND starts_at < $3 AND ends_at > $2
+         AND starts_at < $3 AND ends_at > $2 AND ($4::int IS NULL OR id <> $4)
      UNION ALL
      SELECT starts_at, ends_at FROM blocked_slots
        WHERE doctor_id=$1 AND starts_at < $3 AND ends_at > $2`,
-    [doctorId, start, end]
+    [doctorId, start, end, excludeAppointmentId]
   );
 
   const now = Date.now();

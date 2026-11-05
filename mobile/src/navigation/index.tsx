@@ -15,6 +15,7 @@ import DoctorProfileScreen from '../screens/patient/DoctorProfileScreen';
 import SlotPickerScreen from '../screens/patient/SlotPickerScreen';
 import BookingConfirmScreen from '../screens/patient/BookingConfirmScreen';
 import MyAppointmentsScreen from '../screens/patient/MyAppointmentsScreen';
+import MedicalRecordScreen from '../screens/patient/MedicalRecordScreen';
 import DoctorDashboardScreen from '../screens/doctor/DoctorDashboardScreen';
 import DoctorAgendaScreen from '../screens/doctor/DoctorAgendaScreen';
 import AppointmentDetailScreen from '../screens/doctor/AppointmentDetailScreen';
@@ -40,6 +41,7 @@ const PatientTabs = () => (
     <Tab.Screen name="Accueil" component={HomeScreen} />
     <Tab.Screen name="Médecins" component={DoctorListScreen} />
     <Tab.Screen name="Mes RDV" component={MyAppointmentsScreen} />
+    <Tab.Screen name="Dossier médical" component={MedicalRecordScreen} />
     <Tab.Screen name="Profil" component={ProfileScreen} />
   </Tab.Navigator>
 );

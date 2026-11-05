@@ -28,6 +28,10 @@ export const DoctorsApi = {
     api.delete(`/doctors/me/blocked-slots/${id}`),
 };
 
+export const MedicalRecordApi = {
+  mine: () => api.get('/medical-record/me'),
+};
+
 export const AppointmentsApi = {
   book: (doctorId: number, startsAt: string, reason?: string) =>
     api.post('/appointments', { doctorId, startsAt, reason }),

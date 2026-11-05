@@ -1,6 +1,7 @@
-﻿import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -9,9 +10,33 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
-import { AppointmentsApi } from '../../api/services';
+import { AppointmentsApi, DoctorsApi } from '../../api/services';
 import { Header, Button, ui } from '../../components/ClinicUI';
 import { colors } from '../../theme/colors';
+
+type Slot = {
+  startsAt: string;
+  endsAt: string;
+  available: boolean;
+};
+
+const localDateKey = (date: Date) => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Lubumbashi',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return values.year + '-' + values.month + '-' + values.day;
+};
+
+const dateChoices = () =>
+  Array.from({ length: 14 }, (_, index) => {
+    const date = new Date();
+    date.setUTCDate(date.getUTCDate() + index);
+    return localDateKey(date);
+  });
 
 type Appointment = {
   id: number;
@@ -62,6 +87,14 @@ const statusLabel = (status: string) => {
 
 export default function MyAppointmentsScreen() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [selected, setSelected] = useState<Appointment | null>(null);
+  const [tab, setTab] = useState<'reschedule' | 'cancel'>('reschedule');
+  const [chosenDate, setChosenDate] = useState(localDateKey(new Date()));
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,6 +130,83 @@ export default function MyAppointmentsScreen() {
       loadAppointments();
     }, [loadAppointments])
   );
+
+  const openManage = (appointment: Appointment) => {
+    setSelected(appointment);
+    setTab('reschedule');
+    setChosenDate(localDateKey(new Date()));
+    setSlots([]);
+    setSelectedSlot(null);
+    setSlotsError(null);
+  };
+
+  const loadSlots = useCallback(async (doctorId: number, date: string) => {
+    setSlotsLoading(true);
+    setSlotsError(null);
+    setSelectedSlot(null);
+    try {
+      const response = await DoctorsApi.slots(doctorId, date);
+      if (!Array.isArray(response.data)) {
+        throw new Error('Format des cr\u00e9neaux invalide.');
+      }
+      setSlots(response.data as Slot[]);
+    } catch (err: any) {
+      setSlots([]);
+      setSlotsError(err?.response?.data?.error || err?.message || 'Chargement impossible.');
+    } finally {
+      setSlotsLoading(false);
+    }
+  }, []);
+
+  const chooseDate = async (date: string) => {
+    if (!selected || saving) return;
+    setChosenDate(date);
+    await loadSlots(selected.doctor_id, date);
+  };
+
+  const submitReschedule = async () => {
+    if (!selected || !selectedSlot || saving) return;
+    setSaving(true);
+    try {
+      await AppointmentsApi.reschedule(selected.id, selectedSlot);
+      setSelected(null);
+      await loadAppointments(true);
+      Alert.alert('Succ\u00e8s', 'Votre rendez-vous a \u00e9t\u00e9 report\u00e9.');
+    } catch (err: any) {
+      Alert.alert('Report impossible', err?.response?.data?.error || err?.message || 'Veuillez r\u00e9essayer.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmCancel = () => {
+    if (!selected || saving) return;
+    const id = selected.id;
+    Alert.alert(
+      'Annuler d\u00e9finitivement ?',
+      'Cette action annulera votre rendez-vous.',
+      [
+        { text: 'Retour', style: 'cancel' },
+        {
+          text: 'Confirmer l\u2019annulation',
+          style: 'destructive',
+          onPress: async () => {
+            setSaving(true);
+            try {
+              await AppointmentsApi.cancel(id);
+              setSelected(null);
+              await loadAppointments(true);
+              Alert.alert('Rendez-vous annul\u00e9', 'Votre annulation a \u00e9t\u00e9 enregistr\u00e9e.');
+            } catch (err: any) {
+              Alert.alert('Annulation impossible', err?.response?.data?.error || err?.message || 'Veuillez r\u00e9essayer.');
+            } finally {
+              setSaving(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const sortedAppointments = [...appointments].sort(
     (a, b) =>
@@ -259,10 +369,59 @@ const styles = StyleSheet.create({
     marginTop: 10,
     lineHeight: 21,
   },
+  manageButton: { marginTop: 18 },
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  sheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: '90%',
+    gap: 14,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sheetTitle: {
+    fontSize: 19,
+    fontWeight: '800',
+    color: colors.text,
+  },
+  close: { fontSize: 30, color: colors.muted },
+  currentAppointment: { color: colors.muted, fontSize: 13 },
+  tabs: { flexDirection: 'row', gap: 8 },
+  tab: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#F1F4F8',
+    alignItems: 'center',
+  },
+  activeTab: { backgroundColor: '#DCECFB' },
+  tabText: { color: colors.text, fontWeight: '700', fontSize: 12, textAlign: 'center' },
+  sectionTitle: { color: colors.text, fontWeight: '800', fontSize: 15 },
+  dateChip: {
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: '#F1F4F8',
+    marginRight: 8,
+  },
+  selectedChip: { backgroundColor: '#BBDDF9', borderColor: colors.primary, borderWidth: 1 },
+  chipText: { color: colors.text, fontWeight: '700' },
+  slotList: { maxHeight: 180 },
+  slotGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
+  slotChip: { padding: 12, borderRadius: 10, backgroundColor: '#F1F4F8' },
+  cancelSection: { gap: 16, paddingVertical: 16 },
+  cancelWarning: { color: colors.error, lineHeight: 22 },
   error: {
     color: colors.error,
     textAlign: 'center',
     marginBottom: 15,
   },
 });
-

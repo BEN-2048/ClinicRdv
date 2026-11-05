@@ -4,6 +4,14 @@ const { isStaff } = require('../middleware/auth');
 
 const httpError = (status, message) => Object.assign(new Error(message), { status });
 
+const parseStartsAt = (value) => {
+  const date = new Date(value);
+  if (!value || !Number.isFinite(date.getTime())) {
+    throw httpError(400, 'Date de rendez-vous invalide');
+  }
+  return date;
+};
+
 const clinicDateFormatter = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Africa/Lubumbashi',
   year: 'numeric',
@@ -50,18 +58,64 @@ exports.cancel = async (id, user) => {
 };
 
 exports.reschedule = async (id, user, startsAt) => {
-  const cur = await pool.query(
-    `SELECT * FROM appointments
-      WHERE id=$1 AND ($3::boolean OR patient_id=$2) AND status IN ('pending','confirmed')`,
-    [id, user.id, isStaff(user.role)]);
-  if (!cur.rowCount) throw httpError(404, 'Rendez-vous introuvable');
-  const a = cur.rows[0];
-  await exports.cancel(id, user);
+  const date = parseStartsAt(startsAt);
+  const iso = date.toISOString();
+  const client = await pool.connect();
+
   try {
-    return await exports.book(a.patient_id, { doctorId: a.doctor_id, startsAt, reason: a.reason });
-  } catch (e) {
-    await pool.query("UPDATE appointments SET status='confirmed' WHERE id=$1", [id]); // restaure l'ancien RDV
-    throw e;
+    await client.query('BEGIN');
+
+    const cur = await client.query(
+      `SELECT * FROM appointments
+        WHERE id=$1 AND ($3::boolean OR patient_id=$2)
+          AND status IN ('pending','confirmed')
+        FOR UPDATE`,
+      [id, user.id, isStaff(user.role)]
+    );
+
+    if (!cur.rowCount) {
+      throw httpError(404, 'Rendez-vous introuvable ou non modifiable');
+    }
+
+    const appointment = cur.rows[0];
+
+    const slots = await getAvailableSlots(
+      appointment.doctor_id,
+      getClinicDate(date),
+      client,
+      id
+    );
+
+    if (!slots) {
+      throw httpError(404, 'M\u00e9decin introuvable');
+    }
+
+    const slot = slots.find((s) => s.startsAt === iso);
+
+    if (!slot || !slot.available) {
+      throw httpError(409, 'Cr\u00e9neau indisponible');
+    }
+
+    const updated = await client.query(
+      `UPDATE appointments
+          SET starts_at=$1, ends_at=$2
+        WHERE id=$3
+        RETURNING *`,
+      [slot.startsAt, slot.endsAt, id]
+    );
+
+    await client.query('COMMIT');
+    return updated.rows[0];
+  } catch (error) {
+    await client.query('ROLLBACK');
+
+    if (error.code === '23P01') {
+      throw httpError(409, 'Ce cr\u00e9neau vient d\'\u00eatre r\u00e9serv\u00e9');
+    }
+
+    throw error;
+  } finally {
+    client.release();
   }
 };
 
