@@ -7,6 +7,7 @@ const doctors = require('../controllers/doctors.controller');
 const appts = require('../controllers/appointments.controller');
 const admin = require('../controllers/admin.controller');
 const users = require('../controllers/users.controller');
+const waitingList = require('../controllers/waitingList.controller');
 
 router.post('/auth/register', validate(s.register), auth.register);
 router.post('/auth/login', validate(s.login), auth.login);
@@ -89,6 +90,12 @@ router.post('/appointments', authenticate, requireRole('patient', 'admin'), vali
 router.get('/appointments/mine', authenticate, appts.mine);
 router.patch('/appointments/:id/cancel', authenticate, appts.cancel);
 router.patch('/appointments/:id/reschedule', authenticate, requireRole('patient'), validate(s.reschedule), appts.reschedule);
+
+const patientOnly = [authenticate, requireRole('patient')];
+router.get('/waiting-list/mine', ...patientOnly, waitingList.mine);
+router.get('/waiting-list/doctors/:doctorId', ...patientOnly, validate(s.waitingListParams, 'params'), waitingList.getForDoctor);
+router.put('/waiting-list/doctors/:doctorId', ...patientOnly, validate(s.waitingListParams, 'params'), validate(s.waitingListAlert), waitingList.upsert);
+router.delete('/waiting-list/doctors/:doctorId', ...patientOnly, validate(s.waitingListParams, 'params'), waitingList.deactivate);
 
 const staff = require('express').Router();
 staff.use(authenticate, requireRole(...STAFF_ROLES));
