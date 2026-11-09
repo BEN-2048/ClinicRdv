@@ -32,7 +32,12 @@ export default function LoginScreen({ navigation }: any) {
     try {
       await login(email.trim(), password);
     } catch (e) {
-      setError(errorMessage(e));
+      const response = (e as { response?: { status?: number; data?: { code?: string } } })?.response;
+      if (role === 'patient' && response?.status === 403 && response.data?.code === 'EMAIL_NOT_VERIFIED') {
+        navigation.navigate('VerifyEmail', { email: email.trim().toLowerCase() });
+      } else {
+        setError(errorMessage(e));
+      }
     } finally {
       setBusy(false);
     }

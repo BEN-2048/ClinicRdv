@@ -11,10 +11,16 @@ export const AuthApi = {
 
   register: (data: object) =>
     api.post('/auth/register', data),
+
+  verifyEmail: (email: string, code: string) =>
+    api.post('/auth/verify-email', { email, code }),
+
+  resendOtp: (email: string) =>
+    api.post('/auth/resend-otp', { email }),
 };
 
 // ============================================
-// MÉDECINS
+// MÃ‰DECINS
 // ============================================
 
 export const DoctorsApi = {
@@ -128,10 +134,10 @@ export const AppointmentsApi = {
     api.patch(`/appointments/${id}/reschedule`, { startsAt }),
 
   // ============================================
-  // FICHE DE CONSULTATION MÉDICALE
+  // FICHE DE CONSULTATION MÃ‰DICALE
   // ============================================
 
-  // Récupérer la fiche de consultation
+  // RÃ©cupÃ©rer la fiche de consultation
   consultation: (id: number) =>
     api.get<ConsultationResponse>(
       `/appointments/${id}/consultation`
@@ -189,7 +195,7 @@ export type NotificationsResponse = {
 };
 
 export const NotificationsApi = {
-  // Récupérer les notifications
+  // RÃ©cupÃ©rer les notifications
   list: (type?: NotificationType | 'all') =>
     api.get<NotificationsResponse>('/notifications', {
       params: type ? { type } : {},
@@ -203,11 +209,11 @@ export const NotificationsApi = {
   markAllAsRead: () =>
     api.patch<{ updatedCount: number }>('/notifications/read-all'),
 
-  // Récupérer les préférences SMS et e-mail
+  // RÃ©cupÃ©rer les prÃ©fÃ©rences SMS et e-mail
   getPreferences: () =>
     api.get<NotificationPreferences>('/notifications/preferences'),
 
-  // Modifier les préférences
+  // Modifier les prÃ©fÃ©rences
   updatePreferences: (
     smsEnabled: boolean,
     emailEnabled: boolean
@@ -219,7 +225,7 @@ export const NotificationsApi = {
 };
 
 // ============================================
-// TYPES GÉNÉRAUX
+// TYPES GÃ‰NÃ‰RAUX
 // ============================================
 
 export type AppointmentStatus =
@@ -279,7 +285,7 @@ export type DoctorInput = {
 };
 
 // ============================================
-// ADMINISTRATION / SECRÉTARIAT
+// ADMINISTRATION / SECRÃ‰TARIAT
 // ============================================
 
 export const StaffApi = {

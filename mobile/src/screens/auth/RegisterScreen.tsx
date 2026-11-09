@@ -55,6 +55,7 @@ export default function RegisterScreen({ navigation }: any) {
         email: email.trim().toLowerCase(),
         password,
       });
+      navigation.navigate('VerifyEmail', { email: email.trim().toLowerCase() });
     } catch (e) {
       setError(errorMessage(e));
     } finally {
