@@ -204,7 +204,7 @@ export default function RootNavigator() {
             <Stack.Screen
               name="VerifyEmail"
               component={VerifyEmailScreen}
-              options={{ title: 'Verification de l e-mail' }}
+              options={{ headerShown: false }}
             />
           </>
         ) : (
