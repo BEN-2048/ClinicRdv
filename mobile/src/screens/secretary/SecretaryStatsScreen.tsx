@@ -1,11 +1,10 @@
 import React, { useCallback, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-
 import { StaffApi } from '../../api/services';
-import { Chip, Header, ui } from '../../components/ClinicUI';
-import { colors } from '../../theme/colors';
-import { ErrorCard, Loading, StatTile, clinicToday, errorText, shared, shiftDate } from './shared';
+import { AppHeader, Card, EmptyState, Screen, SectionTitle, SegmentedTabs, StatCard } from '../../components/ui';
+import { color, radius, space, type } from '../../theme';
+import { ErrorCard, Loading, clinicToday, errorText, shared, shiftDate } from './shared';
 
 type Stats = {
   total: number;
@@ -15,84 +14,123 @@ type Stats = {
   byDoctor: { doctor_id: number; doctor_name: string; total: number; cancelled: number }[];
 };
 
-const PERIODS = [
-  { label: '7 jours', days: 7 },
-  { label: '30 jours', days: 30 },
-  { label: '90 jours', days: 90 },
-];
+type Period = '7' | '30' | '90';
 
 export default function SecretaryStatsScreen() {
-  const [days, setDays] = useState(30);
+  const [period, setPeriod] = useState<Period>('30');
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const days = Number(period);
 
-  const load = useCallback(async (refresh = false) => {
-    if (refresh) setRefreshing(true);
-    else setLoading(true);
-    setError(null);
-    try {
-      const to = clinicToday();
-      const res = await StaffApi.stats({ from: shiftDate(to, 1 - days), to });
-      setStats(res.data as Stats);
-    } catch (err) {
-      setError(errorText(err, 'Impossible de charger les statistiques.'));
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [days]);
+  const load = useCallback(
+    async (refresh = false) => {
+      if (refresh) setRefreshing(true);
+      else setLoading(true);
+      setError(null);
+      try {
+        const to = clinicToday();
+        const res = await StaffApi.stats({ from: shiftDate(to, 1 - days), to });
+        setStats(res.data as Stats);
+      } catch (err) {
+        setError(errorText(err, 'Impossible de charger les statistiques.'));
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [days]
+  );
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
   const max = Math.max(1, ...(stats?.byDoctor.map((d) => d.total) ?? [0]));
 
   return (
-    <View style={ui.page}>
-      <Header title="Statistiques" subtitle="Activité du cabinet" right="📊" />
-      <ScrollView
-        contentContainerStyle={ui.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} colors={[colors.primary]} />}
-      >
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 }}>
-          {PERIODS.map((p) => (
-            <Chip key={p.days} title={p.label} active={days === p.days} onPress={() => setDays(p.days)} />
-          ))}
-        </View>
+    <Screen
+      refreshing={refreshing}
+      onRefresh={() => load(true)}
+      header={<AppHeader title="Statistiques" subtitle="Activité du cabinet" />}
+    >
+      <SegmentedTabs<Period>
+        value={period}
+        onChange={setPeriod}
+        tabs={[
+          { key: '7', label: '7 jours' },
+          { key: '30', label: '30 jours' },
+          { key: '90', label: '90 jours' },
+        ]}
+      />
 
-        {loading && <Loading label="Calcul des statistiques..." />}
-        {error && <ErrorCard message={error} onRetry={() => load()} />}
+      {loading ? <Loading label="Calcul des statistiques..." /> : null}
+      {error ? <ErrorCard message={error} onRetry={() => load()} /> : null}
 
-        {!loading && !error && stats && (
-          <>
-            <View style={shared.grid}>
-              <StatTile label="Rendez-vous" value={stats.total} />
-              <StatTile label="Terminés" value={stats.byStatus.done ?? 0} color={colors.secondary} />
-              <StatTile label="Taux d'annulation" value={`${stats.cancellationRate} %`} color={colors.error} />
-              <StatTile label="Nouveaux patients" value={stats.newPatients} color={colors.success} />
-            </View>
+      {!loading && !error && stats ? (
+        <>
+          <View style={shared.grid}>
+            <StatCard style={shared.tile} icon="calendar-outline" label="Rendez-vous" value={stats.total} />
+            <StatCard
+              style={shared.tile}
+              icon="checkmark-done-outline"
+              tone="success"
+              label="Terminés"
+              value={stats.byStatus.done ?? 0}
+            />
+            <StatCard
+              style={shared.tile}
+              icon="trending-down-outline"
+              tone="danger"
+              label="Taux d'annulation"
+              value={`${stats.cancellationRate} %`}
+            />
+            <StatCard
+              style={shared.tile}
+              icon="person-add-outline"
+              tone="neutral"
+              label="Nouveaux patients"
+              value={stats.newPatients}
+            />
+          </View>
 
-            <Text style={[ui.h2, ui.section]}>Par médecin</Text>
-            {stats.byDoctor.map((d) => (
-              <View key={d.doctor_id} style={ui.card}>
-                <View style={shared.row}>
-                  <Text style={ui.label}>Dr. {d.doctor_name}</Text>
-                  <Text style={ui.muted}>{d.total} RDV · {d.cancelled} annulé(s)</Text>
+          <SectionTitle title="Par médecin" />
+          {stats.byDoctor.length === 0 ? (
+            <Card>
+              <EmptyState icon="bar-chart-outline" title="Aucune activité sur la période" />
+            </Card>
+          ) : (
+            <Card style={s.list}>
+              {stats.byDoctor.map((d, i) => (
+                <View key={d.doctor_id} style={[s.item, i > 0 && s.divider]}>
+                  <View style={shared.row}>
+                    <Text style={[type.bodyMedium, shared.flex]} numberOfLines={1}>
+                      Dr. {d.doctor_name}
+                    </Text>
+                    <Text style={shared.muted}>
+                      {d.total} RDV · {d.cancelled} annulé{d.cancelled > 1 ? 's' : ''}
+                    </Text>
+                  </View>
+                  <View style={s.track}>
+                    <View style={[s.bar, { width: `${(d.total / max) * 100}%` }]} />
+                  </View>
                 </View>
-                <View style={styles.track}>
-                  <View style={[styles.bar, { width: `${(d.total / max) * 100}%` }]} />
-                </View>
-              </View>
-            ))}
-          </>
-        )}
-      </ScrollView>
-    </View>
+              ))}
+            </Card>
+          )}
+        </>
+      ) : null}
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  track: { height: 8, borderRadius: 4, backgroundColor: '#EDF2FB', marginTop: 10, overflow: 'hidden' },
-  bar: { height: 8, borderRadius: 4, backgroundColor: colors.primary },
+const s = StyleSheet.create({
+  list: { paddingVertical: space.xs },
+  item: { gap: space.xs, paddingVertical: space.sm },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: color.border },
+  track: { height: 8, borderRadius: radius.full, backgroundColor: color.primarySubtle, overflow: 'hidden' },
+  bar: { height: '100%', borderRadius: radius.full, backgroundColor: color.primary },
 });

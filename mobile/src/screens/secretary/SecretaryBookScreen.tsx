@@ -1,12 +1,25 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 import { useNavigation, useRoute } from '@react-navigation/native';
-
 import { DoctorsApi, StaffApi, StaffAppointment, StaffDoctor } from '../../api/services';
-import { Button, Chip, Header, ui } from '../../components/ClinicUI';
-import { colors } from '../../theme/colors';
-import { Loading, clinicToday, errorText, formatDateTime, formatLongDate, formatTime, shared } from './shared';
+import {
+  Avatar,
+  Button,
+  Card,
+  Chip,
+  EmptyState,
+  InfoRow,
+  Input,
+  ListItem,
+  Notice,
+  Screen,
+  SectionTitle,
+  SlotGrid,
+  calendarTheme,
+} from '../../components/ui';
+import { color, space, type } from '../../theme';
+import { Loading, clinicDate, clinicToday, errorText, formatDateTime, formatLongDate, formatTime, shared } from './shared';
 
 type Patient = { id: number; email: string; first_name: string; last_name: string; phone: string | null };
 type Slot = { startsAt: string; endsAt: string; available: boolean };
@@ -16,13 +29,14 @@ export default function SecretaryBookScreen() {
   const route = useRoute<any>();
   const existing: StaffAppointment | undefined = route.params?.appointment;
   const isReschedule = !!existing;
+  const prefill: { doctorId: number; startsAt: string } | undefined = existing ? undefined : route.params?.prefill;
 
   const [query, setQuery] = useState('');
   const [patients, setPatients] = useState<Patient[]>([]);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [doctors, setDoctors] = useState<StaffDoctor[]>([]);
-  const [doctorId, setDoctorId] = useState<number | null>(existing?.doctor_id ?? null);
-  const [date, setDate] = useState(clinicToday());
+  const [doctorId, setDoctorId] = useState<number | null>(existing?.doctor_id ?? prefill?.doctorId ?? null);
+  const [date, setDate] = useState(prefill ? clinicDate(prefill.startsAt) : clinicToday());
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slot, setSlot] = useState<Slot | null>(null);
   const [reason, setReason] = useState('');
@@ -55,15 +69,23 @@ export default function SecretaryBookScreen() {
     setSlots([]);
     try {
       const res = await DoctorsApi.slots(doctorId, date);
-      setSlots((res.data as Slot[]).filter((s) => s.available));
+      const available = (res.data as Slot[]).filter((sl) => sl.available);
+      setSlots(available);
+      if (prefill) {
+        const target = new Date(prefill.startsAt).getTime();
+        const match = available.find((sl) => new Date(sl.startsAt).getTime() === target);
+        if (match) setSlot(match);
+      }
     } catch (err) {
       setError(errorText(err, 'Impossible de récupérer les disponibilités.'));
     } finally {
       setLoadingSlots(false);
     }
-  }, [doctorId, date]);
+  }, [doctorId, date, prefill?.startsAt]);
 
-  useEffect(() => { loadSlots(); }, [loadSlots]);
+  useEffect(() => {
+    loadSlots();
+  }, [loadSlots]);
 
   const submit = async () => {
     if (!slot || !doctorId) return;
@@ -85,130 +107,137 @@ export default function SecretaryBookScreen() {
     }
   };
 
-  const canSubmit = !!slot && !!doctorId && (isReschedule || !!patient) && !saving;
+  const canSubmit = !!slot && !!doctorId && (isReschedule || !!patient);
 
   return (
-    <View style={ui.page}>
-      <Header
-        title={isReschedule ? 'Reporter' : 'Nouveau rendez-vous'}
-        subtitle={isReschedule ? `${existing!.patient_name} · Dr. ${existing!.doctor_name}` : 'Au nom d’un patient'}
-      />
-      <ScrollView contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
-        {error && <Text style={shared.error}>{error}</Text>}
-
-        {isReschedule ? (
-          <View style={ui.card}>
-            <Text style={ui.label}>Rendez-vous actuel</Text>
-            <Text style={shared.detail}>{formatDateTime(existing!.starts_at)}</Text>
-          </View>
-        ) : (
-          <>
-            <Text style={ui.h2}>1. Patient</Text>
-            {patient ? (
-              <View style={[ui.card, shared.row]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={ui.label}>{patient.first_name} {patient.last_name}</Text>
-                  <Text style={ui.muted}>{patient.phone || patient.email}</Text>
-                </View>
-                <Button title="Changer" secondary onPress={() => setPatient(null)} />
-              </View>
-            ) : (
-              <>
-                <TextInput
-                  style={ui.field}
-                  value={query}
-                  onChangeText={setQuery}
-                  placeholder="Nom, e-mail ou téléphone"
-                  placeholderTextColor={colors.muted}
-                  autoCapitalize="none"
-                />
-                {patients.slice(0, 8).map((p) => (
-                  <TouchableOpacity key={p.id} style={ui.card} onPress={() => setPatient(p)}>
-                    <Text style={ui.label}>{p.first_name} {p.last_name}</Text>
-                    <Text style={ui.muted}>{p.phone || p.email}</Text>
-                  </TouchableOpacity>
-                ))}
-                {patients.length === 0 && <Text style={shared.empty}>Aucun patient trouvé.</Text>}
-              </>
-            )}
-
-            <Text style={[ui.h2, ui.section]}>2. Médecin</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-              {doctors.map((d) => (
-                <Chip
-                  key={d.id}
-                  title={`Dr. ${d.last_name} · ${d.specialty}`}
-                  active={doctorId === d.id}
-                  onPress={() => setDoctorId(d.id)}
-                />
-              ))}
-            </View>
-          </>
-        )}
-
-        {doctorId && (
-          <>
-            <Text style={[ui.h2, ui.section]}>{isReschedule ? 'Nouvelle date' : '3. Date et créneau'}</Text>
-            <View style={ui.card}>
-              <Calendar
-                minDate={clinicToday()}
-                current={date}
-                onDayPress={(d: DateData) => setDate(d.dateString)}
-                markedDates={{ [date]: { selected: true, selectedColor: colors.primary } }}
-                theme={{ todayTextColor: colors.primary, arrowColor: colors.primary }}
-              />
-            </View>
-            <Text style={[ui.muted, { textTransform: 'capitalize', marginBottom: 10 }]}>{formatLongDate(date)}</Text>
-            {loadingSlots && <Loading label="Recherche des disponibilités..." />}
-            {!loadingSlots && slots.length === 0 && (
-              <View style={ui.card}><Text style={shared.empty}>Aucun créneau disponible ce jour.</Text></View>
-            )}
-            <View style={styles.grid}>
-              {slots.map((sl) => {
-                const selected = slot?.startsAt === sl.startsAt;
-                return (
-                  <TouchableOpacity
-                    key={sl.startsAt}
-                    onPress={() => setSlot(sl)}
-                    style={[styles.slot, selected && styles.slotSelected]}
-                  >
-                    <Text style={[styles.slotText, selected && { color: '#fff' }]}>{formatTime(sl.startsAt)}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </>
-        )}
-
-        {!isReschedule && (
-          <TextInput
-            style={[ui.field, { minHeight: 70 }]}
-            value={reason}
-            onChangeText={setReason}
-            placeholder="Motif (facultatif)"
-            placeholderTextColor={colors.muted}
-            multiline
-            maxLength={500}
-            textAlignVertical="top"
-          />
-        )}
-
+    <Screen
+      footer={
         <Button
-          title={saving ? 'Enregistrement...' : isReschedule ? 'Confirmer le report' : 'Créer le rendez-vous'}
+          title={isReschedule ? 'Confirmer le report' : 'Créer le rendez-vous'}
+          icon="checkmark"
+          loading={saving}
           disabled={!canSubmit}
           onPress={submit}
         />
-      </ScrollView>
-    </View>
+      }
+    >
+      {error ? <Notice tone="danger" message={error} /> : null}
+
+      {isReschedule ? (
+        <Card style={shared.card}>
+          <Text style={type.h2}>Rendez-vous actuel</Text>
+          <InfoRow icon="person-outline" label="Patient" value={existing!.patient_name} strong />
+          <InfoRow icon="medkit-outline" label="Médecin" value={`Dr. ${existing!.doctor_name}`} />
+          <InfoRow icon="time-outline" label="Créneau actuel" value={formatDateTime(existing!.starts_at)} />
+        </Card>
+      ) : (
+        <>
+          <SectionTitle title="1. Patient" />
+          {patient ? (
+            <Card style={s.selected}>
+              <Avatar name={`${patient.first_name} ${patient.last_name}`} size={44} />
+              <View style={shared.flex}>
+                <Text style={type.bodyMedium}>
+                  {patient.first_name} {patient.last_name}
+                </Text>
+                <Text style={shared.muted}>{patient.phone || patient.email}</Text>
+              </View>
+              <Button title="Changer" size="sm" variant="secondary" fullWidth={false} onPress={() => setPatient(null)} />
+            </Card>
+          ) : (
+            <>
+              <Input
+                icon="search"
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Nom, e-mail ou téléphone"
+                autoCapitalize="none"
+              />
+              {patients.length === 0 ? (
+                <EmptyState icon="person-outline" title="Aucun patient trouvé" />
+              ) : (
+                <Card style={s.list}>
+                  {patients.slice(0, 8).map((p, i) => (
+                    <ListItem
+                      key={p.id}
+                      title={`${p.first_name} ${p.last_name}`}
+                      subtitle={p.phone || p.email}
+                      left={<Avatar name={`${p.first_name} ${p.last_name}`} size={40} />}
+                      onPress={() => setPatient(p)}
+                      style={i > 0 ? s.divider : undefined}
+                    />
+                  ))}
+                </Card>
+              )}
+            </>
+          )}
+
+          <SectionTitle title="2. Médecin" />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={s.chipsWrap}
+            contentContainerStyle={s.chips}
+          >
+            {doctors.map((d) => (
+              <Chip
+                key={d.id}
+                label={`Dr. ${d.last_name} · ${d.specialty}`}
+                selected={doctorId === d.id}
+                onPress={() => setDoctorId(d.id)}
+              />
+            ))}
+          </ScrollView>
+        </>
+      )}
+
+      {doctorId ? (
+        <>
+          <SectionTitle title={isReschedule ? 'Nouvelle date' : '3. Date et créneau'} />
+          <Card padded={false} style={s.calendar}>
+            <Calendar
+              minDate={clinicToday()}
+              current={date}
+              onDayPress={(d: DateData) => setDate(d.dateString)}
+              markedDates={{ [date]: { selected: true, selectedColor: color.primary } }}
+              theme={calendarTheme}
+            />
+          </Card>
+          <Text style={s.dateLabel}>{formatLongDate(date)}</Text>
+          {loadingSlots ? <Loading label="Recherche des disponibilités..." /> : null}
+          {!loadingSlots && slots.length === 0 ? (
+            <Card>
+              <EmptyState icon="calendar-clear-outline" title="Aucun créneau disponible ce jour" />
+            </Card>
+          ) : null}
+          <SlotGrid
+            items={slots.map((sl) => ({ key: sl.startsAt, label: formatTime(sl.startsAt) }))}
+            selectedKey={slot?.startsAt}
+            onSelect={(key) => setSlot(slots.find((sl) => sl.startsAt === key) ?? null)}
+          />
+        </>
+      ) : null}
+
+      {!isReschedule ? (
+        <Input
+          label="Motif (facultatif)"
+          value={reason}
+          onChangeText={setReason}
+          placeholder="Motif de la consultation"
+          multiline
+          maxLength={500}
+        />
+      ) : null}
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 18 },
-  slot: {
-    width: '30%', backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#DCE4F0',
-    paddingVertical: 14, alignItems: 'center',
-  },
-  slotSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  slotText: { color: colors.text, fontWeight: '700' },
+const s = StyleSheet.create({
+  selected: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  list: { paddingVertical: space.xxs },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: color.border },
+  chipsWrap: { marginHorizontal: -space.md },
+  chips: { gap: space.xs, paddingHorizontal: space.md },
+  calendar: { overflow: 'hidden', paddingVertical: space.xs },
+  dateLabel: { ...type.body, color: color.textSecondary, textTransform: 'capitalize', marginTop: -space.xs },
 });

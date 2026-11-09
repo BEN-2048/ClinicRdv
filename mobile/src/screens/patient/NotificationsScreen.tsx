@@ -1,27 +1,25 @@
-
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import {
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-
-import {
-  NotificationsApi,
-  PatientNotification,
   NotificationPreferences,
+  NotificationsApi,
   NotificationType,
+  PatientNotification,
 } from '../../api/services';
-
-import { colors } from '../../theme/colors';
+import {
+  Card,
+  Chip,
+  EmptyState,
+  Icon,
+  IconButton,
+  IconName,
+  Loader,
+  Screen,
+  SectionTitle,
+} from '../../components/ui';
+import { CLINIC_TIME_ZONE } from '../../components/PatientFigmaUI';
+import { color, radius, shadow, space, type } from '../../theme';
 
 type FilterType = 'all' | 'appointment_reminder' | 'waiting_list';
 
@@ -31,141 +29,68 @@ const FILTERS: { label: string; value: FilterType }[] = [
   { label: "Liste d'attente", value: 'waiting_list' },
 ];
 
-const getDateKey = (date: string) =>
+const SECTIONS = ["Aujourd'hui", 'Cette semaine', 'Plus anciennes'] as const;
+
+const getDateKey = (date: Date) =>
   new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Africa/Lubumbashi',
+    timeZone: CLINIC_TIME_ZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).format(new Date(date));
+  }).format(date);
 
-const getSection = (date: string) => {
-  const today = getDateKey(new Date().toISOString());
-  const notificationDate = getDateKey(date);
-
-  if (notificationDate === today) return "Aujourd'hui";
-
-  const now = new Date();
-  const day = Number(
-    new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Africa/Lubumbashi',
-      day: '2-digit',
-    }).format(now)
-  );
-
-  const month = Number(
-    new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Africa/Lubumbashi',
-      month: '2-digit',
-    }).format(now)
-  );
-
-  const year = Number(
-    new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Africa/Lubumbashi',
-      year: 'numeric',
-    }).format(now)
-  );
-
-  const current = new Date(Date.UTC(year, month - 1, day));
-  const notification = new Date(`${notificationDate}T00:00:00Z`);
-
+const getSection = (date: string): (typeof SECTIONS)[number] => {
+  const today = getDateKey(new Date());
+  const day = getDateKey(new Date(date));
+  if (day === today) return "Aujourd'hui";
   const difference = Math.floor(
-    (current.getTime() - notification.getTime()) / 86400000
+    (new Date(`${today}T00:00:00Z`).getTime() - new Date(`${day}T00:00:00Z`).getTime()) / 86400000
   );
-
-  if (difference >= 0 && difference < 7) return 'Cette semaine';
-
-  return 'Plus anciennes';
+  return difference >= 0 && difference < 7 ? 'Cette semaine' : 'Plus anciennes';
 };
 
 const formatDate = (date: string) =>
   new Intl.DateTimeFormat('fr-FR', {
-    timeZone: 'Africa/Lubumbashi',
+    timeZone: CLINIC_TIME_ZONE,
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(date));
 
-const getNotificationIcon = (type: NotificationType) => {
-  switch (type) {
-    case 'appointment_reminder':
-      return {
-        name: 'calendar-clock' as const,
-        color: '#2563EB',
-        background: '#EAF1FF',
-      };
-
-    case 'waiting_list':
-      return {
-        name: 'clock-check-outline' as const,
-        color: '#D97706',
-        background: '#FFF5E5',
-      };
-
-    case 'prescription':
-      return {
-        name: 'file-document-outline' as const,
-        color: '#0D9488',
-        background: '#E6F7F5',
-      };
-
-    case 'appointment_confirmed':
-      return {
-        name: 'calendar-check' as const,
-        color: '#16A34A',
-        background: '#EAF8EF',
-      };
-
-    case 'appointment_cancelled':
-      return {
-        name: 'calendar-remove' as const,
-        color: '#DC2626',
-        background: '#FEECEC',
-      };
-
-    default:
-      return {
-        name: 'bell-outline' as const,
-        color: '#64748B',
-        background: '#EDF2F8',
-      };
-  }
+const NOTIFICATION_ICONS: Record<NotificationType, { name: IconName; fg: string; bg: string }> = {
+  appointment_reminder: { name: 'alarm-outline', fg: color.primary, bg: color.primarySoft },
+  waiting_list: { name: 'hourglass-outline', fg: color.warning, bg: color.warningSoft },
+  prescription: { name: 'document-text-outline', fg: color.success, bg: color.successSoft },
+  appointment_confirmed: { name: 'checkmark-circle-outline', fg: color.success, bg: color.successSoft },
+  appointment_cancelled: { name: 'close-circle-outline', fg: color.dangerInk, bg: color.dangerSoft },
+  general: { name: 'notifications-outline', fg: color.textSecondary, bg: color.primarySubtle },
 };
 
 export default function NotificationsScreen() {
+  const navigation = useNavigation<any>();
   const [notifications, setNotifications] = useState<PatientNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-
   const [filter, setFilter] = useState<FilterType>('all');
-
-  const [preferences, setPreferences] =
-    useState<NotificationPreferences>({
-      sms_enabled: true,
-      email_enabled: true,
-    });
-
+  const [preferences, setPreferences] = useState<NotificationPreferences>({
+    sms_enabled: true,
+    email_enabled: true,
+  });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [savingPreferences, setSavingPreferences] = useState(false);
 
   const loadNotifications = useCallback(async () => {
     try {
-      const [notificationResponse, preferencesResponse] =
-        await Promise.all([
-          NotificationsApi.list(filter),
-          NotificationsApi.getPreferences(),
-        ]);
-
+      const [notificationResponse, preferencesResponse] = await Promise.all([
+        NotificationsApi.list(filter),
+        NotificationsApi.getPreferences(),
+      ]);
       setNotifications(notificationResponse.data.items);
       setUnreadCount(notificationResponse.data.unreadCount);
       setPreferences(preferencesResponse.data);
-    } catch (error) {
-      Alert.alert(
-        'Erreur',
-        'Impossible de récupérer les notifications. Vérifiez votre connexion.'
-      );
+    } catch {
+      Alert.alert('Erreur', 'Impossible de récupérer les notifications. Vérifiez votre connexion.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -179,676 +104,253 @@ export default function NotificationsScreen() {
     }, [loadNotifications])
   );
 
-  const refresh = () => {
-    setRefreshing(true);
-    loadNotifications();
-  };
-
   const markAsRead = async (notification: PatientNotification) => {
     if (notification.read) return;
-
     try {
       await NotificationsApi.markAsRead(notification.id);
-
       setNotifications((previous) =>
         previous.map((item) =>
-          item.id === notification.id
-            ? { ...item, read: true, read_at: new Date().toISOString() }
-            : item
+          item.id === notification.id ? { ...item, read: true, read_at: new Date().toISOString() } : item
         )
       );
-
       setUnreadCount((previous) => Math.max(0, previous - 1));
     } catch {
       Alert.alert('Erreur', 'Impossible de marquer cette notification comme lue.');
     }
   };
 
-  const markAllAsRead = async () => {
+  const markAllAsRead = useCallback(async () => {
     if (unreadCount === 0) return;
-
     try {
       await NotificationsApi.markAllAsRead();
-
       setNotifications((previous) =>
-        previous.map((item) => ({
-          ...item,
-          read: true,
-          read_at: item.read_at || new Date().toISOString(),
-        }))
+        previous.map((item) => ({ ...item, read: true, read_at: item.read_at || new Date().toISOString() }))
       );
-
       setUnreadCount(0);
     } catch {
       Alert.alert('Erreur', 'Impossible de mettre à jour les notifications.');
     }
-  };
+  }, [unreadCount]);
 
-  const updatePreference = async (
-    key: 'sms_enabled' | 'email_enabled',
-    value: boolean
-  ) => {
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <IconButton
+          icon="checkmark-done-outline"
+          variant="plain"
+          accessibilityLabel="Tout marquer comme lu"
+          disabled={unreadCount === 0}
+          iconColor={unreadCount > 0 ? color.primary : color.textMuted}
+          onPress={markAllAsRead}
+        />
+      ),
+    });
+  }, [navigation, unreadCount, markAllAsRead]);
+
+  const updatePreference = async (key: 'sms_enabled' | 'email_enabled', value: boolean) => {
+    const previous = preferences;
     const next = { ...preferences, [key]: value };
-
     setPreferences(next);
     setSavingPreferences(true);
-
     try {
-      const response = await NotificationsApi.updatePreferences(
-        next.sms_enabled,
-        next.email_enabled
-      );
-
+      const response = await NotificationsApi.updatePreferences(next.sms_enabled, next.email_enabled);
       setPreferences(response.data);
     } catch {
-      setPreferences(preferences);
+      setPreferences(previous);
       Alert.alert('Erreur', 'Impossible de sauvegarder cette préférence.');
     } finally {
       setSavingPreferences(false);
     }
   };
 
-  const groupedNotifications = [
-    {
-      title: "Aujourd'hui",
-      items: notifications.filter(
-        (item) => getSection(item.created_at) === "Aujourd'hui"
-      ),
-    },
-    {
-      title: 'Cette semaine',
-      items: notifications.filter(
-        (item) => getSection(item.created_at) === 'Cette semaine'
-      ),
-    },
-    {
-      title: 'Plus anciennes',
-      items: notifications.filter(
-        (item) => getSection(item.created_at) === 'Plus anciennes'
-      ),
-    },
-  ];
-
-  if (loading) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Chargement des notifications...</Text>
-      </View>
-    );
+  if (loading && !refreshing) {
+    return <Loader fullscreen label="Chargement des notifications..." />;
   }
 
   return (
-    <View style={styles.page}>
-      <View style={styles.header}>
-        <View style={styles.brand}>
-          <View style={styles.logo}>
-            <MaterialCommunityIcons
-              name="medical-bag"
-              size={23}
-              color="#FFFFFF"
-            />
+    <Screen
+      refreshing={refreshing}
+      onRefresh={() => {
+        setRefreshing(true);
+        loadNotifications();
+      }}
+    >
+      <View style={s.intro}>
+        <Text style={s.introText}>Retrouvez toutes vos actualités médicales</Text>
+        {unreadCount > 0 ? (
+          <View style={s.counter}>
+            <Text style={s.counterText}>
+              {unreadCount} non lue{unreadCount > 1 ? 's' : ''}
+            </Text>
           </View>
-
-          <View>
-            <Text style={styles.brandName}>ClinicRDV</Text>
-            <Text style={styles.brandSubtitle}>Espace patient</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity style={styles.bellButton}>
-          <Ionicons
-            name="notifications-outline"
-            size={24}
-            color={colors.text}
-          />
-          {unreadCount > 0 && <View style={styles.bellDot} />}
-        </TouchableOpacity>
+        ) : null}
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={refresh} />
-        }
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={s.filtersWrap}
+        contentContainerStyle={s.filters}
       >
-        <View style={styles.titleRow}>
-          <View>
-            <Text style={styles.title}>Notifications</Text>
-            <Text style={styles.subtitle}>
-              Retrouvez toutes vos actualités médicales
-            </Text>
-          </View>
-
-          {unreadCount > 0 && (
-            <View style={styles.counter}>
-              <Text style={styles.counterText}>{unreadCount}</Text>
-            </View>
-          )}
-        </View>
-
-        <TouchableOpacity
-          style={styles.markAllButton}
-          onPress={markAllAsRead}
-          disabled={unreadCount === 0}
-        >
-          <Ionicons
-            name="checkmark-done-outline"
-            size={17}
-            color={unreadCount > 0 ? colors.primary : colors.muted}
+        {FILTERS.map((item) => (
+          <Chip
+            key={item.value}
+            label={item.label}
+            selected={filter === item.value}
+            onPress={() => setFilter(item.value)}
           />
-          <Text
-            style={[
-              styles.markAllText,
-              unreadCount === 0 && styles.disabledText,
-            ]}
-          >
-            Tout marquer lu
-          </Text>
-        </TouchableOpacity>
-
-        {/* Filtres */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filters}
-        >
-          {FILTERS.map((item) => {
-            const active = filter === item.value;
-
-            return (
-              <TouchableOpacity
-                key={item.value}
-                onPress={() => setFilter(item.value)}
-                style={[
-                  styles.filterButton,
-                  active && styles.filterActive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.filterText,
-                    active && styles.filterTextActive,
-                  ]}
-                >
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        {/* Notifications réelles */}
-        {notifications.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <View style={styles.emptyIcon}>
-              <Ionicons
-                name="notifications-off-outline"
-                size={32}
-                color={colors.primary}
-              />
-            </View>
-
-            <Text style={styles.emptyTitle}>Aucune notification</Text>
-            <Text style={styles.emptyDescription}>
-              Vous n'avez pas encore de notification dans cette catégorie.
-              Vos prochaines actualités apparaîtront ici.
-            </Text>
-          </View>
-        ) : (
-          groupedNotifications.map((group) => {
-            if (group.items.length === 0) return null;
-
-            return (
-              <View key={group.title} style={styles.section}>
-                <Text style={styles.sectionTitle}>{group.title}</Text>
-
-                {group.items.map((item) => {
-                  const icon = getNotificationIcon(item.type);
-
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      activeOpacity={0.8}
-                      onPress={() => markAsRead(item)}
-                      style={[
-                        styles.notificationCard,
-                        !item.read && styles.unreadCard,
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.notificationIcon,
-                          { backgroundColor: icon.background },
-                        ]}
-                      >
-                        <MaterialCommunityIcons
-                          name={icon.name}
-                          size={23}
-                          color={icon.color}
-                        />
-                      </View>
-
-                      <View style={styles.notificationContent}>
-                        <View style={styles.notificationTitleRow}>
-                          <Text style={styles.notificationTitle}>
-                            {item.title}
-                          </Text>
-
-                          {!item.read && <View style={styles.unreadDot} />}
-                        </View>
-
-                        {item.body ? (
-                          <Text style={styles.notificationBody}>
-                            {item.body}
-                          </Text>
-                        ) : null}
-
-                        <Text style={styles.notificationDate}>
-                          {formatDate(item.created_at)}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            );
-          })
-        )}
-
-        {/* Préférences */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Préférences de notification
-          </Text>
-
-          <View style={styles.preferencesCard}>
-            <View style={styles.preferenceRow}>
-              <View style={styles.preferenceIcon}>
-                <Ionicons
-                  name="chatbubble-outline"
-                  size={21}
-                  color={colors.primary}
-                />
-              </View>
-
-              <View style={styles.preferenceText}>
-                <Text style={styles.preferenceTitle}>Notifications SMS</Text>
-                <Text style={styles.preferenceDescription}>
-                  Recevoir les informations par SMS
-                </Text>
-              </View>
-
-              <Switch
-                value={preferences.sms_enabled}
-                onValueChange={(value) =>
-                  updatePreference('sms_enabled', value)
-                }
-                disabled={savingPreferences}
-                trackColor={{ false: '#CBD5E1', true: colors.primary }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
-
-            <View style={styles.preferenceDivider} />
-
-            <View style={styles.preferenceRow}>
-              <View style={styles.preferenceIcon}>
-                <Ionicons
-                  name="mail-outline"
-                  size={21}
-                  color={colors.primary}
-                />
-              </View>
-
-              <View style={styles.preferenceText}>
-                <Text style={styles.preferenceTitle}>Notifications e-mail</Text>
-                <Text style={styles.preferenceDescription}>
-                  Recevoir les informations par e-mail
-                </Text>
-              </View>
-
-              <Switch
-                value={preferences.email_enabled}
-                onValueChange={(value) =>
-                  updatePreference('email_enabled', value)
-                }
-                disabled={savingPreferences}
-                trackColor={{ false: '#CBD5E1', true: colors.primary }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
-          </View>
-
-          {savingPreferences && (
-            <Text style={styles.savingText}>Enregistrement...</Text>
-          )}
-        </View>
+        ))}
       </ScrollView>
+
+      {notifications.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon="notifications-off-outline"
+            title="Aucune notification"
+            message="Vous n'avez pas encore de notification dans cette catégorie. Vos prochaines actualités apparaîtront ici."
+          />
+        </Card>
+      ) : (
+        SECTIONS.map((section) => {
+          const items = notifications.filter((item) => getSection(item.created_at) === section);
+          if (items.length === 0) return null;
+          return (
+            <View key={section} style={s.group}>
+              <Text style={s.groupTitle}>{section}</Text>
+              {items.map((item) => {
+                const icon = NOTIFICATION_ICONS[item.type] ?? NOTIFICATION_ICONS.general;
+                return (
+                  <Pressable
+                    key={item.id}
+                    accessibilityRole="button"
+                    onPress={() => markAsRead(item)}
+                    style={({ pressed }) => [s.item, !item.read && s.itemUnread, pressed && s.pressed]}
+                  >
+                    <View style={[s.itemIcon, { backgroundColor: icon.bg }]}>
+                      <Icon name={icon.name} size="md" color={icon.fg} />
+                    </View>
+                    <View style={s.flex}>
+                      <View style={s.itemTitleRow}>
+                        <Text style={[type.bodyMedium, s.flex]}>{item.title}</Text>
+                        {!item.read ? <View style={s.dot} /> : null}
+                      </View>
+                      {item.body ? <Text style={s.itemBody}>{item.body}</Text> : null}
+                      <Text style={s.itemDate}>{formatDate(item.created_at)}</Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          );
+        })
+      )}
+
+      <SectionTitle title="Préférences de notification" />
+      <Card style={s.prefs}>
+        <PreferenceRow
+          icon="chatbubble-outline"
+          title="Notifications SMS"
+          description="Recevoir les informations par SMS"
+          value={preferences.sms_enabled}
+          disabled={savingPreferences}
+          onChange={(v) => updatePreference('sms_enabled', v)}
+        />
+        <View style={s.divider} />
+        <PreferenceRow
+          icon="mail-outline"
+          title="Notifications e-mail"
+          description="Recevoir les informations par e-mail"
+          value={preferences.email_enabled}
+          disabled={savingPreferences}
+          onChange={(v) => updatePreference('email_enabled', v)}
+        />
+      </Card>
+      {savingPreferences ? <Text style={s.saving}>Enregistrement...</Text> : null}
+    </Screen>
+  );
+}
+
+function PreferenceRow({
+  icon,
+  title,
+  description,
+  value,
+  disabled,
+  onChange,
+}: {
+  icon: IconName;
+  title: string;
+  description: string;
+  value: boolean;
+  disabled: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <View style={s.prefRow}>
+      <View style={s.prefIcon}>
+        <Icon name={icon} size="md" color={color.primary} />
+      </View>
+      <View style={s.flex}>
+        <Text style={type.bodyMedium}>{title}</Text>
+        <Text style={s.itemDate}>{description}</Text>
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onChange}
+        disabled={disabled}
+        trackColor={{ false: color.borderStrong, true: color.primary }}
+        thumbColor={color.surface}
+      />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  page: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
+const s = StyleSheet.create({
+  flex: { flex: 1, minWidth: 0 },
+  intro: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.xs },
+  introText: { ...type.body, color: color.textSecondary, flex: 1 },
+  counter: {
+    backgroundColor: color.primary,
+    borderRadius: radius.full,
+    paddingHorizontal: space.sm,
+    paddingVertical: space.xxs,
   },
-
-  loading: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  loadingText: {
-    marginTop: 12,
-    fontSize: 13,
-    color: colors.muted,
-  },
-
-  header: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 18,
-    paddingVertical: 14,
+  counterText: { ...type.label, color: color.onPrimary },
+  filtersWrap: { marginHorizontal: -space.md },
+  filters: { gap: space.xs, paddingHorizontal: space.md },
+  group: { gap: space.xs },
+  groupTitle: { ...type.label, textTransform: 'uppercase', letterSpacing: 1 },
+  item: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E9EDF6',
+    gap: space.sm,
+    padding: space.md,
+    borderRadius: radius.lg,
+    backgroundColor: color.surface,
+    ...shadow.soft,
   },
-
-  brand: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-
-  logo: {
+  itemUnread: { backgroundColor: color.primarySubtle },
+  pressed: { opacity: 0.85 },
+  itemIcon: {
     width: 40,
     height: 40,
-    borderRadius: 12,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  brandName: {
-    color: colors.text,
-    fontWeight: '800',
-    fontSize: 17,
-  },
-
-  brandSubtitle: {
-    color: colors.muted,
-    fontSize: 11,
-    marginTop: 2,
-  },
-
-  bellButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  bellDot: {
-    position: 'absolute',
-    top: 7,
-    right: 8,
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    backgroundColor: colors.error,
-    borderWidth: 1,
-    borderColor: '#FFFFFF',
-  },
-
-  content: {
-    padding: 18,
-    paddingBottom: 35,
-  },
-
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 5,
-  },
-
-  title: {
-    fontSize: 25,
-    fontWeight: '800',
-    color: colors.text,
-  },
-
-  subtitle: {
-    fontSize: 12,
-    color: colors.muted,
-    marginTop: 5,
-  },
-
-  counter: {
-    minWidth: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#EAF1FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 7,
-  },
-
-  counterText: {
-    color: colors.primary,
-    fontWeight: '800',
-    fontSize: 12,
-  },
-
-  markAllButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-end',
-    gap: 5,
-    marginTop: 15,
-    marginBottom: 17,
-  },
-
-  markAllText: {
-    color: colors.primary,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-
-  disabledText: {
-    color: colors.muted,
-  },
-
-  filters: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingBottom: 10,
-  },
-
-  filterButton: {
-    backgroundColor: '#EDF2F8',
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-
-  filterActive: {
-    backgroundColor: colors.primary,
-  },
-
-  filterText: {
-    color: '#53627B',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-
-  filterTextActive: {
-    color: '#FFFFFF',
-  },
-
-  section: {
-    marginTop: 19,
-  },
-
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.text,
-    marginBottom: 11,
-  },
-
-  notificationCard: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 15,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#EDF1F8',
-    gap: 12,
-  },
-
-  unreadCard: {
-    borderColor: '#C8D9FF',
-    backgroundColor: '#FBFCFF',
-  },
-
-  notificationIcon: {
-    width: 43,
-    height: 43,
-    borderRadius: 13,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  notificationContent: {
-    flex: 1,
-  },
-
-  notificationTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 5,
-  },
-
-  notificationTitle: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: '800',
-    flex: 1,
-  },
-
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
-  },
-
-  notificationBody: {
-    color: '#64748B',
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: 6,
-  },
-
-  notificationDate: {
-    color: '#94A3B8',
-    fontSize: 10,
-    marginTop: 8,
-  },
-
-  emptyCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 17,
-    padding: 25,
-    alignItems: 'center',
-    marginTop: 20,
-    borderWidth: 1,
-    borderColor: '#EDF1F8',
-  },
-
-  emptyIcon: {
-    width: 65,
-    height: 65,
-    borderRadius: 33,
-    backgroundColor: '#EAF1FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 13,
-  },
-
-  emptyTitle: {
-    color: colors.text,
-    fontWeight: '800',
-    fontSize: 16,
-  },
-
-  emptyDescription: {
-    textAlign: 'center',
-    color: colors.muted,
-    fontSize: 12,
-    lineHeight: 19,
-    marginTop: 8,
-  },
-
-  preferencesCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: '#EDF1F8',
-  },
-
-  preferenceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    gap: 10,
-  },
-
-  preferenceIcon: {
-    width: 39,
-    height: 39,
-    borderRadius: 12,
-    backgroundColor: '#EAF1FF',
+  itemTitleRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: color.primary },
+  itemBody: { ...type.body, color: color.textSecondary, marginTop: 2 },
+  itemDate: { ...type.caption, color: color.textMuted, marginTop: 4 },
+  prefs: { paddingVertical: space.xs },
+  prefRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.xs },
+  prefIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: color.primarySubtle,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  preferenceText: {
-    flex: 1,
-  },
-
-  preferenceTitle: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-
-  preferenceDescription: {
-    color: colors.muted,
-    fontSize: 10,
-    marginTop: 4,
-  },
-
-  preferenceDivider: {
-    height: 1,
-    backgroundColor: '#EDF1F8',
-  },
-
-  savingText: {
-    fontSize: 11,
-    color: colors.muted,
-    marginTop: 8,
-  },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: color.border },
+  saving: { ...type.caption, color: color.textMuted, textAlign: 'center' },
 });

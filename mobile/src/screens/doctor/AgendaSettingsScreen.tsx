@@ -1,6 +1,15 @@
 import React from 'react';
-import ScreenPlaceholder from '../../components/ScreenPlaceholder';
+import { DoctorsApi } from '../../api/services';
+import ScheduleEditor, { ScheduleApi } from '../common/ScheduleEditor';
+
+const api: ScheduleApi = {
+  workingHours: () => DoctorsApi.workingHours(),
+  setWorkingHours: (hours, consultationMinutes) => DoctorsApi.updateWorkingHours({ hours, consultationMinutes }),
+  leaves: () => DoctorsApi.leaves(),
+  addLeave: (startDate, endDate, reason) => DoctorsApi.addLeave({ startDate, endDate, reason: reason || undefined }),
+  deleteLeave: (leaveId) => DoctorsApi.deleteLeave(leaveId),
+};
 
 export default function AgendaSettingsScreen() {
-  return <ScreenPlaceholder title="Paramètres d'agenda" />;
+  return <ScheduleEditor api={api} />;
 }

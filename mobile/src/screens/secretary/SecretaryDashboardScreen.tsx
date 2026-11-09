@@ -1,12 +1,21 @@
 import React, { useCallback, useState } from 'react';
-import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-
 import { StaffApi } from '../../api/services';
 import { useAuth } from '../../context/AuthContext';
-import { Button, Header, ui } from '../../components/ClinicUI';
-import { colors } from '../../theme/colors';
-import { ErrorCard, Loading, StatTile, StatusBadge, errorText, formatDateTime, shared } from './shared';
+import {
+  AppHeader,
+  Avatar,
+  Button,
+  Card,
+  EmptyState,
+  InfoRow,
+  Notice,
+  Screen,
+  SectionTitle,
+  StatCard,
+} from '../../components/ui';
+import { ErrorCard, Loading, StatusBadge, errorText, formatDateTime, shared } from './shared';
 
 type Dashboard = {
   today: { total: number; confirmed: number; pending: number; cancelled: number; done: number };
@@ -38,52 +47,92 @@ export default function SecretaryDashboardScreen() {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  const fullName = `${user?.first_name ?? ''} ${user?.last_name ?? ''}`.trim();
 
   return (
-    <View style={ui.page}>
-      <Header title={`Bonjour ${user?.first_name ?? ''}`.trim()} subtitle="Espace secrétariat" right="🗂" />
-      <ScrollView
-        contentContainerStyle={ui.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} colors={[colors.primary]} />}
-      >
-        {loading && <Loading label="Chargement du tableau de bord..." />}
-        {error && <ErrorCard message={error} onRetry={() => load()} />}
+    <Screen
+      refreshing={refreshing}
+      onRefresh={() => load(true)}
+      header={
+        <AppHeader
+          title={`Bonjour ${user?.first_name ?? ''}`.trim()}
+          subtitle="Espace secrétariat"
+          right={<Avatar name={fullName} size={40} />}
+        />
+      }
+    >
+      {loading ? <Loading label="Chargement du tableau de bord..." /> : null}
+      {error ? <ErrorCard message={error} onRetry={() => load()} /> : null}
 
-        {!loading && !error && data && (
-          <>
-            <Text style={ui.h2}>Aujourd'hui</Text>
-            <View style={shared.grid}>
-              <StatTile label="Rendez-vous" value={data.today.total} />
-              <StatTile label="Confirmés" value={data.today.confirmed} color={colors.success} />
-              <StatTile label="Annulés" value={data.today.cancelled} color={colors.error} />
-              <StatTile label="Médecins actifs" value={data.activeDoctors} color={colors.secondary} />
-            </View>
-            {data.doctorsOnLeaveToday > 0 && (
-              <Text style={[ui.muted, { marginBottom: 10 }]}>
-                {data.doctorsOnLeaveToday} médecin(s) en congé aujourd'hui.
-              </Text>
-            )}
+      {!loading && !error && data ? (
+        <>
+          <SectionTitle title="Aujourd'hui" />
+          <View style={shared.grid}>
+            <StatCard style={shared.tile} icon="calendar-outline" label="Rendez-vous" value={data.today.total} />
+            <StatCard
+              style={shared.tile}
+              icon="checkmark-circle-outline"
+              tone="success"
+              label="Confirmés"
+              value={data.today.confirmed}
+            />
+            <StatCard
+              style={shared.tile}
+              icon="close-circle-outline"
+              tone="danger"
+              label="Annulés"
+              value={data.today.cancelled}
+            />
+            <StatCard
+              style={shared.tile}
+              icon="medkit-outline"
+              tone="neutral"
+              label="Médecins actifs"
+              value={data.activeDoctors}
+            />
+          </View>
 
-            <Button title="+ Nouveau rendez-vous" onPress={() => navigation.navigate('SecretaryBook')} />
+          {data.doctorsOnLeaveToday > 0 ? (
+            <Notice
+              tone="warning"
+              icon="airplane-outline"
+              message={`${data.doctorsOnLeaveToday} médecin(s) en congé aujourd'hui.`}
+            />
+          ) : null}
 
-            <Text style={[ui.h2, ui.section]}>Prochains rendez-vous</Text>
-            {data.upcoming.length === 0 && (
-              <View style={ui.card}><Text style={shared.empty}>Aucun rendez-vous à venir.</Text></View>
-            )}
-            {data.upcoming.map((a) => (
-              <View key={a.id} style={ui.card}>
+          <Button title="Nouveau rendez-vous" icon="add" onPress={() => navigation.navigate('SecretaryBook')} />
+
+          <SectionTitle
+            title="Prochains rendez-vous"
+            actionLabel="Tout voir"
+            onAction={() => navigation.navigate('Rendez-vous')}
+          />
+          {data.upcoming.length === 0 ? (
+            <Card>
+              <EmptyState icon="calendar-clear-outline" title="Aucun rendez-vous à venir" />
+            </Card>
+          ) : (
+            data.upcoming.map((a) => (
+              <Card key={a.id} style={shared.card}>
                 <View style={shared.row}>
-                  <Text style={shared.title}>{a.patient_name}</Text>
+                  <Text style={shared.title} numberOfLines={1}>
+                    {a.patient_name}
+                  </Text>
                   <StatusBadge status={a.status} />
                 </View>
-                <Text style={shared.detail}>Dr. {a.doctor_name}</Text>
-                <Text style={ui.muted}>{formatDateTime(a.starts_at)}</Text>
-              </View>
-            ))}
-          </>
-        )}
-      </ScrollView>
-    </View>
+                <InfoRow icon="person-outline" label="Médecin" value={`Dr. ${a.doctor_name}`} />
+                <InfoRow icon="time-outline" label="Horaire" value={formatDateTime(a.starts_at)} strong />
+              </Card>
+            ))
+          )}
+        </>
+      ) : null}
+    </Screen>
   );
 }

@@ -1,29 +1,31 @@
-
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-
+import React, { useCallback, useMemo, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { DoctorsApi } from '../../api/services';
-
-type Appointment = {
-  id: number;
-  starts_at: string;
-  ends_at: string;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'done';
-  reason: string | null;
-  patient_id: number;
-  patient_first_name: string;
-  patient_last_name: string;
-};
+import {
+  AppHeader,
+  Button,
+  Card,
+  Chip,
+  ErrorState,
+  IconButton,
+  Loader,
+  Notice,
+  Screen,
+  SectionTitle,
+  SegmentedTabs,
+} from '../../components/ui';
+import { color, fonts, radius, shadow, space, statusTokens, type } from '../../theme';
+import {
+  DoctorAppointment,
+  KindTag,
+  appointmentKind,
+  formatTime,
+  isUrgent,
+  patientName,
+  sameDay,
+} from './shared';
+import BlockSlotSheet from './BlockSlotSheet';
 
 type Doctor = {
   id: number;
@@ -46,26 +48,23 @@ type Leave = {
   reason: string | null;
 };
 
-type ViewMode = 'Jour' | '3 jours' | 'Semaine';
+type ViewMode = 'day' | 'three' | 'week';
 
-type Filter =
-  | 'Tous'
-  | 'Présentiel'
-  | 'Téléconsultation'
-  | 'Urgences'
-  | 'Bloqué';
+const VIEW_DAYS: Record<ViewMode, number> = { day: 1, three: 3, week: 7 };
 
-const BLUE = '#2563EB';
-const NAVY = '#0B1C30';
-const BACKGROUND = '#F8F9FF';
-const LIGHT_BLUE = '#EFF4FF';
+type SheetState = { visible: boolean; start: number | null; duration: number | null };
+
+const minutesOf = (iso: string) => {
+  const d = new Date(iso);
+  return d.getHours() * 60 + d.getMinutes();
+};
+
+type Filter = 'Tous' | 'Urgences' | 'Bloqué';
+
+const FILTERS: Filter[] = ['Tous', 'Urgences', 'Bloqué'];
 
 const HOURS = Array.from({ length: 11 }, (_, i) => i + 8);
-
-const sameDay = (a: Date, b: Date) =>
-  a.getFullYear() === b.getFullYear() &&
-  a.getMonth() === b.getMonth() &&
-  a.getDate() === b.getDate();
+const HOUR_HEIGHT = 76;
 
 const dateKey = (date: Date) => {
   const y = date.getFullYear();
@@ -74,126 +73,59 @@ const dateKey = (date: Date) => {
   return `${y}-${m}-${d}`;
 };
 
-const formatTime = (value: string) =>
-  new Date(value).toLocaleTimeString('fr-FR', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-const isUrgent = (reason: string | null) =>
-  /urgence|urgent/i.test(reason || '');
-
-const isTeleconsultation = (reason: string | null) =>
-  /téléconsultation|teleconsultation|visio|vidéo|video/i.test(reason || '');
-
-const getAppointmentColor = (appointment: Appointment) => {
-  if (isUrgent(appointment.reason)) {
-    return {
-      background: '#FFF0EC',
-      border: '#F97316',
-      text: '#9A3412',
-    };
-  }
-
-  if (isTeleconsultation(appointment.reason)) {
-    return {
-      background: '#E0F7F4',
-      border: '#0D9488',
-      text: '#006A61',
-    };
-  }
-
-  if (appointment.status === 'done') {
-    return {
-      background: '#EAF2FF',
-      border: '#60A5FA',
-      text: '#1D4ED8',
-    };
-  }
-
-  if (appointment.status === 'pending') {
-    return {
-      background: '#FFF7E8',
-      border: '#F59E0B',
-      text: '#92400E',
-    };
-  }
-
-  return {
-    background: '#EFF4FF',
-    border: BLUE,
-    text: '#1D4ED8',
-  };
-};
-
-const statusLabel = (status: Appointment['status']) => {
-  switch (status) {
-    case 'done':
-      return 'Terminé';
-    case 'pending':
-      return 'En attente';
-    case 'confirmed':
-      return 'Confirmé';
-    case 'cancelled':
-      return 'Annulé';
-  }
+const blockTone = (a: DoctorAppointment) => {
+  const kind = appointmentKind(a.reason);
+  if (kind === 'urgent') return { bg: color.dangerSoft, bar: color.danger, ink: color.dangerInk };
+  const t = statusTokens[a.status] ?? statusTokens.confirmed;
+  if (a.status === 'pending') return { bg: t.bg + '99', bar: t.dot, ink: t.ink };
+  if (a.status === 'done') return { bg: color.primarySubtle, bar: color.textMuted, ink: color.textSecondary };
+  return { bg: color.primarySoft, bar: color.primary, ink: color.primary };
 };
 
 export default function DoctorAgendaScreen() {
+  const navigation = useNavigation<any>();
   const [doctor, setDoctor] = useState<Doctor | null>(null);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [appointments, setAppointments] = useState<DoctorAppointment[]>([]);
   const [blockedSlots, setBlockedSlots] = useState<BlockedSlot[]>([]);
   const [leaves, setLeaves] = useState<Leave[]>([]);
-
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState<ViewMode>('Jour');
+  const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [filter, setFilter] = useState<Filter>('Tous');
-
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [sheet, setSheet] = useState<SheetState>({ visible: false, start: null, duration: null });
 
   const loadAgenda = useCallback(async () => {
     try {
       setError('');
-
-      const [dashboardResponse, blocksResponse, leavesResponse] =
-        await Promise.all([
-          DoctorsApi.dashboard(),
-          DoctorsApi.blockedSlots(),
-          DoctorsApi.leaves(),
-        ]);
-
+      const [dashboardResponse, blocksResponse, leavesResponse] = await Promise.all([
+        DoctorsApi.dashboard(),
+        DoctorsApi.blockedSlots(),
+        DoctorsApi.leaves(),
+      ]);
       setDoctor(dashboardResponse.data.doctor);
       setAppointments(dashboardResponse.data.appointments || []);
       setBlockedSlots(blocksResponse.data || []);
       setLeaves(leavesResponse.data || []);
     } catch (e: any) {
       console.error('Erreur agenda médecin :', e?.response?.data || e);
-
-      setError(
-        e?.response?.data?.error ||
-          'Impossible de charger votre agenda.'
-      );
+      setError(e?.response?.data?.error || 'Impossible de charger votre agenda.');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
 
-  useEffect(() => {
-    loadAgenda();
-  }, [loadAgenda]);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    loadAgenda();
-  };
+  useFocusEffect(
+    useCallback(() => {
+      loadAgenda();
+    }, [loadAgenda])
+  );
 
   const dates = useMemo(() => {
     const start = new Date(selectedDate);
     start.setDate(start.getDate() - 3);
-
     return Array.from({ length: 7 }, (_, index) => {
       const date = new Date(start);
       date.setDate(start.getDate() + index);
@@ -201,955 +133,514 @@ export default function DoctorAgendaScreen() {
     });
   }, [selectedDate]);
 
-  const visibleAppointments = useMemo(() => {
+  const rangeDays = useMemo(
+    () =>
+      Array.from({ length: VIEW_DAYS[viewMode] }, (_, index) => {
+        const date = new Date(selectedDate);
+        date.setDate(selectedDate.getDate() + index);
+        return date;
+      }),
+    [selectedDate, viewMode]
+  );
+
+  const inRange = useCallback((iso: string) => rangeDays.some((d) => sameDay(new Date(iso), d)), [rangeDays]);
+
+  const matchesFilter = useCallback(
+    (a: DoctorAppointment) => {
+      if (filter === 'Urgences') return isUrgent(a.reason);
+      return filter === 'Tous';
+    },
+    [filter]
+  );
+
+  const dayAppointments = useMemo(
+    () => appointments.filter((a) => inRange(a.starts_at) && a.status !== 'cancelled'),
+    [appointments, inRange]
+  );
+
+  const visibleAppointments = useMemo(
+    () =>
+      dayAppointments
+        .filter(matchesFilter)
+        .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()),
+    [dayAppointments, matchesFilter]
+  );
+
+  const dayBlocks = useMemo(() => blockedSlots.filter((block) => inRange(block.startsAt)), [blockedSlots, inRange]);
+  const visibleBlocks = filter === 'Tous' || filter === 'Bloqué' ? dayBlocks : [];
+
+  const leaveFor = (date: Date) => {
+    const key = dateKey(date);
+    return leaves.find((leave) => key >= leave.startDate && key <= leave.endDate);
+  };
+  const selectedLeave = leaveFor(selectedDate);
+
+  const freedSlots = useMemo(() => {
+    const now = Date.now();
+    const active = appointments.filter((a) => a.status !== 'cancelled');
+    const seen = new Set<string>();
     return appointments
-      .filter((appointment) => {
-        const date = new Date(appointment.starts_at);
-
-        if (!sameDay(date, selectedDate)) return false;
-        if (appointment.status === 'cancelled') return false;
-
-        if (filter === 'Urgences') {
-          return isUrgent(appointment.reason);
-        }
-
-        if (filter === 'Téléconsultation') {
-          return isTeleconsultation(appointment.reason);
-        }
-
-        if (filter === 'Présentiel') {
-          return (
-            !isTeleconsultation(appointment.reason) &&
-            !isUrgent(appointment.reason)
-          );
-        }
-
-        return filter === 'Tous';
+      .filter((a) => a.status === 'cancelled' && inRange(a.starts_at) && new Date(a.starts_at).getTime() > now)
+      .filter((a) => {
+        const from = new Date(a.starts_at).getTime();
+        const to = new Date(a.ends_at).getTime();
+        const taken =
+          active.some((x) => new Date(x.starts_at).getTime() < to && new Date(x.ends_at).getTime() > from) ||
+          blockedSlots.some((b) => new Date(b.startsAt).getTime() < to && new Date(b.endsAt).getTime() > from);
+        if (taken || seen.has(a.starts_at)) return false;
+        seen.add(a.starts_at);
+        return true;
       })
-      .sort(
-        (a, b) =>
-          new Date(a.starts_at).getTime() -
-          new Date(b.starts_at).getTime()
-      );
-  }, [appointments, selectedDate, filter]);
+      .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
+  }, [appointments, blockedSlots, inRange]);
 
-  const visibleBlocks = useMemo(() => {
-    if (filter !== 'Tous' && filter !== 'Bloqué') return [];
+  const busyForSheet = useMemo(
+    () =>
+      appointments
+        .filter((a) => a.status !== 'cancelled' && sameDay(new Date(a.starts_at), selectedDate))
+        .map((a) => ({ startsAt: a.starts_at, endsAt: a.ends_at })),
+    [appointments, selectedDate]
+  );
 
-    return blockedSlots.filter((block) =>
-      sameDay(new Date(block.startsAt), selectedDate)
+  const openSheet = (start: number | null = null, duration: number | null = null) =>
+    setSheet({ visible: true, start, duration });
+
+  const confirmUnblock = (block: BlockedSlot) =>
+    Alert.alert(
+      'Débloquer ce créneau ?',
+      `${formatTime(block.startsAt)} – ${formatTime(block.endsAt)}${block.reason ? ` · ${block.reason}` : ''}`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Débloquer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await DoctorsApi.deleteBlockedSlot(block.id);
+              setBlockedSlots((list) => list.filter((b) => b.id !== block.id));
+            } catch (e: any) {
+              Alert.alert('Erreur', e?.response?.data?.error || 'Impossible de débloquer ce créneau.');
+            }
+          },
+        },
+      ]
     );
-  }, [blockedSlots, selectedDate, filter]);
 
-  const selectedLeave = leaves.find((leave) => {
-    const key = dateKey(selectedDate);
-    return key >= leave.startDate && key <= leave.endDate;
-  });
-
-  const counts = {
-    Tous: appointments.filter(
-      (a) =>
-        sameDay(new Date(a.starts_at), selectedDate) &&
-        a.status !== 'cancelled'
-    ).length,
-    Présentiel: appointments.filter(
-      (a) =>
-        sameDay(new Date(a.starts_at), selectedDate) &&
-        a.status !== 'cancelled' &&
-        !isTeleconsultation(a.reason) &&
-        !isUrgent(a.reason)
-    ).length,
-    Téléconsultation: appointments.filter(
-      (a) =>
-        sameDay(new Date(a.starts_at), selectedDate) &&
-        a.status !== 'cancelled' &&
-        isTeleconsultation(a.reason)
-    ).length,
-    Urgences: appointments.filter(
-      (a) =>
-        sameDay(new Date(a.starts_at), selectedDate) &&
-        a.status !== 'cancelled' &&
-        isUrgent(a.reason)
-    ).length,
-    Bloqué: visibleBlocks.length,
+  const counts: Record<Filter, number> = {
+    Tous: dayAppointments.length,
+    Urgences: dayAppointments.filter((a) => isUrgent(a.reason)).length,
+    Bloqué: dayBlocks.length,
   };
 
-  const changeDate = (amount: number) => {
+  const changeDate = (direction: number) => {
     const next = new Date(selectedDate);
-    next.setDate(next.getDate() + amount);
+    next.setDate(next.getDate() + direction * VIEW_DAYS[viewMode]);
     setSelectedDate(next);
   };
 
-  const dateTitle = selectedDate.toLocaleDateString('fr-FR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-
   const now = new Date();
-  const showCurrentTime = sameDay(now, selectedDate);
-
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const currentLineTop = ((currentMinutes - 480) / 60) * 76;
+  const currentLineTop = ((currentMinutes - 480) / 60) * HOUR_HEIGHT;
+  const showCurrentTime = sameDay(now, selectedDate) && currentLineTop >= 0 && currentLineTop <= HOUR_HEIGHT * 10;
 
   if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={BLUE} />
-        <Text style={styles.loadingText}>Chargement de votre agenda...</Text>
-      </View>
-    );
+    return <Loader fullscreen label="Chargement de votre agenda..." />;
   }
 
   if (error) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.errorTitle}>Agenda indisponible</Text>
-        <Text style={styles.errorText}>{error}</Text>
-        <Pressable style={styles.retryButton} onPress={loadAgenda}>
-          <Text style={styles.retryText}>Réessayer</Text>
-        </Pressable>
-      </View>
+      <Screen safeTop>
+        <ErrorState message={error} onRetry={loadAgenda} />
+      </Screen>
     );
   }
 
+  const fullName = `${doctor?.first_name ?? ''} ${doctor?.last_name ?? ''}`.trim();
+  const multiDay = viewMode !== 'day';
+  const lastDay = rangeDays[rangeDays.length - 1];
+  const rangeTitle = multiDay
+    ? `${selectedDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} – ${lastDay.toLocaleDateString(
+        'fr-FR',
+        { day: 'numeric', month: 'short' }
+      )}`
+    : selectedDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const stepLabel = viewMode === 'day' ? 'Jour' : viewMode === 'three' ? 'Période' : 'Semaine';
+
   return (
-    <View style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={BLUE}
+    <View style={s.page}>
+      <Screen
+        refreshing={refreshing}
+        onRefresh={() => {
+          setRefreshing(true);
+          loadAgenda();
+        }}
+        contentStyle={s.content}
+        header={
+          <AppHeader
+            title="Agenda"
+            subtitle={fullName ? `Dr. ${fullName}` : 'Espace médecin'}
+            right={
+              <IconButton
+                icon="settings-outline"
+                accessibilityLabel="Horaires et congés"
+                onPress={() => navigation.navigate('AgendaSettings')}
+              />
+            }
           />
         }
-        showsVerticalScrollIndicator={false}
       >
-        {/* En-tête médecin */}
-        <View style={styles.topHeader}>
-          <View>
-            <Text style={styles.smallHeading}>Espace Médecin</Text>
-            <Text style={styles.title}>Agenda</Text>
-          </View>
-
-          <View style={styles.headerRight}>
-            <View style={styles.notification}>
-              <Text style={styles.notificationIcon}>♧</Text>
-              <View style={styles.notificationDot} />
-            </View>
-
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {doctor?.first_name?.charAt(0)}
-                {doctor?.last_name?.charAt(0)}
-              </Text>
-            </View>
-          </View>
+        <View style={s.dateNav}>
+          <IconButton
+            icon="chevron-back"
+            accessibilityLabel={viewMode === 'day' ? 'Jour précédent' : `${stepLabel} précédente`}
+            onPress={() => changeDate(-1)}
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Revenir à aujourd'hui"
+            onPress={() => setSelectedDate(new Date())}
+            style={s.dateCenter}
+          >
+            <Text style={s.dateTitle}>{rangeTitle}</Text>
+            <Text style={s.dateYear}>{lastDay.getFullYear()}</Text>
+          </Pressable>
+          <IconButton
+            icon="chevron-forward"
+            accessibilityLabel={viewMode === 'day' ? 'Jour suivant' : `${stepLabel} suivante`}
+            onPress={() => changeDate(1)}
+          />
         </View>
 
-        {/* Identité et date */}
-        <View style={styles.dateHeader}>
-          <View style={styles.doctorPill}>
-            <Text style={styles.doctorPillText}>
-              Dr. {doctor?.first_name} {doctor?.last_name}
-            </Text>
-          </View>
+        <SegmentedTabs<ViewMode>
+          value={viewMode}
+          onChange={setViewMode}
+          tabs={[
+            { key: 'day', label: 'Jour' },
+            { key: 'three', label: '3 jours' },
+            { key: 'week', label: 'Semaine' },
+          ]}
+        />
 
-          <View style={styles.dateNavigation}>
-            <Pressable
-              style={styles.arrowButton}
-              onPress={() => changeDate(-1)}
-            >
-              <Text style={styles.arrowText}>‹</Text>
-            </Pressable>
-
-            <View style={styles.datePill}>
-              <Text style={styles.calendarIcon}>▦</Text>
-              <Text style={styles.datePillText}>
-                {selectedDate.toLocaleDateString('fr-FR', {
-                  day: 'numeric',
-                  month: 'short',
-                })}
-              </Text>
-            </View>
-
-            <Pressable
-              style={styles.arrowButton}
-              onPress={() => changeDate(1)}
-            >
-              <Text style={styles.arrowText}>›</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        <Text style={styles.fullDate}>{dateTitle}</Text>
-
-        {/* Modes d'affichage */}
-        <View style={styles.viewSelector}>
-          {(['Jour', '3 jours', 'Semaine'] as ViewMode[]).map((mode) => (
-            <Pressable
-              key={mode}
-              onPress={() => setViewMode(mode)}
-              style={[
-                styles.viewOption,
-                viewMode === mode && styles.viewOptionActive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.viewOptionText,
-                  viewMode === mode && styles.viewOptionTextActive,
-                ]}
-              >
-                {mode}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {/* Calendrier horizontal */}
-        <View style={styles.weekStrip}>
+        <Card style={s.strip} padded={false}>
           {dates.map((date) => {
             const active = sameDay(date, selectedDate);
-
+            const covered = !active && rangeDays.some((d) => sameDay(d, date));
             const hasAppointments = appointments.some(
-              (appointment) =>
-                sameDay(new Date(appointment.starts_at), date) &&
-                appointment.status !== 'cancelled'
+              (a) => sameDay(new Date(a.starts_at), date) && a.status !== 'cancelled'
             );
-
             return (
               <Pressable
                 key={dateKey(date)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
                 onPress={() => setSelectedDate(date)}
-                style={[
-                  styles.dayItem,
-                  active && styles.dayItemActive,
-                ]}
+                style={[s.day, covered && s.dayCovered, active && s.dayActive]}
               >
-                <Text
-                  style={[
-                    styles.dayName,
-                    active && styles.dayNameActive,
-                  ]}
-                >
-                  {date.toLocaleDateString('fr-FR', {
-                    weekday: 'short',
-                  }).replace('.', '')}
+                <Text style={[s.dayName, active && s.onPrimary]}>
+                  {date.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}
                 </Text>
-
-                <Text
-                  style={[
-                    styles.dayNumber,
-                    active && styles.dayNumberActive,
-                  ]}
-                >
-                  {date.getDate()}
-                </Text>
-
+                <Text style={[s.dayNumber, active && s.onPrimary]}>{date.getDate()}</Text>
                 <View
-                  style={[
-                    styles.dayDot,
-                    hasAppointments && styles.dayDotVisible,
-                    active && styles.dayDotActive,
-                  ]}
+                  style={[s.dayDot, hasAppointments && s.dayDotOn, active && hasAppointments && s.dayDotActive]}
                 />
               </Pressable>
             );
           })}
-        </View>
+        </Card>
 
-        {/* Filtres */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filters}
+          style={s.filtersWrap}
+          contentContainerStyle={s.filters}
         >
-          {(
-            [
-              'Tous',
-              'Présentiel',
-              'Téléconsultation',
-              'Urgences',
-              'Bloqué',
-            ] as Filter[]
-          ).map((item) => (
-            <Pressable
+          {FILTERS.map((item) => (
+            <Chip
               key={item}
+              label={item === 'Tous' || counts[item] > 0 ? `${item} · ${counts[item]}` : item}
+              selected={filter === item}
               onPress={() => setFilter(item)}
-              style={[
-                styles.filterChip,
-                filter === item && styles.filterChipActive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.filterText,
-                  filter === item && styles.filterTextActive,
-                ]}
-              >
-                {item}
-              </Text>
-
-              {item === 'Tous' || counts[item] > 0 ? (
-                <Text
-                  style={[
-                    styles.filterCount,
-                    filter === item && styles.filterCountActive,
-                  ]}
-                >
-                  {counts[item]}
-                </Text>
-              ) : null}
-            </Pressable>
+            />
           ))}
         </ScrollView>
 
-        {/* Planning */}
-        <View style={styles.timelineHeader}>
-          <Text style={styles.timelineTitle}>Planning de la journée</Text>
-          <Text style={styles.appointmentTotal}>
-            {visibleAppointments.length} rendez-vous
-          </Text>
-        </View>
+        <SectionTitle title={multiDay ? 'Planning de la période' : 'Planning de la journée'} />
+        <Text style={s.total}>
+          {visibleAppointments.length} rendez-vous
+          {visibleBlocks.length > 0 ? ` · ${visibleBlocks.length} créneau(x) bloqué(s)` : ''}
+        </Text>
 
-        {selectedLeave ? (
-          <View style={styles.leaveBanner}>
-            <Text style={styles.leaveTitle}>Jour d'absence</Text>
-            <Text style={styles.leaveDescription}>
-              {selectedLeave.reason || 'Vous êtes absent ce jour.'}
-            </Text>
-          </View>
+        {multiDay ? (
+          rangeDays.map((date) => {
+            const leave = leaveFor(date);
+            const items = [
+              ...visibleAppointments
+                .filter((a) => sameDay(new Date(a.starts_at), date))
+                .map((a) => ({ kind: 'appt' as const, at: a.starts_at, appt: a })),
+              ...visibleBlocks
+                .filter((b) => sameDay(new Date(b.startsAt), date))
+                .map((b) => ({ kind: 'block' as const, at: b.startsAt, block: b })),
+            ].sort((x, y) => new Date(x.at).getTime() - new Date(y.at).getTime());
+            const today = sameDay(date, new Date());
+
+            return (
+              <Card key={dateKey(date)} style={s.dayCard}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Voir la journée"
+                  onPress={() => {
+                    setSelectedDate(date);
+                    setViewMode('day');
+                  }}
+                  style={s.dayCardHeader}
+                >
+                  <Text style={[s.dayCardTitle, today && { color: color.primary }]}>
+                    {date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' })}
+                  </Text>
+                  <Text style={s.dayCardCount}>
+                    {leave ? 'Absent' : `${items.filter((i) => i.kind === 'appt').length} rdv`}
+                  </Text>
+                </Pressable>
+                {leave ? (
+                  <Text style={s.dayCardEmpty}>{leave.reason || 'Jour d’absence'}</Text>
+                ) : items.length === 0 ? (
+                  <Text style={s.dayCardEmpty}>Aucun rendez-vous</Text>
+                ) : (
+                  items.map((item) =>
+                    item.kind === 'appt' ? (
+                      <Pressable
+                        key={`a-${item.appt.id}`}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Ouvrir la fiche de ${patientName(item.appt)}`}
+                        onPress={() => navigation.navigate('AppointmentDetail', { appointmentId: item.appt.id })}
+                        style={({ pressed }) => [s.compactRow, pressed && s.pressed]}
+                      >
+                        <View style={[s.compactBar, { backgroundColor: blockTone(item.appt).bar }]} />
+                        <Text style={s.compactTime}>{formatTime(item.appt.starts_at)}</Text>
+                        <Text style={s.compactName} numberOfLines={1}>
+                          {patientName(item.appt)}
+                        </Text>
+                        <KindTag kind={appointmentKind(item.appt.reason)} />
+                      </Pressable>
+                    ) : (
+                      <Pressable
+                        key={`b-${item.block.id}`}
+                        accessibilityRole="button"
+                        accessibilityLabel="Débloquer ce créneau"
+                        onPress={() => confirmUnblock(item.block)}
+                        style={({ pressed }) => [s.compactRow, pressed && s.pressed]}
+                      >
+                        <View style={[s.compactBar, { backgroundColor: color.textMuted }]} />
+                        <Text style={s.compactTime}>{formatTime(item.block.startsAt)}</Text>
+                        <Text style={[s.compactName, { color: color.textSecondary }]} numberOfLines={1}>
+                          Bloqué{item.block.reason ? ` · ${item.block.reason}` : ''}
+                        </Text>
+                      </Pressable>
+                    )
+                  )
+                )}
+              </Card>
+            );
+          })
+        ) : selectedLeave ? (
+          <Notice
+            tone="danger"
+            icon="airplane-outline"
+            title="Jour d'absence"
+            message={selectedLeave.reason || 'Vous êtes absent ce jour.'}
+          />
         ) : (
-          <View style={styles.timeline}>
+          <Card style={s.timeline} padded={false}>
             {HOURS.map((hour) => {
-              const hourAppointments = visibleAppointments.filter((a) => {
-                const start = new Date(a.starts_at);
-                return start.getHours() === hour;
-              });
-
-              const hourBlocks = visibleBlocks.filter((block) => {
-                return new Date(block.startsAt).getHours() === hour;
-              });
+              const hourAppointments = visibleAppointments.filter((a) => new Date(a.starts_at).getHours() === hour);
+              const hourBlocks = visibleBlocks.filter((b) => new Date(b.startsAt).getHours() === hour);
 
               return (
-                <View key={hour} style={styles.hourRow}>
-                  <View style={styles.hourLabel}>
-                    <Text style={styles.hourText}>
-                      {String(hour).padStart(2, '0')}:00
-                    </Text>
-                  </View>
-
-                  <View style={styles.hourContent}>
-                    <View style={styles.hourLine} />
-
-                    {hourAppointments.map((appointment) => {
-                      const colors = getAppointmentColor(appointment);
-
+                <View key={hour} style={s.hourRow}>
+                  <Text style={s.hourText}>{String(hour).padStart(2, '0')}:00</Text>
+                  <View style={s.hourContent}>
+                    <View style={s.hourLine} />
+                    {hourAppointments.map((a) => {
+                      const tone = blockTone(a);
                       return (
-                        <View
-                          key={appointment.id}
-                          style={[
-                            styles.appointmentBlock,
-                            {
-                              backgroundColor: colors.background,
-                              borderLeftColor: colors.border,
-                            },
+                        <Pressable
+                          key={a.id}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Ouvrir la fiche de ${patientName(a)}`}
+                          onPress={() => navigation.navigate('AppointmentDetail', { appointmentId: a.id })}
+                          style={({ pressed }) => [
+                            s.event,
+                            { backgroundColor: tone.bg, borderLeftColor: tone.bar },
+                            pressed && s.pressed,
                           ]}
                         >
-                          <View style={styles.appointmentTop}>
-                            <Text
-                              style={[
-                                styles.appointmentPatient,
-                                { color: colors.text },
-                              ]}
-                              numberOfLines={1}
-                            >
-                              {appointment.patient_first_name}{' '}
-                              {appointment.patient_last_name}
+                          <View style={s.eventTop}>
+                            <Text style={[s.eventTitle, { color: tone.ink }]} numberOfLines={1}>
+                              {patientName(a)}
                             </Text>
-
-                            <Text style={styles.appointmentTime}>
-                              {formatTime(appointment.starts_at)}
-                              {' - '}
-                              {formatTime(appointment.ends_at)}
+                            <Text style={s.eventTime}>
+                              {formatTime(a.starts_at)} – {formatTime(a.ends_at)}
                             </Text>
                           </View>
-
-                          <Text
-                            style={styles.appointmentReason}
-                            numberOfLines={1}
-                          >
-                            {appointment.reason ||
-                              'Consultation médicale'}
+                          <Text style={s.eventReason} numberOfLines={1}>
+                            {a.reason || 'Consultation médicale'}
                           </Text>
-
-                          <View style={styles.appointmentBottom}>
-                            <Text
-                              style={[
-                                styles.statusText,
-                                { color: colors.text },
-                              ]}
-                            >
-                              {statusLabel(appointment.status)}
+                          <View style={s.eventBottom}>
+                            <Text style={[s.eventStatus, { color: tone.ink }]}>
+                              {(statusTokens[a.status] ?? statusTokens.confirmed).label}
                             </Text>
-
-                            {isUrgent(appointment.reason) ? (
-                              <Text style={styles.urgentLabel}>
-                                URGENCE
-                              </Text>
-                            ) : null}
-
-                            {isTeleconsultation(appointment.reason) ? (
-                              <Text style={styles.teleLabel}>
-                                VISIO
-                              </Text>
-                            ) : null}
+                            <KindTag kind={appointmentKind(a.reason)} />
                           </View>
-                        </View>
+                        </Pressable>
                       );
                     })}
-
                     {hourBlocks.map((block) => (
-                      <View key={`block-${block.id}`} style={styles.blockCard}>
-                        <Text style={styles.blockTitle}>
-                          Créneau bloqué
-                        </Text>
-                        <Text style={styles.blockDescription}>
-                          {block.reason || 'Indisponible'}
-                        </Text>
-                        <Text style={styles.blockTime}>
-                          {formatTime(block.startsAt)} -{' '}
-                          {formatTime(block.endsAt)}
-                        </Text>
-                      </View>
+                      <Pressable
+                        key={`block-${block.id}`}
+                        accessibilityRole="button"
+                        accessibilityLabel="Débloquer ce créneau"
+                        onPress={() => confirmUnblock(block)}
+                        style={({ pressed }) => [s.event, s.blocked, pressed && s.pressed]}
+                      >
+                        <View style={s.eventTop}>
+                          <Text style={[s.eventTitle, { color: color.textSecondary }]}>Créneau bloqué</Text>
+                          <Text style={s.eventTime}>
+                            {formatTime(block.startsAt)} – {formatTime(block.endsAt)}
+                          </Text>
+                        </View>
+                        <Text style={s.eventReason}>{block.reason || 'Indisponible'}</Text>
+                      </Pressable>
                     ))}
                   </View>
                 </View>
               );
             })}
 
-            {showCurrentTime &&
-              currentLineTop >= 0 &&
-              currentLineTop <= 760 && (
-                <View
-                  pointerEvents="none"
-                  style={[
-                    styles.currentTimeLine,
-                    { top: currentLineTop + 18 },
-                  ]}
-                >
-                  <View style={styles.currentTimeDot} />
-                  <View style={styles.currentTimeBar} />
+            {showCurrentTime ? (
+              <View pointerEvents="none" style={[s.nowLine, { top: currentLineTop + 18 }]}>
+                <View style={s.nowDot} />
+                <View style={s.nowBar} />
+              </View>
+            ) : null}
+          </Card>
+        )}
+
+        {filter === 'Tous'
+          ? freedSlots.map((a) => (
+              <Notice
+                key={`freed-${a.id}`}
+                tone="warning"
+                icon="alert-circle-outline"
+                title={`Créneau libéré · ${multiDay ? `${new Date(a.starts_at).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })} ` : ''}${formatTime(a.starts_at)} – ${formatTime(a.ends_at)}`}
+                message={`${patientName(a)} a annulé. Le créneau est de nouveau réservable par les patients.`}
+              >
+                <View style={s.freedActions}>
+                  <Button
+                    title="Bloquer"
+                    icon="lock-closed-outline"
+                    size="sm"
+                    variant="secondary"
+                    fullWidth={false}
+                    onPress={() => {
+                      setSelectedDate(new Date(a.starts_at));
+                      openSheet(
+                        minutesOf(a.starts_at),
+                        Math.round((new Date(a.ends_at).getTime() - new Date(a.starts_at).getTime()) / 60000)
+                      );
+                    }}
+                  />
                 </View>
-              )}
-          </View>
-        )}
+              </Notice>
+            ))
+          : null}
+      </Screen>
 
-        {/* Créneau libéré */}
-        {filter === 'Tous' && (
-          <View style={styles.releasedCard}>
-            <View style={styles.releasedIcon}>
-              <Text style={styles.releasedIconText}>!</Text>
-            </View>
+      <View style={s.fab} pointerEvents="box-none">
+        <Button
+          title="Nouveau créneau"
+          icon="add"
+          fullWidth={false}
+          style={s.fabButton}
+          onPress={() => openSheet()}
+        />
+      </View>
 
-            <View style={styles.releasedInfo}>
-              <Text style={styles.releasedTitle}>
-                Créneau libéré
-              </Text>
-              <Text style={styles.releasedDescription}>
-                Consultez les disponibilités pour attribuer un nouveau
-                rendez-vous.
-              </Text>
-            </View>
-          </View>
-        )}
-
-        <View style={styles.bottomSpace} />
-      </ScrollView>
-
-      {/* Nouveau créneau */}
-      <Pressable
-        style={styles.newSlotButton}
-        onPress={() =>
-          Alert.alert(
-            'Nouveau créneau',
-            'La création de rendez-vous et de créneaux sera connectée à la prochaine étape.'
-          )
-        }
-      >
-        <Text style={styles.newSlotText}>＋ Nouveau créneau</Text>
-      </Pressable>
+      <BlockSlotSheet
+        visible={sheet.visible}
+        date={selectedDate}
+        initialStart={sheet.start}
+        initialDuration={sheet.duration}
+        busy={busyForSheet}
+        onClose={() => setSheet((x) => ({ ...x, visible: false }))}
+        onCreated={() => {
+          setSheet((x) => ({ ...x, visible: false }));
+          loadAgenda();
+        }}
+      />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: BACKGROUND,
-  },
-  content: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 100,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: BACKGROUND,
-    padding: 25,
-  },
-  loadingText: {
-    marginTop: 12,
-    color: '#64748B',
-  },
-  errorTitle: {
-    fontSize: 19,
-    fontWeight: '700',
-    color: NAVY,
-  },
-  errorText: {
-    marginTop: 10,
-    textAlign: 'center',
-    color: '#64748B',
-  },
-  retryButton: {
-    marginTop: 18,
-    paddingHorizontal: 22,
-    paddingVertical: 11,
-    borderRadius: 12,
-    backgroundColor: BLUE,
-  },
-  retryText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  topHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 18,
-  },
-  smallHeading: {
-    fontSize: 12,
-    color: '#64748B',
-  },
-  title: {
-    fontSize: 25,
-    fontWeight: '700',
-    color: NAVY,
-    marginTop: 3,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 13,
-  },
-  notification: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  notificationIcon: {
-    fontSize: 21,
-    color: NAVY,
-  },
-  notificationDot: {
-    position: 'absolute',
-    right: 7,
-    top: 6,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#EF4444',
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#DBEAFE',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    color: BLUE,
-    fontWeight: '700',
-  },
-  dateHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  doctorPill: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: 20,
-  },
-  doctorPillText: {
-    color: NAVY,
-    fontWeight: '600',
-    fontSize: 12,
-  },
-  dateNavigation: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  arrowButton: {
-    width: 29,
-    height: 34,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  arrowText: {
-    color: BLUE,
-    fontSize: 25,
-  },
-  datePill: {
-    backgroundColor: LIGHT_BLUE,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 11,
-    paddingVertical: 9,
-    borderRadius: 20,
-    gap: 6,
-  },
-  calendarIcon: {
-    color: BLUE,
-    fontSize: 14,
-  },
-  datePillText: {
-    color: BLUE,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  fullDate: {
-    color: '#64748B',
-    fontSize: 12,
-    textTransform: 'capitalize',
-    marginTop: 9,
-    marginBottom: 15,
-  },
-  viewSelector: {
-    flexDirection: 'row',
-    backgroundColor: '#E5EEFF',
-    borderRadius: 13,
-    padding: 4,
-    marginBottom: 15,
-  },
-  viewOption: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: 10,
-  },
-  viewOptionActive: {
-    backgroundColor: '#FFFFFF',
-    elevation: 2,
-  },
-  viewOptionText: {
-    color: '#64748B',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  viewOptionTextActive: {
-    color: BLUE,
-  },
-  weekStrip: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 5,
-    marginBottom: 17,
-  },
-  dayItem: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 7,
-    borderRadius: 12,
-  },
-  dayItemActive: {
-    backgroundColor: BLUE,
-  },
-  dayName: {
-    color: '#94A3B8',
-    fontSize: 10,
-    textTransform: 'capitalize',
-  },
-  dayNameActive: {
-    color: '#DBEAFE',
-  },
-  dayNumber: {
-    color: NAVY,
-    fontSize: 16,
-    fontWeight: '700',
-    marginTop: 7,
-  },
-  dayNumberActive: {
-    color: '#FFFFFF',
-  },
-  dayDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    marginTop: 6,
-  },
-  dayDotVisible: {
-    backgroundColor: '#0D9488',
-  },
-  dayDotActive: {
-    backgroundColor: '#FFFFFF',
-  },
-  filters: {
-    gap: 8,
-    paddingBottom: 17,
-  },
-  filterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
-  filterChipActive: {
-    backgroundColor: BLUE,
-  },
-  filterText: {
-    fontSize: 11,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  filterTextActive: {
-    color: '#FFFFFF',
-  },
-  filterCount: {
-    color: '#64748B',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  filterCountActive: {
-    color: '#FFFFFF',
-  },
-  timelineHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  timelineTitle: {
-    color: NAVY,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  appointmentTotal: {
-    color: '#64748B',
-    fontSize: 11,
-  },
-  timeline: {
-    position: 'relative',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 15,
-    paddingHorizontal: 10,
-    paddingTop: 5,
-    paddingBottom: 5,
-  },
-  hourRow: {
-    flexDirection: 'row',
-    minHeight: 76,
-  },
-  hourLabel: {
-    width: 48,
-    paddingTop: 8,
-  },
-  hourText: {
-    color: '#94A3B8',
-    fontSize: 10,
-    fontWeight: '500',
-  },
-  hourContent: {
-    flex: 1,
-    paddingTop: 5,
-    paddingBottom: 5,
-  },
+const s = StyleSheet.create({
+  page: { flex: 1, backgroundColor: color.page },
+  content: { paddingBottom: 96 },
+  dateNav: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  dateCenter: { flex: 1, alignItems: 'center' },
+  dateTitle: { ...type.h3, fontFamily: fonts.semibold, textTransform: 'capitalize' },
+  dateYear: { ...type.caption, color: color.textMuted },
+  strip: { flexDirection: 'row', padding: space.xxs },
+  day: { flex: 1, alignItems: 'center', paddingVertical: space.xs, borderRadius: radius.md, gap: 2 },
+  dayActive: { backgroundColor: color.primary },
+  dayCovered: { backgroundColor: color.primarySoft },
+  dayCard: { gap: space.xs },
+  dayCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  dayCardTitle: { ...type.bodyMedium, fontFamily: fonts.semibold, textTransform: 'capitalize' },
+  dayCardCount: { ...type.caption, color: color.textMuted },
+  dayCardEmpty: { ...type.caption, color: color.textMuted },
+  compactRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs, paddingVertical: space.xxs },
+  compactBar: { width: 4, alignSelf: 'stretch', borderRadius: 2 },
+  compactTime: { ...type.caption, color: color.textSecondary, width: 40 },
+  compactName: { ...type.bodyMedium, flex: 1 },
+  freedActions: { flexDirection: 'row', marginTop: space.xs },
+  dayName: { ...type.caption, color: color.textMuted, textTransform: 'capitalize' },
+  dayNumber: { ...type.h3, fontFamily: fonts.semibold },
+  dayDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: 'transparent' },
+  dayDotOn: { backgroundColor: color.primary },
+  dayDotActive: { backgroundColor: color.onPrimary },
+  onPrimary: { color: color.onPrimary },
+  filtersWrap: { marginHorizontal: -space.md },
+  filters: { gap: space.xs, paddingHorizontal: space.md },
+  total: { ...type.caption, color: color.textMuted, marginTop: -space.xs },
+  timeline: { position: 'relative', paddingHorizontal: space.sm, paddingVertical: space.xxs },
+  hourRow: { flexDirection: 'row', minHeight: HOUR_HEIGHT },
+  hourText: { ...type.caption, color: color.textMuted, width: 48, paddingTop: space.xs },
+  hourContent: { flex: 1, paddingVertical: space.xxs },
   hourLine: {
     position: 'absolute',
     top: 13,
     left: 0,
     right: 0,
-    height: 1,
-    backgroundColor: '#E8EDF5',
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: color.border,
   },
-  appointmentBlock: {
+  event: {
     borderLeftWidth: 4,
-    borderRadius: 9,
-    padding: 9,
-    marginTop: 10,
-    marginBottom: 3,
+    borderRadius: radius.sm,
+    padding: space.xs,
+    marginTop: space.sm,
+    gap: 2,
   },
-  appointmentTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 5,
-  },
-  appointmentPatient: {
-    fontSize: 12,
-    fontWeight: '700',
-    flex: 1,
-  },
-  appointmentTime: {
-    fontSize: 9,
-    color: '#64748B',
-  },
-  appointmentReason: {
-    fontSize: 10,
-    color: '#64748B',
-    marginTop: 5,
-  },
-  appointmentBottom: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 5,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  urgentLabel: {
-    color: '#C2410C',
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  teleLabel: {
-    color: '#0D9488',
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  blockCard: {
-    backgroundColor: '#E9EDF5',
-    borderLeftWidth: 4,
-    borderLeftColor: '#64748B',
-    borderRadius: 9,
-    padding: 9,
-    marginTop: 10,
-  },
-  blockTitle: {
-    color: NAVY,
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  blockDescription: {
-    color: '#64748B',
-    fontSize: 10,
-    marginTop: 4,
-  },
-  blockTime: {
-    color: '#64748B',
-    fontSize: 10,
-    marginTop: 4,
-  },
-  currentTimeLine: {
-    position: 'absolute',
-    left: 58,
-    right: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    zIndex: 5,
-  },
-  currentTimeDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    backgroundColor: '#EF4444',
-  },
-  currentTimeBar: {
-    flex: 1,
-    height: 2,
-    backgroundColor: '#EF4444',
-  },
-  leaveBanner: {
-    backgroundColor: '#FFF1F2',
-    borderRadius: 13,
-    padding: 17,
-  },
-  leaveTitle: {
-    color: '#BE123C',
-    fontWeight: '700',
-  },
-  leaveDescription: {
-    color: '#9F1239',
-    marginTop: 6,
-    fontSize: 12,
-  },
-  releasedCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF7ED',
-    borderRadius: 13,
-    padding: 13,
-    marginTop: 18,
-    borderWidth: 1,
-    borderColor: '#FED7AA',
-  },
-  releasedIcon: {
-    width: 29,
-    height: 29,
-    borderRadius: 15,
-    backgroundColor: '#FFEDD5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  releasedIconText: {
-    color: '#C2410C',
-    fontWeight: '700',
-  },
-  releasedInfo: {
-    flex: 1,
-    marginLeft: 10,
-  },
-  releasedTitle: {
-    color: '#9A3412',
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  releasedDescription: {
-    color: '#9A3412',
-    fontSize: 10,
-    marginTop: 3,
-  },
-  newSlotButton: {
-    position: 'absolute',
-    right: 17,
-    bottom: 15,
-    backgroundColor: BLUE,
-    borderRadius: 25,
-    paddingHorizontal: 19,
-    paddingVertical: 14,
-    elevation: 5,
-    shadowColor: '#000000',
-    shadowOpacity: 0.15,
-    shadowRadius: 7,
-    shadowOffset: { width: 0, height: 3 },
-  },
-  newSlotText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  bottomSpace: {
-    height: 30,
-  },
+  blocked: { backgroundColor: color.primarySubtle, borderLeftColor: color.textMuted },
+  pressed: { opacity: 0.85 },
+  eventTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.xxs },
+  eventTitle: { ...type.bodyMedium, flex: 1 },
+  eventTime: { ...type.caption, color: color.textSecondary },
+  eventReason: { ...type.caption, color: color.textSecondary },
+  eventBottom: { flexDirection: 'row', alignItems: 'center', gap: space.xs, marginTop: 2 },
+  eventStatus: { ...type.label },
+  nowLine: { position: 'absolute', left: 58, right: space.sm, flexDirection: 'row', alignItems: 'center', zIndex: 5 },
+  nowDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: color.danger },
+  nowBar: { flex: 1, height: 2, backgroundColor: color.danger },
+  fab: { position: 'absolute', right: space.md, bottom: space.md },
+  fabButton: { borderRadius: radius.full, paddingHorizontal: space.lg, ...shadow.raised },
 });
