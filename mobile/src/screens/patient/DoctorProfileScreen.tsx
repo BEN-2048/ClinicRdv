@@ -1,15 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  ScrollView,
-  Text,
-  View,
-  StyleSheet,
-} from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { DoctorsApi } from '../../api/services';
-import { Header, Button, Avatar, ui } from '../../components/ClinicUI';
-import { colors } from '../../theme/colors';
+import { Avatar, Button, Card, ErrorState, InfoRow, Loader, Screen } from '../../components/ui';
+import { color, space, type } from '../../theme';
 
 type DoctorProfile = {
   id: number;
@@ -40,19 +34,11 @@ export default function DoctorProfileScreen() {
         if (!Number.isInteger(doctorId) || doctorId <= 0) {
           throw new Error('Identifiant du médecin invalide.');
         }
-
         const response = await DoctorsApi.get(doctorId);
-
-        if (active) {
-          setDoctor(response.data as DoctorProfile);
-        }
+        if (active) setDoctor(response.data as DoctorProfile);
       } catch (err: any) {
         if (active) {
-          setError(
-            err?.response?.data?.error ||
-            err?.message ||
-            'Impossible de charger le profil du médecin.'
-          );
+          setError(err?.response?.data?.error || err?.message || 'Impossible de charger le profil du médecin.');
         }
       } finally {
         if (active) setLoading(false);
@@ -67,133 +53,65 @@ export default function DoctorProfileScreen() {
   }, [doctorId]);
 
   if (loading) {
-    return (
-      <View style={[ui.page, styles.center]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={ui.muted}>Chargement du profil...</Text>
-      </View>
-    );
+    return <Loader fullscreen label="Chargement du profil..." />;
   }
 
   if (error || !doctor) {
     return (
-      <View style={ui.page}>
-        <Header title="Profil du médecin" />
-        <View style={ui.content}>
-          <Text style={styles.error}>
-            {error || 'Médecin introuvable.'}
-          </Text>
-          <Button
-            title="Retour"
-            secondary
-            onPress={() => navigation.goBack()}
-          />
-        </View>
-      </View>
+      <Screen>
+        <ErrorState message={error || 'Médecin introuvable.'} />
+        <Button title="Retour" variant="secondary" icon="arrow-back" onPress={() => navigation.goBack()} />
+      </Screen>
     );
   }
 
-  const initials =
-    `${doctor.first_name?.charAt(0) || ''}${doctor.last_name?.charAt(0) || ''}`.toUpperCase();
+  const fullName = `${doctor.first_name} ${doctor.last_name}`.trim();
 
   return (
-    <View style={ui.page}>
-      <Header title="Profil du médecin" subtitle="Informations professionnelles" />
-
-      <ScrollView contentContainerStyle={ui.content}>
-        <View style={[ui.card, styles.identity]}>
-          <Avatar initials={initials} tint="#E5E9FF" size={76} />
-          <Text style={styles.name}>
-            Dr. {doctor.first_name} {doctor.last_name}
-          </Text>
-          <Text style={styles.specialty}>{doctor.specialty}</Text>
+    <Screen
+      footer={
+        <View style={s.footer}>
+          <Button
+            title="Choisir un créneau"
+            icon="calendar-outline"
+            disabled={!doctor.active}
+            onPress={() => navigation.navigate('SlotPicker', { doctorId: doctor.id })}
+          />
+          <Button
+            title="M'alerter d'un désistement"
+            icon="notifications-outline"
+            variant="secondary"
+            disabled={!doctor.active}
+            onPress={() => navigation.navigate('WaitingList', { doctorId: doctor.id })}
+          />
         </View>
+      }
+    >
+      <Card style={s.identity}>
+        <Avatar name={fullName} size={80} dotColor={doctor.active ? color.success : color.textMuted} />
+        <Text style={s.name}>Dr. {fullName}</Text>
+        <Text style={s.specialty}>{doctor.specialty}</Text>
+        {!doctor.active ? (
+          <Text style={s.unavailable}>Ce médecin n'est actuellement pas disponible.</Text>
+        ) : null}
+      </Card>
 
-        <View style={ui.card}>
-          <Text style={ui.h2}>Informations professionnelles</Text>
-
-          <Text style={styles.label}>Biographie</Text>
-          <Text style={styles.value}>
-            {doctor.bio || 'Aucune biographie renseignée.'}
-          </Text>
-
-          <Text style={styles.label}>Tarif de consultation</Text>
-          <Text style={styles.value}>{doctor.fee ?? 0} USD</Text>
-
-          <Text style={styles.label}>Durée de consultation</Text>
-          <Text style={styles.value}>
-            {doctor.consultation_minutes} minutes
-          </Text>
-
-          <Text style={styles.label}>Langues parlées</Text>
-          <Text style={styles.value}>
-            {doctor.languages || 'Non renseignées'}
-          </Text>
-        </View>
-
-        <Button
-          title="Choisir un créneau →"
-          disabled={!doctor.active}
-          onPress={() =>
-            navigation.navigate('SlotPicker', { doctorId: doctor.id })
-          }
-        />
-
-        <Button
-          title="M'alerter d'un désistement"
-          secondary
-          disabled={!doctor.active}
-          onPress={() =>
-            navigation.navigate('WaitingList', { doctorId: doctor.id })
-          }
-        />
-
-        {!doctor.active && (
-          <Text style={styles.error}>
-            Ce médecin n'est actuellement pas disponible.
-          </Text>
-        )}
-      </ScrollView>
-    </View>
+      <Card style={s.section}>
+        <Text style={type.h2}>Informations professionnelles</Text>
+        <InfoRow icon="document-text-outline" label="Biographie" value={doctor.bio || 'Aucune biographie renseignée.'} />
+        <InfoRow icon="cash-outline" label="Tarif de consultation" value={`${doctor.fee ?? 0} USD`} strong />
+        <InfoRow icon="time-outline" label="Durée de consultation" value={`${doctor.consultation_minutes} minutes`} strong />
+        <InfoRow icon="language-outline" label="Langues parlées" value={doctor.languages || 'Non renseignées'} />
+      </Card>
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  center: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
-  },
-  identity: {
-    alignItems: 'center',
-    paddingVertical: 28,
-  },
-  name: {
-    fontSize: 21,
-    fontWeight: '800',
-    color: colors.text,
-    marginTop: 15,
-    textAlign: 'center',
-  },
-  specialty: {
-    color: colors.primary,
-    fontWeight: '700',
-    marginTop: 7,
-  },
-  label: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 17,
-  },
-  value: {
-    color: colors.text,
-    fontSize: 14,
-    marginTop: 5,
-  },
-  error: {
-    color: colors.error,
-    textAlign: 'center',
-    marginVertical: 20,
-  },
+const s = StyleSheet.create({
+  identity: { alignItems: 'center', paddingVertical: space.lg, gap: space.xxs },
+  name: { ...type.h1, fontSize: 20, lineHeight: 28, marginTop: space.sm, textAlign: 'center' },
+  specialty: { ...type.bodyMedium, color: color.primary },
+  unavailable: { ...type.caption, color: color.danger, marginTop: space.xs, textAlign: 'center' },
+  section: { gap: space.md },
+  footer: { gap: space.xs },
 });

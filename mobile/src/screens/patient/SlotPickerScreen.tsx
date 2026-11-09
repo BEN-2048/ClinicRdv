@@ -1,20 +1,24 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-  StyleSheet,
-  TextInput,
-} from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 import { useNavigation, useRoute } from '@react-navigation/native';
-
-import { DoctorsApi, AppointmentsApi } from '../../api/services';
-import { Header, Button, Avatar, ui } from '../../components/ClinicUI';
-import { colors } from '../../theme/colors';
+import { AppointmentsApi, DoctorsApi } from '../../api/services';
+import {
+  Avatar,
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  InfoRow,
+  Input,
+  Loader,
+  Screen,
+  SectionTitle,
+  SlotGrid,
+  calendarTheme,
+} from '../../components/ui';
+import { CLINIC_TIME_ZONE } from '../../components/PatientFigmaUI';
+import { color, space, type } from '../../theme';
 
 type Doctor = {
   id: number;
@@ -40,23 +44,21 @@ const formatDate = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const formatLocalTime = (iso: string) => {
-  return new Intl.DateTimeFormat('fr-FR', {
-    timeZone: 'Africa/Lubumbashi',
+const formatLocalTime = (iso: string) =>
+  new Intl.DateTimeFormat('fr-FR', {
+    timeZone: CLINIC_TIME_ZONE,
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',
   }).format(new Date(iso));
-};
 
-const formatLongDate = (date: string) => {
-  return new Date(`${date}T12:00:00`).toLocaleDateString('fr-FR', {
+const formatLongDate = (date: string) =>
+  new Date(`${date}T12:00:00`).toLocaleDateString('fr-FR', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   });
-};
 
 export default function SlotPickerScreen() {
   const route = useRoute<any>();
@@ -76,6 +78,10 @@ export default function SlotPickerScreen() {
   const [slotError, setSlotError] = useState<string | null>(null);
 
   useEffect(() => {
+    navigation.setOptions({ title: rescheduleId ? 'Reporter le rendez-vous' : 'Choisir un créneau' });
+  }, [navigation, rescheduleId]);
+
+  useEffect(() => {
     let active = true;
 
     const loadDoctor = async () => {
@@ -83,19 +89,11 @@ export default function SlotPickerScreen() {
         if (!Number.isInteger(doctorId) || doctorId <= 0) {
           throw new Error('Identifiant du médecin invalide.');
         }
-
         const response = await DoctorsApi.get(doctorId);
-
-        if (active) {
-          setDoctor(response.data as Doctor);
-        }
+        if (active) setDoctor(response.data as Doctor);
       } catch (err: any) {
         if (active) {
-          setError(
-            err?.response?.data?.error ||
-            err?.message ||
-            'Impossible de récupérer le médecin.'
-          );
+          setError(err?.response?.data?.error || err?.message || 'Impossible de récupérer le médecin.');
         }
       } finally {
         if (active) setLoadingDoctor(false);
@@ -109,29 +107,26 @@ export default function SlotPickerScreen() {
     };
   }, [doctorId]);
 
-  const loadSlots = useCallback(async (date: string) => {
-    setLoadingSlots(true);
-    setSlotError(null);
-    setSelectedSlot(null);
-    setSlots([]);
-
-    try {
-      const response = await DoctorsApi.slots(doctorId, date);
-      setSlots(response.data as Slot[]);
-    } catch (err: any) {
-      setSlotError(
-        err?.response?.data?.error ||
-        'Impossible de récupérer les disponibilités.'
-      );
-    } finally {
-      setLoadingSlots(false);
-    }
-  }, [doctorId]);
+  const loadSlots = useCallback(
+    async (date: string) => {
+      setLoadingSlots(true);
+      setSlotError(null);
+      setSelectedSlot(null);
+      setSlots([]);
+      try {
+        const response = await DoctorsApi.slots(doctorId, date);
+        setSlots(response.data as Slot[]);
+      } catch (err: any) {
+        setSlotError(err?.response?.data?.error || 'Impossible de récupérer les disponibilités.');
+      } finally {
+        setLoadingSlots(false);
+      }
+    },
+    [doctorId]
+  );
 
   useEffect(() => {
-    if (doctor?.id) {
-      loadSlots(selectedDate);
-    }
+    if (doctor?.id) loadSlots(selectedDate);
   }, [doctor, selectedDate, loadSlots]);
 
   const chooseDate = (day: DateData) => {
@@ -143,31 +138,20 @@ export default function SlotPickerScreen() {
     if (!selectedSlot || !doctor) return;
 
     if (!rescheduleId) {
-      navigation.navigate('BookingReview', {
-        doctor,
-        slot: selectedSlot,
-        reason: reason.trim(),
-      });
+      navigation.navigate('BookingReview', { doctor, slot: selectedSlot, reason: reason.trim() });
       return;
     }
 
     setBooking(true);
-
     try {
       await AppointmentsApi.reschedule(rescheduleId, selectedSlot.startsAt);
-
       Alert.alert(
         'Rendez-vous reporté',
         `Nouveau créneau : ${formatLongDate(selectedDate)} à ${formatLocalTime(selectedSlot.startsAt)}.`
       );
-
       navigation.goBack();
     } catch (err: any) {
-      Alert.alert(
-        'Report impossible',
-        err?.response?.data?.error || 'Le report a échoué. Veuillez réessayer.'
-      );
-
+      Alert.alert('Report impossible', err?.response?.data?.error || 'Le report a échoué. Veuillez réessayer.');
       await loadSlots(selectedDate);
     } finally {
       setBooking(false);
@@ -175,253 +159,128 @@ export default function SlotPickerScreen() {
   };
 
   if (loadingDoctor) {
-    return (
-      <View style={[ui.page, styles.center]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={ui.muted}>Chargement du médecin...</Text>
-      </View>
-    );
+    return <Loader fullscreen label="Chargement du médecin..." />;
   }
 
   if (error || !doctor) {
     return (
-      <View style={ui.page}>
-        <Header title="Réservation" />
-        <View style={ui.content}>
-          <Text style={styles.error}>
-            {error || 'Médecin introuvable.'}
-          </Text>
-          <Button title="Retour" secondary onPress={() => navigation.goBack()} />
-        </View>
-      </View>
+      <Screen>
+        <ErrorState message={error || 'Médecin introuvable.'} />
+        <Button title="Retour" variant="secondary" icon="arrow-back" onPress={() => navigation.goBack()} />
+      </Screen>
     );
   }
 
-  const initials =
-    `${doctor.first_name.charAt(0)}${doctor.last_name.charAt(0)}`.toUpperCase();
-
-  const markedDates = {
-    [selectedDate]: {
-      selected: true,
-      selectedColor: colors.primary,
-    },
-  };
-
+  const fullName = `${doctor.first_name} ${doctor.last_name}`.trim();
   const availableSlots = slots.filter((slot) => slot.available);
-  const unavailableSlots = slots.filter((slot) => !slot.available);
+  const unavailableCount = slots.length - availableSlots.length;
 
   return (
-    <View style={ui.page}>
-      <Header
-        title={rescheduleId ? 'Reporter le rendez-vous' : 'Réserver une consultation'}
-        subtitle="Choisissez votre date et votre heure"
-      />
-
-      <ScrollView contentContainerStyle={ui.content}>
-        <View style={[ui.card, ui.line]}>
-          <Avatar initials={initials} tint="#E5E9FF" size={58} />
-          <View style={{ flex: 1 }}>
-            <Text style={ui.label}>
-              Dr. {doctor.first_name} {doctor.last_name}
-            </Text>
-            <Text style={styles.specialty}>{doctor.specialty}</Text>
-            <Text style={ui.muted}>
-              {doctor.consultation_minutes} minutes · {doctor.fee} USD
-            </Text>
-          </View>
-        </View>
-
-        <Text style={ui.h2}>1. Choisissez une date</Text>
-
-        <View style={ui.card}>
-          <Calendar
-            minDate={formatDate(new Date())}
-            maxDate={formatDate(new Date(Date.now() + 13 * 86400000))}
-            current={selectedDate}
-            onDayPress={chooseDate}
-            markedDates={markedDates}
-            enableSwipeMonths={false}
-            theme={{
-              todayTextColor: colors.primary,
-              arrowColor: colors.primary,
-              selectedDayBackgroundColor: colors.primary,
-              selectedDayTextColor: '#FFFFFF',
-              textDayFontWeight: '600',
-              textMonthFontWeight: '800',
-            }}
-          />
-        </View>
-
-        <Text style={ui.h2}>2. Choisissez un créneau</Text>
-        <Text style={styles.dateLabel}>{formatLongDate(selectedDate)}</Text>
-
-        {loadingSlots && (
-          <View style={styles.loading}>
-            <ActivityIndicator color={colors.primary} />
-            <Text style={ui.muted}>Recherche des disponibilités...</Text>
-          </View>
-        )}
-
-        {slotError && <Text style={styles.error}>{slotError}</Text>}
-
-        {!loadingSlots && !slotError && slots.length === 0 && (
-          <View style={ui.card}>
-            <Text style={styles.empty}>
-              Aucun créneau de consultation pour cette date.
-            </Text>
-          </View>
-        )}
-
-        {!loadingSlots && availableSlots.length > 0 && (
-          <View style={styles.slotGrid}>
-            {availableSlots.map((slot) => {
-              const selected = selectedSlot?.startsAt === slot.startsAt;
-
-              return (
-                <TouchableOpacity
-                  key={slot.startsAt}
-                  onPress={() => setSelectedSlot(slot)}
-                  style={[styles.slot, selected && styles.slotSelected]}
-                >
-                  <Text style={[styles.slotText, selected && styles.slotTextSelected]}>
-                    {formatLocalTime(slot.startsAt)}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-
-        {!loadingSlots && unavailableSlots.length > 0 && (
-          <Text style={ui.muted}>
-            {unavailableSlots.length} créneau(x) indisponible(s).
-          </Text>
-        )}
-
-        {!rescheduleId && (
-          <>
-            <Text style={ui.h2}>3. Motif de consultation</Text>
-            <TextInput
-              value={reason}
-              onChangeText={setReason}
-              placeholder="Décrivez brièvement le motif (facultatif)"
-              placeholderTextColor={colors.muted}
-              multiline
-              maxLength={500}
-              style={styles.reason}
-              textAlignVertical="top"
-            />
-          </>
-        )}
-
-        <View style={ui.card}>
-          <Text style={ui.label}>Récapitulatif</Text>
-          <Text style={styles.summary}>
-            Médecin : Dr. {doctor.first_name} {doctor.last_name}
-          </Text>
-          <Text style={styles.summary}>
-            Date : {formatLongDate(selectedDate)}
-          </Text>
-          <Text style={styles.summary}>
-            Heure : {selectedSlot ? formatLocalTime(selectedSlot.startsAt) : 'Non sélectionnée'}
-          </Text>
-          <Text style={styles.summary}>Tarif : {doctor.fee} USD</Text>
-        </View>
-
+    <Screen
+      footer={
         <Button
-  title={
-    booking
-      ? 'Enregistrement en cours...'
-      : rescheduleId
-        ? 'Confirmer le nouveau créneau'
-        : 'Continuer vers la confirmation'
-  }
-  disabled={!selectedSlot || loadingSlots || booking || !doctor.active}
-  onPress={bookAppointment}
-/>
+          title={rescheduleId ? 'Confirmer le nouveau créneau' : 'Continuer vers la confirmation'}
+          iconRight={rescheduleId ? undefined : 'arrow-forward'}
+          icon={rescheduleId ? 'checkmark' : undefined}
+          loading={booking}
+          disabled={!selectedSlot || loadingSlots || !doctor.active}
+          onPress={bookAppointment}
+        />
+      }
+    >
+      <Card style={s.doctor}>
+        <Avatar name={fullName} size={56} />
+        <View style={s.flex}>
+          <Text style={type.h3} numberOfLines={1}>
+            Dr. {fullName}
+          </Text>
+          <Text style={s.specialty}>{doctor.specialty}</Text>
+          <Text style={s.muted}>
+            {doctor.consultation_minutes} min · {doctor.fee} USD
+          </Text>
+        </View>
+      </Card>
 
-        {!doctor.active && (
-          <Text style={styles.error}>Ce médecin n'est pas disponible.</Text>
-        )}
-      </ScrollView>
-    </View>
+      {!doctor.active ? <ErrorState message="Ce médecin n'est pas disponible." /> : null}
+
+      <SectionTitle title="1. Choisissez une date" />
+      <Card padded={false} style={s.calendar}>
+        <Calendar
+          minDate={formatDate(new Date())}
+          maxDate={formatDate(new Date(Date.now() + 13 * 86400000))}
+          current={selectedDate}
+          onDayPress={chooseDate}
+          markedDates={{ [selectedDate]: { selected: true, selectedColor: color.primary } }}
+          enableSwipeMonths={false}
+          theme={calendarTheme}
+        />
+      </Card>
+
+      <SectionTitle title="2. Choisissez un créneau" />
+      <Text style={s.dateLabel}>{formatLongDate(selectedDate)}</Text>
+
+      {loadingSlots ? <Loader label="Recherche des disponibilités..." /> : null}
+      {slotError ? <ErrorState message={slotError} onRetry={() => loadSlots(selectedDate)} /> : null}
+
+      {!loadingSlots && !slotError && availableSlots.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon="calendar-clear-outline"
+            title="Aucun créneau disponible"
+            message="Essayez une autre date ou activez une alerte désistement."
+          />
+        </Card>
+      ) : null}
+
+      {!loadingSlots && availableSlots.length > 0 ? (
+        <SlotGrid
+          items={availableSlots.map((slot) => ({ key: slot.startsAt, label: formatLocalTime(slot.startsAt) }))}
+          selectedKey={selectedSlot?.startsAt}
+          onSelect={(key) => setSelectedSlot(availableSlots.find((slot) => slot.startsAt === key) ?? null)}
+        />
+      ) : null}
+
+      {!loadingSlots && unavailableCount > 0 ? (
+        <Text style={s.muted}>
+          {unavailableCount} créneau{unavailableCount > 1 ? 'x' : ''} déjà réservé{unavailableCount > 1 ? 's' : ''}.
+        </Text>
+      ) : null}
+
+      {!rescheduleId ? (
+        <>
+          <SectionTitle title="3. Motif de consultation" />
+          <Input
+            value={reason}
+            onChangeText={setReason}
+            placeholder="Décrivez brièvement le motif (facultatif)"
+            multiline
+            maxLength={500}
+          />
+        </>
+      ) : null}
+
+      <Card style={s.summary}>
+        <Text style={type.h2}>Récapitulatif</Text>
+        <InfoRow icon="person-outline" label="Médecin" value={`Dr. ${fullName}`} strong />
+        <InfoRow icon="calendar-outline" label="Date" value={formatLongDate(selectedDate)} />
+        <InfoRow
+          icon="time-outline"
+          label="Heure"
+          value={selectedSlot ? formatLocalTime(selectedSlot.startsAt) : 'Non sélectionnée'}
+          strong={!!selectedSlot}
+        />
+        <InfoRow icon="cash-outline" label="Tarif" value={`${doctor.fee} USD`} />
+      </Card>
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
-  },
-  specialty: {
-    color: colors.primary,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  dateLabel: {
-    color: colors.muted,
-    fontSize: 13,
-    marginBottom: 12,
-    textTransform: 'capitalize',
-  },
-  loading: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 10,
-    padding: 25,
-  },
-  slotGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 18,
-  },
-  slot: {
-    width: '30%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#DCE4F0',
-    paddingVertical: 15,
-    alignItems: 'center',
-  },
-  slotSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  slotText: {
-    color: colors.text,
-    fontWeight: '700',
-  },
-  slotTextSelected: {
-    color: '#FFFFFF',
-  },
-  reason: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#DCE4F0',
-    padding: 14,
-    minHeight: 90,
-    marginBottom: 18,
-    color: colors.text,
-  },
-  summary: {
-    color: colors.muted,
-    fontSize: 13,
-    marginTop: 8,
-  },
-  empty: {
-    color: colors.muted,
-    textAlign: 'center',
-    padding: 15,
-  },
-  error: {
-    color: colors.error,
-    textAlign: 'center',
-    marginVertical: 15,
-  },
+const s = StyleSheet.create({
+  flex: { flex: 1, minWidth: 0 },
+  doctor: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  specialty: { ...type.bodyMedium, color: color.primary, marginTop: 2 },
+  muted: { ...type.caption, color: color.textMuted, marginTop: 2 },
+  calendar: { overflow: 'hidden', paddingVertical: space.xs },
+  dateLabel: { ...type.body, color: color.textSecondary, textTransform: 'capitalize', marginTop: -space.xs },
+  summary: { gap: space.md },
 });

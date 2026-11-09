@@ -1,9 +1,9 @@
 ﻿import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-
-import { Header, Button, ui } from '../../components/ClinicUI';
-import { colors } from '../../theme/colors';
+import { Button, Card, ErrorState, Icon, InfoRow, Screen, StatusBadge } from '../../components/ui';
+import { CLINIC_TIME_ZONE } from '../../components/PatientFigmaUI';
+import { color, radius, space, type } from '../../theme';
 
 type Appointment = {
   id: number;
@@ -24,7 +24,7 @@ type DoctorInfo = {
 
 const formatDate = (iso: string) =>
   new Intl.DateTimeFormat('fr-FR', {
-    timeZone: 'Africa/Lubumbashi',
+    timeZone: CLINIC_TIME_ZONE,
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -33,25 +33,17 @@ const formatDate = (iso: string) =>
 
 const formatTime = (iso: string) =>
   new Intl.DateTimeFormat('fr-FR', {
-    timeZone: 'Africa/Lubumbashi',
+    timeZone: CLINIC_TIME_ZONE,
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',
   }).format(new Date(iso));
 
-const statusLabel = (status: string) => {
-  switch (status) {
-    case 'pending':
-      return 'En attente de confirmation';
-    case 'confirmed':
-      return 'Confirmé';
-    case 'cancelled':
-      return 'Annulé';
-    case 'done':
-      return 'Terminé';
-    default:
-      return status;
-  }
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'En attente de confirmation',
+  confirmed: 'Confirmé',
+  cancelled: 'Annulé',
+  done: 'Terminé',
 };
 
 export default function BookingConfirmScreen() {
@@ -61,175 +53,91 @@ export default function BookingConfirmScreen() {
   const appointment = route.params?.appointment as Appointment | undefined;
   const doctor = route.params?.doctor as DoctorInfo | undefined;
 
-  if (
-    !appointment ||
-    !doctor ||
-    !appointment.id ||
-    !appointment.starts_at ||
-    !appointment.ends_at
-  ) {
+  if (!appointment || !doctor || !appointment.id || !appointment.starts_at || !appointment.ends_at) {
     return (
-      <View style={ui.page}>
-        <Header title="Confirmation" />
-        <View style={ui.content}>
-          <Text style={styles.error}>
-            Les informations du rendez-vous sont indisponibles.
-          </Text>
-          <Button
-            title="Retour à l'accueil"
-            onPress={() => navigation.navigate('Main')}
-          />
-        </View>
-      </View>
+      <Screen>
+        <ErrorState message="Les informations du rendez-vous sont indisponibles." />
+        <Button title="Retour à l'accueil" icon="home-outline" onPress={() => navigation.navigate('Main')} />
+      </Screen>
     );
   }
 
   return (
-    <View style={ui.page}>
-      <Header
-        title="Rendez-vous enregistré"
-        subtitle="Votre demande a été reçue"
-      />
-
-      <ScrollView contentContainerStyle={ui.content}>
-        <View style={styles.successCard}>
-          <Text style={styles.successSymbol}>✓</Text>
-          <Text style={styles.successTitle}>
-            Réservation enregistrée
-          </Text>
-          <Text style={styles.successDescription}>
-            Votre rendez-vous a été créé avec succès.
-          </Text>
-          <Text style={styles.status}>
-            {statusLabel(appointment.status)}
-          </Text>
-        </View>
-
-        <View style={ui.card}>
-          <Text style={ui.h2}>Détails du rendez-vous</Text>
-
-          <Text style={styles.label}>Numéro de réservation</Text>
-          <Text style={styles.value}>#{appointment.id}</Text>
-
-          <Text style={styles.label}>Médecin</Text>
-          <Text style={styles.value}>Dr. {doctor.name}</Text>
-
-          <Text style={styles.label}>Spécialité</Text>
-          <Text style={styles.value}>{doctor.specialty}</Text>
-
-          <Text style={styles.label}>Date</Text>
-          <Text style={styles.value}>
-            {formatDate(appointment.starts_at)}
-          </Text>
-
-          <Text style={styles.label}>Heure de début</Text>
-          <Text style={styles.value}>
-            {formatTime(appointment.starts_at)}
-          </Text>
-
-          <Text style={styles.label}>Heure de fin</Text>
-          <Text style={styles.value}>
-            {formatTime(appointment.ends_at)}
-          </Text>
-
-          <Text style={styles.label}>Tarif de consultation</Text>
-          <Text style={styles.value}>{doctor.fee} USD</Text>
-
-          {appointment.reason ? (
-            <>
-              <Text style={styles.label}>Motif</Text>
-              <Text style={styles.value}>{appointment.reason}</Text>
-            </>
-          ) : null}
-        </View>
-
-        <View style={ui.card}>
-          <Text style={ui.label}>Information importante</Text>
-          <Text style={styles.note}>
-            Conservez votre numéro de réservation.
-            Le statut affiché correspond à celui enregistré par la clinique.
-          </Text>
-        </View>
-
-        <Button
-          title="Voir mes rendez-vous"
-          onPress={() =>
-            navigation.navigate('Main', {
-              screen: 'Mes RDV',
-            })
-          }
-        />
-
-        <View style={styles.secondaryButton}>
+    <Screen
+      footer={
+        <View style={s.footer}>
+          <Button
+            title="Voir mes rendez-vous"
+            icon="calendar-outline"
+            onPress={() => navigation.navigate('Main', { screen: 'Mes RDV' })}
+          />
           <Button
             title="Retour à l'accueil"
-            secondary
-            onPress={() =>
-              navigation.navigate('Main', {
-                screen: 'Accueil',
-              })
-            }
+            variant="secondary"
+            icon="home-outline"
+            onPress={() => navigation.navigate('Main', { screen: 'Accueil' })}
           />
         </View>
-      </ScrollView>
-    </View>
+      }
+    >
+      <Card style={s.success}>
+        <View style={s.successIcon}>
+          <Icon name="checkmark" size={32} color={color.onPrimary} />
+        </View>
+        <Text style={s.successTitle}>Réservation enregistrée</Text>
+        <Text style={s.successText}>Votre rendez-vous a été créé avec succès.</Text>
+        <StatusBadge status={appointment.status} label={STATUS_LABELS[appointment.status] ?? appointment.status} />
+      </Card>
+
+      <Card style={s.section}>
+        <Text style={type.h2}>Détails du rendez-vous</Text>
+        <InfoRow icon="receipt-outline" label="Numéro de réservation" value={`#${appointment.id}`} strong />
+        <InfoRow icon="person-outline" label="Médecin" value={`Dr. ${doctor.name}`} strong />
+        <InfoRow icon="medkit-outline" label="Spécialité" value={doctor.specialty} />
+        <InfoRow icon="calendar-outline" label="Date" value={formatDate(appointment.starts_at)} strong />
+        <InfoRow
+          icon="time-outline"
+          label="Horaire"
+          value={`${formatTime(appointment.starts_at)} – ${formatTime(appointment.ends_at)}`}
+          strong
+        />
+        <InfoRow icon="cash-outline" label="Tarif de consultation" value={`${doctor.fee} USD`} />
+        {appointment.reason ? (
+          <InfoRow icon="document-text-outline" label="Motif" value={appointment.reason} />
+        ) : null}
+      </Card>
+
+      <View style={s.note}>
+        <Icon name="information-circle" size="md" color={color.successInk} />
+        <Text style={s.noteText}>
+          Conservez votre numéro de réservation. Le statut affiché correspond à celui enregistré par la clinique.
+        </Text>
+      </View>
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  successCard: {
-    backgroundColor: '#EAF8EF',
-    borderRadius: 18,
-    padding: 24,
+const s = StyleSheet.create({
+  success: { alignItems: 'center', gap: space.xs, paddingVertical: space.lg },
+  successIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: radius.full,
+    backgroundColor: color.success,
     alignItems: 'center',
-    marginBottom: 18,
+    justifyContent: 'center',
+    marginBottom: space.xs,
   },
-  successSymbol: {
-    fontSize: 44,
-    color: '#12834C',
-    fontWeight: '800',
-  },
-  successTitle: {
-    fontSize: 21,
-    fontWeight: '800',
-    color: colors.text,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  successDescription: {
-    color: colors.muted,
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  status: {
-    color: '#12834C',
-    fontWeight: '700',
-    marginTop: 14,
-    textAlign: 'center',
-  },
-  label: {
-    fontSize: 12,
-    color: colors.muted,
-    marginTop: 15,
-  },
-  value: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: 5,
-  },
+  successTitle: { ...type.h2, textAlign: 'center' },
+  successText: { ...type.body, color: color.textSecondary, textAlign: 'center', marginBottom: space.xs },
+  section: { gap: space.md },
   note: {
-    color: colors.muted,
-    lineHeight: 21,
-    marginTop: 10,
+    flexDirection: 'row',
+    gap: space.xs,
+    padding: space.sm,
+    borderRadius: radius.md,
+    backgroundColor: color.successSoft + '55',
   },
-  secondaryButton: {
-    marginTop: 12,
-  },
-  error: {
-    color: colors.error,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
+  noteText: { ...type.body, color: color.successInk, flex: 1 },
+  footer: { gap: space.xs },
 });
-

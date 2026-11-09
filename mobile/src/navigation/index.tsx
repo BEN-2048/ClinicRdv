@@ -1,15 +1,13 @@
-
 import React from 'react';
 import { ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Role, useAuth } from '../context/AuthContext';
-import { colors } from '../theme/colors';
-import { fonts, palette } from '../theme/figma';
-import FigmaIcon, { FigmaIconName } from '../components/FigmaIcon';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { color, fonts, palette } from '../theme';
+import Icon, { IconName } from '../components/ui/Icon';
 
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
@@ -29,6 +27,7 @@ import WaitingListScreen from '../screens/patient/WaitingListScreen';
 
 import DoctorDashboardScreen from '../screens/doctor/DoctorDashboardScreen';
 import DoctorAgendaScreen from '../screens/doctor/DoctorAgendaScreen';
+import AgendaSettingsScreen from '../screens/doctor/AgendaSettingsScreen';
 import AppointmentDetailScreen from '../screens/doctor/AppointmentDetailScreen';
 
 import ClinicManagementScreen from '../screens/admin/ClinicManagementScreen';
@@ -42,172 +41,132 @@ import SecretaryBookScreen from '../screens/secretary/SecretaryBookScreen';
 import SecretaryDoctorFormScreen from '../screens/secretary/SecretaryDoctorFormScreen';
 import SecretaryDoctorScheduleScreen from '../screens/secretary/SecretaryDoctorScheduleScreen';
 
+
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Options communes aux navigations médecin, administration et secrétariat
-const tabOpts = {
-  headerShown: false,
-  tabBarActiveTintColor: colors.primary,
-  tabBarInactiveTintColor: colors.muted,
-  tabBarLabelStyle: {
-    fontSize: 11,
-    fontWeight: '600' as const,
+type TabDef = {
+  name: string;
+  component: React.ComponentType<any>;
+  icon: IconName;
+  iconActive: IconName;
+  headerShown?: boolean;
+};
+
+const profileTab: TabDef = {
+  name: 'Profil',
+  component: ProfileScreen,
+  icon: 'person-outline',
+  iconActive: 'person',
+};
+
+const tabsByRole: Record<Role, { headerShown: boolean; tabs: TabDef[] }> = {
+  patient: {
+    headerShown: false,
+    tabs: [
+      { name: 'Accueil', component: HomeScreen, icon: 'home-outline', iconActive: 'home' },
+      { name: 'Médecins', component: DoctorListScreen, icon: 'medkit-outline', iconActive: 'medkit' },
+      { name: 'Mes RDV', component: MyAppointmentsScreen, icon: 'calendar-outline', iconActive: 'calendar' },
+      profileTab,
+    ],
   },
-  tabBarStyle: {
-    height: 62,
-    paddingBottom: 7,
-    paddingTop: 5,
-    backgroundColor: '#FFFFFF',
-    borderTopColor: '#E9EDF6',
+  doctor: {
+    headerShown: false,
+    tabs: [
+      { name: 'Tableau de bord', component: DoctorDashboardScreen, icon: 'grid-outline', iconActive: 'grid' },
+      { name: 'Agenda', component: DoctorAgendaScreen, icon: 'calendar-outline', iconActive: 'calendar' },
+      profileTab,
+    ],
+  },
+  admin: {
+    headerShown: false,
+    tabs: [
+      { name: 'Cabinet', component: ClinicManagementScreen, icon: 'business-outline', iconActive: 'business' },
+      { name: 'Rendez-vous', component: SecretaryAppointmentsScreen, icon: 'calendar-outline', iconActive: 'calendar' },
+      { name: 'Médecins', component: SecretaryDoctorsScreen, icon: 'medkit-outline', iconActive: 'medkit' },
+      { name: 'Statistiques', component: SecretaryStatsScreen, icon: 'stats-chart-outline', iconActive: 'stats-chart' },
+      profileTab,
+    ],
+  },
+  secretary: {
+    headerShown: false,
+    tabs: [
+      { name: 'Accueil', component: SecretaryDashboardScreen, icon: 'home-outline', iconActive: 'home' },
+      { name: 'Rendez-vous', component: SecretaryAppointmentsScreen, icon: 'calendar-outline', iconActive: 'calendar' },
+      { name: 'Médecins', component: SecretaryDoctorsScreen, icon: 'medkit-outline', iconActive: 'medkit' },
+      { name: 'Statistiques', component: SecretaryStatsScreen, icon: 'stats-chart-outline', iconActive: 'stats-chart' },
+      profileTab,
+    ],
   },
 };
 
-// ============================================
-// NAVIGATION PATIENT
-// ============================================
+const makeRoleTabs = (role: Role) =>
+  function RoleTabs() {
+    const insets = useSafeAreaInsets();
+    const config = tabsByRole[role];
+    const compact = config.tabs.length > 4;
 
-const patientTabIcons: Record<string, string> = {
-  Accueil: 'tab-home',
-  Médecins: 'tab-doctors',
-  'Mes RDV': 'tab-appointments',
-  Profil: 'tab-profile',
-};
-
-const PatientTabs = () => {
-  const insets = useSafeAreaInsets();
-
-  return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarActiveTintColor: palette.primaryBright,
-        tabBarInactiveTintColor: palette.inkSoft,
-        tabBarLabelStyle: {
-          fontFamily: fonts.semibold,
-          fontSize: 12,
-          lineHeight: 16,
-          letterSpacing: 0.24,
-        },
-        tabBarIconStyle: {
-          marginTop: 2,
-        },
-        tabBarStyle: {
-          height: 64 + insets.bottom,
-          paddingTop: 8,
-          paddingBottom: 8 + insets.bottom,
-          backgroundColor: 'rgba(255,255,255,0.95)',
-          borderTopWidth: 0,
-          shadowColor: '#0F172A',
-          shadowOpacity: 0.06,
-          shadowRadius: 20,
-          shadowOffset: {
-            width: 0,
-            height: -4,
+    return (
+      <Tab.Navigator
+        screenOptions={{
+          headerShown: config.headerShown,
+          headerTitleStyle: { fontFamily: fonts.semibold, color: color.text },
+          headerStyle: { backgroundColor: color.surface },
+          headerShadowVisible: false,
+          tabBarActiveTintColor: palette.primaryBright,
+          tabBarInactiveTintColor: color.textSecondary,
+          tabBarLabelStyle: {
+            fontFamily: fonts.semibold,
+            fontSize: compact ? 11 : 12,
+            lineHeight: 16,
+            letterSpacing: compact ? 0 : 0.24,
           },
-          elevation: 8,
-        },
-        tabBarIcon: ({ focused }) => (
-          <FigmaIcon
-            name={`${patientTabIcons[route.name]}-${focused ? 'active' : 'inactive'}` as FigmaIconName}
+          tabBarIconStyle: { marginTop: 2 },
+          tabBarStyle: {
+            height: 64 + insets.bottom,
+            paddingTop: 8,
+            paddingBottom: 8 + insets.bottom,
+            backgroundColor: 'rgba(255,255,255,0.95)',
+            borderTopWidth: 0,
+            shadowColor: palette.shadow,
+            shadowOpacity: 0.06,
+            shadowRadius: 20,
+            shadowOffset: { width: 0, height: -4 },
+            elevation: 8,
+          },
+        }}
+      >
+        {config.tabs.map((t) => (
+          <Tab.Screen
+            key={t.name}
+            name={t.name}
+            component={t.component}
+            options={{
+              ...(t.headerShown !== undefined ? { headerShown: t.headerShown } : {}),
+              tabBarIcon: ({ focused, color: tint }) => (
+                <Icon name={focused ? t.iconActive : t.icon} size="lg" color={tint} />
+              ),
+            }}
           />
-        ),
-      })}
-    >
-      <Tab.Screen name="Accueil" component={HomeScreen} />
-      <Tab.Screen name="Médecins" component={DoctorListScreen} />
-      <Tab.Screen
-        name="Mes RDV"
-        component={MyAppointmentsScreen}
-        options={{ headerShown: false }}
-      />
-      <Tab.Screen name="Profil" component={ProfileScreen} />
-    </Tab.Navigator>
-  );
+        ))}
+      </Tab.Navigator>
+    );
+  };
+
+const stackOptions = {
+  headerTitleStyle: { fontFamily: fonts.semibold, fontSize: 17, color: color.text },
+  headerStyle: { backgroundColor: color.surface },
+  headerTintColor: color.text,
+  headerShadowVisible: false,
+  headerBackTitle: 'Retour',
+  contentStyle: { backgroundColor: color.page },
 };
-
-// ============================================
-// NAVIGATION MÉDECIN
-// ============================================
-
-const DoctorTabs = () => (
-  <Tab.Navigator screenOptions={tabOpts}>
-    <Tab.Screen
-      name="Tableau de bord"
-      component={DoctorDashboardScreen}
-    />
-
-    <Tab.Screen
-      name="Agenda"
-      component={DoctorAgendaScreen}
-    />
-
-    <Tab.Screen
-      name="Profil"
-      component={ProfileScreen}
-    />
-  </Tab.Navigator>
-);
-
-// ============================================
-// NAVIGATION ADMINISTRATION
-// ============================================
-
-const AdminTabs = () => (
-  <Tab.Navigator screenOptions={tabOpts}>
-    <Tab.Screen
-      name="Clinique"
-      component={ClinicManagementScreen}
-    />
-
-    <Tab.Screen
-      name="Profil"
-      component={ProfileScreen}
-    />
-  </Tab.Navigator>
-);
-
-// ============================================
-// NAVIGATION SECRÉTARIAT
-// ============================================
-
-const SecretaryTabs = () => (
-  <Tab.Navigator screenOptions={tabOpts}>
-    <Tab.Screen
-      name="Accueil"
-      component={SecretaryDashboardScreen}
-    />
-
-    <Tab.Screen
-      name="Rendez-vous"
-      component={SecretaryAppointmentsScreen}
-    />
-
-    <Tab.Screen
-      name="Médecins"
-      component={SecretaryDoctorsScreen}
-    />
-
-    <Tab.Screen
-      name="Statistiques"
-      component={SecretaryStatsScreen}
-    />
-
-    <Tab.Screen
-      name="Profil"
-      component={ProfileScreen}
-    />
-  </Tab.Navigator>
-);
-
-// ============================================
-// NAVIGATION SELON LE RÔLE
-// ============================================
 
 const tabsForRole: Record<Role, React.ComponentType> = {
-  patient: PatientTabs,
-  doctor: DoctorTabs,
-  admin: AdminTabs,
-  secretary: SecretaryTabs,
+  patient: makeRoleTabs('patient'),
+  doctor: makeRoleTabs('doctor'),
+  admin: makeRoleTabs('admin'),
+  secretary: makeRoleTabs('secretary'),
 };
 
 // ============================================
@@ -221,14 +180,14 @@ export default function RootNavigator() {
     return (
       <ActivityIndicator
         style={{ flex: 1 }}
-        color={colors.primary}
+        color={color.primary}
       />
     );
   }
 
   return (
     <NavigationContainer>
-      <Stack.Navigator>
+      <Stack.Navigator screenOptions={stackOptions}>
         {!user ? (
           <>
             <Stack.Screen
@@ -240,19 +199,19 @@ export default function RootNavigator() {
             <Stack.Screen
               name="Register"
               component={RegisterScreen}
-              options={{ title: 'Inscription' }}
+              options={{ headerShown: false }}
             />
             <Stack.Screen
               name="VerifyEmail"
               component={VerifyEmailScreen}
-              options={{ title: 'Verification de l e-mail' }}
+              options={{ headerShown: false }}
             />
           </>
         ) : (
           <>
             <Stack.Screen
               name="Main"
-              component={tabsForRole[user.role] ?? PatientTabs}
+              component={tabsForRole[user.role] ?? tabsForRole.patient}
               options={{ headerShown: false }}
             />
 
@@ -260,10 +219,7 @@ export default function RootNavigator() {
               <Stack.Screen
                 name="Notifications"
                 component={NotificationsScreen}
-                options={{
-                  title: 'Notifications',
-                  headerShown: false,
-                }}
+                options={{ title: 'Notifications' }}
               />
             )}
 
@@ -288,36 +244,25 @@ export default function RootNavigator() {
             <Stack.Screen
               name="BookingReview"
               component={BookingReviewScreen}
-              options={{
-                title: 'Confirmation de réservation',
-                headerShown: false,
-              }}
+              options={{ title: 'Confirmation de réservation' }}
             />
 
             <Stack.Screen
               name="BookingConflict"
               component={BookingConflictScreen}
-              options={{
-                title: 'Conflit de réservation',
-                headerShown: false,
-              }}
+              options={{ title: 'Créneau indisponible' }}
             />
 
             <Stack.Screen
               name="WaitingList"
               component={WaitingListScreen}
-              options={{
-                title: 'Alerte désistement',
-                headerTitleStyle: { fontFamily: fonts.semibold },
-                headerStyle: { backgroundColor: palette.page },
-                headerShadowVisible: false,
-              }}
+              options={{ title: 'Alerte désistement' }}
             />
 
             <Stack.Screen
               name="BookingConfirm"
               component={BookingConfirmScreen}
-              options={{ title: 'Confirmation' }}
+              options={{ title: 'Confirmation', headerBackVisible: false, gestureEnabled: false }}
             />
 
             {/* FICHE DE CONSULTATION DU MÉDECIN */}
@@ -329,6 +274,14 @@ export default function RootNavigator() {
                 headerBackTitle: 'Retour',
               }}
             />
+
+            {user.role === 'doctor' && (
+              <Stack.Screen
+                name="AgendaSettings"
+                component={AgendaSettingsScreen}
+                options={{ title: 'Horaires et congés' }}
+              />
+            )}
 
             <Stack.Screen
               name="SecretaryBook"

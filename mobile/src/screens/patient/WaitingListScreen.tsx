@@ -18,7 +18,7 @@ import {
   WaitingTimeSlot,
 } from '../../api/services';
 import { useAuth } from '../../context/AuthContext';
-import FigmaIcon from '../../components/FigmaIcon';
+import Icon, { IconName } from '../../components/ui/Icon';
 import {
   CLINIC_TIME_ZONE,
   InitialsAvatar,
@@ -26,7 +26,6 @@ import {
   ordinalSuffix,
 } from '../../components/PatientFigmaUI';
 import { fonts, palette, shadow, type } from '../../theme/figma';
-
 type Doctor = {
   id: number;
   first_name: string;
@@ -277,7 +276,7 @@ export default function WaitingListScreen() {
           {noSlotSoon ? (
             <View style={styles.badgeWrap}>
               <View style={styles.amberBadge}>
-                <FigmaIcon name="wl-calendar-off" />
+                <Icon name="calendar-clear-outline" size={14} color={palette.amberDot} />
                 <Text style={styles.amberBadgeText}>Aucun créneau libre sous {LOOKAHEAD_DAYS} jours</Text>
               </View>
             </View>
@@ -288,7 +287,7 @@ export default function WaitingListScreen() {
       <View style={styles.section}>
         <View style={styles.infoCard}>
           <View style={[styles.infoIcon, shadow.soft]}>
-            <FigmaIcon name="wl-info-bell" />
+            <Icon name="notifications" size={18} color={palette.white} />
           </View>
           <View style={styles.flexText}>
             <Text style={type.h3}>Soyez le premier prévenu</Text>
@@ -365,14 +364,16 @@ export default function WaitingListScreen() {
 
           <Text style={[type.h2, styles.groupTitle]}>Canaux de notification prioritaire</Text>
           <ChannelRow
-            icon="wl-push"
+            icon="phone-portrait-outline"
+            iconColor={palette.primary}
             title="Notifications push prioritaires"
             subtitle="Alerte sonore immédiate sur votre mobile"
             value={prefs.notifyPush}
             onChange={(v) => setPrefs((p) => ({ ...p, notifyPush: v }))}
           />
           <ChannelRow
-            icon="wl-sms"
+            icon="chatbubble-ellipses-outline"
+            iconColor={palette.teal}
             title="SMS instantané"
             subtitle={maskedPhone || 'Ajoutez un numéro dans votre profil'}
             value={prefs.notifySms}
@@ -410,10 +411,10 @@ export default function WaitingListScreen() {
           style={({ pressed }) => [styles.cta, shadow.raised, (pressed || saving) && { opacity: 0.85 }]}
         >
           {saving ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={palette.white} />
           ) : (
             <>
-              <FigmaIcon name="wl-cta-bell" />
+              <Icon name="notifications" size={18} color={palette.white} />
               <Text style={styles.ctaText}>
                 {isActive ? 'Mettre à jour mon alerte' : "Activer l'alerte désistement"}
               </Text>
@@ -428,7 +429,7 @@ export default function WaitingListScreen() {
         ) : null}
 
         <View style={styles.rgpd}>
-          <FigmaIcon name="wl-shield" />
+          <Icon name="shield-checkmark-outline" size={14} color={palette.inkMuted} />
           <Text style={styles.rgpdText}>
             Données médicales hébergées HDS & protégées par la réglementation RGPD santé.
           </Text>
@@ -440,13 +441,15 @@ export default function WaitingListScreen() {
 
 function ChannelRow({
   icon,
+  iconColor,
   title,
   subtitle,
   value,
   disabled,
   onChange,
 }: {
-  icon: 'wl-push' | 'wl-sms';
+  icon: IconName;
+  iconColor: string;
   title: string;
   subtitle: string;
   value: boolean;
@@ -458,7 +461,7 @@ function ChannelRow({
       <View style={styles.channel}>
         <View style={styles.channelInfo}>
           <View style={styles.channelIcon}>
-            <FigmaIcon name={icon} />
+            <Icon name={icon} size={16} color={iconColor} />
           </View>
           <View style={styles.flexText}>
             <Text style={type.bodyMedium}>{title}</Text>
@@ -527,7 +530,7 @@ const styles = StyleSheet.create({
   },
   chipSelected: { backgroundColor: palette.primary },
   chipText: { ...type.body, color: palette.inkSoft, textAlign: 'center' },
-  chipTextSelected: { ...type.bodyMedium, color: '#fff', textAlign: 'center' },
+  chipTextSelected: { ...type.bodyMedium, color: palette.white, textAlign: 'center' },
   days: { flexDirection: 'row', gap: 6, paddingTop: 8 },
   day: {
     flex: 1,
@@ -546,8 +549,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   dayNumber: { ...type.body, color: palette.inkSoft },
-  dayNumberSelected: { ...type.bodyMedium, color: '#fff' },
-  white: { color: '#fff' },
+  dayNumberSelected: { ...type.bodyMedium, color: palette.white },
+  white: { color: palette.white },
   notices: { gap: 8, paddingTop: 8 },
   notice: {
     flexDirection: 'row',
@@ -563,7 +566,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: palette.radioBorder,
-    backgroundColor: '#fff',
+    backgroundColor: palette.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -591,7 +594,7 @@ const styles = StyleSheet.create({
   switch: { width: 44, height: 24, borderRadius: 12, padding: 2 },
   switchOn: { backgroundColor: palette.primary, alignItems: 'flex-end' },
   switchOff: { backgroundColor: palette.tint200, alignItems: 'flex-start' },
-  knob: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' },
+  knob: { width: 20, height: 20, borderRadius: 10, backgroundColor: palette.white },
   positionCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -603,7 +606,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#fff',
+    backgroundColor: palette.white,
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'center',
@@ -627,7 +630,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
   },
-  ctaText: { ...type.h2, color: '#fff', textAlign: 'center' },
+  ctaText: { ...type.h2, color: palette.white, textAlign: 'center' },
   deactivate: { alignSelf: 'center', paddingTop: 12, paddingBottom: 4 },
   deactivateText: { ...type.label, color: palette.dangerInk },
   rgpd: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 12, paddingHorizontal: 24 },

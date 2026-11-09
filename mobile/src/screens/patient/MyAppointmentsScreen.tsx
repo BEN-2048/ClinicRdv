@@ -11,21 +11,18 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { AppointmentsApi, AppointmentStatus, WaitingAlertSummary, WaitingListApi } from '../../api/services';
-import { useAuth } from '../../context/AuthContext';
-import FigmaIcon from '../../components/FigmaIcon';
+import Icon, { IconName } from '../../components/ui/Icon';
+import AppHeader from '../../components/ui/AppHeader';
 import {
   CLINIC_TIME_ZONE,
   InitialsAvatar,
   doctorDisplayName,
-  initialsOf,
   ordinalSuffix,
 } from '../../components/PatientFigmaUI';
 import { fonts, palette, shadow, type } from '../../theme/figma';
-
 type Appointment = {
   id: number;
   doctor_id: number;
@@ -98,8 +95,6 @@ const apiError = (e: any, fallback: string) => e?.response?.data?.error || fallb
 
 export default function MyAppointmentsScreen() {
   const navigation = useNavigation<any>();
-  const insets = useSafeAreaInsets();
-  const { user } = useAuth();
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [alerts, setAlerts] = useState<WaitingAlertSummary[]>([]);
@@ -184,31 +179,32 @@ export default function MyAppointmentsScreen() {
 
   return (
     <View style={styles.page}>
-      <View style={[styles.header, { paddingTop: insets.top }]}>
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.brand}>ClinicRDV</Text>
-            <Text style={type.caption}>Médecins</Text>
-          </View>
-          <View style={styles.headerActions}>
-            <View style={styles.headerBell}>
-              <FigmaIcon name="header-bell" />
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Profil"
-              onPress={() => navigation.navigate('Profil')}
-              style={styles.headerAvatarWrap}
-            >
-              <View style={styles.headerAvatar}>
-                <Text style={styles.headerAvatarText}>
-                  {initialsOf(`${user?.first_name ?? ''} ${user?.last_name ?? ''}`)}
-                </Text>
-              </View>
-            </Pressable>
-          </View>
-        </View>
-      </View>
+      <AppHeader
+        title="Mes rendez-vous"
+        subtitle="Gérez votre suivi de santé en toute sérénité"
+        actions={[
+          {
+            icon: searchOpen ? 'close' : 'search',
+            accessibilityLabel: 'Rechercher un rendez-vous',
+            active: searchOpen,
+            onPress: () => {
+              setSearchOpen((o) => !o);
+              if (searchOpen) setQuery('');
+            },
+          },
+          {
+            icon: 'swap-vertical',
+            accessibilityLabel: "Inverser l'ordre d'affichage",
+            active: reverse,
+            onPress: () => setReverse((r) => !r),
+          },
+          {
+            icon: 'notifications-outline',
+            accessibilityLabel: 'Ouvrir les notifications',
+            onPress: () => navigation.navigate('Notifications'),
+          },
+        ]}
+      />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -216,33 +212,6 @@ export default function MyAppointmentsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} colors={[palette.primary]} />
         }
       >
-        <View style={styles.titleRow}>
-          <View style={styles.titleText}>
-            <Text style={type.h1}>Mes rendez-vous</Text>
-            <Text style={[type.body, { color: palette.inkSoft }]}>Gérez votre suivi de santé en toute sérénité</Text>
-          </View>
-          <View style={styles.titleActions}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Rechercher un rendez-vous"
-              onPress={() => {
-                setSearchOpen((o) => !o);
-                if (searchOpen) setQuery('');
-              }}
-              style={[styles.roundButton, shadow.soft]}
-            >
-              <FigmaIcon name="appt-search" />
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Inverser l'ordre d'affichage"
-              onPress={() => setReverse((r) => !r)}
-              style={[styles.roundButton, shadow.soft, reverse && styles.roundButtonOn]}
-            >
-              <FigmaIcon name="appt-filter" />
-            </Pressable>
-          </View>
-        </View>
 
         {searchOpen ? (
           <View style={styles.searchWrap}>
@@ -329,7 +298,7 @@ export default function MyAppointmentsScreen() {
                 <Rect width="100%" height="100%" fill="url(#alertGradient)" />
               </Svg>
               <View style={[styles.alertIcon, shadow.soft]}>
-                <FigmaIcon name="appt-alert-bell" />
+                <Icon name="notifications" size={20} color={palette.primary} />
                 <View style={styles.alertIconDot} />
               </View>
               <View style={styles.flex}>
@@ -352,7 +321,7 @@ export default function MyAppointmentsScreen() {
                   style={styles.alertLink}
                 >
                   <Text style={[type.label, { color: palette.primary }]}>Gérer mes alertes</Text>
-                  <FigmaIcon name="appt-arrow" />
+                  <Icon name="arrow-forward" size={14} color={palette.primary} />
                 </Pressable>
               </View>
             </View>
@@ -361,7 +330,7 @@ export default function MyAppointmentsScreen() {
           {!loading && !error && tab === 'upcoming' ? (
             <View style={[styles.tipCard, shadow.soft]}>
               <View style={styles.tipIcon}>
-                <FigmaIcon name="appt-info" />
+                <Icon name="information-circle" size={18} color={palette.tealDark} />
               </View>
               <View style={styles.flex}>
                 <Text style={[type.label, { color: palette.ink }]}>Rappel bienveillant</Text>
@@ -380,7 +349,7 @@ export default function MyAppointmentsScreen() {
           onPress={() => navigation.navigate('Médecins')}
           style={({ pressed }) => [styles.cta, shadow.raised, pressed && { opacity: 0.9 }]}
         >
-          <FigmaIcon name="appt-plus" />
+          <Icon name="add" size={20} color={palette.white} />
           <Text style={styles.ctaText} numberOfLines={1} adjustsFontSizeToFit>
             Prendre un nouveau rendez-vous
           </Text>
@@ -406,7 +375,6 @@ function AppointmentCard({
   onCancel: () => void;
 }) {
   const status = STATUS[a.status] ?? STATUS.confirmed;
-  const pending = a.status === 'pending';
   const name = doctorDisplayName(a.doctor_name);
 
   return (
@@ -430,7 +398,7 @@ function AppointmentCard({
         </View>
         {showActions ? (
           <View style={styles.countdown}>
-            <FigmaIcon name="appt-timer" />
+            <Icon name="hourglass-outline" size={14} color={palette.primary} />
             <Text style={styles.countdownText}>{countdown(a.starts_at)}</Text>
           </View>
         ) : null}
@@ -448,13 +416,13 @@ function AppointmentCard({
 
       <View style={styles.details}>
         <DetailRow
-          icon={pending ? 'appt-calendar-pending' : 'appt-calendar'}
+          icon="calendar-outline"
           label="Date & heure"
           value={formatDateTime(a.starts_at)}
           strong
         />
         {a.reason ? (
-          <DetailRow icon={pending ? 'appt-motif-pending' : 'appt-motif'} label="Motif" value={a.reason} />
+          <DetailRow icon="document-text-outline"label="Motif" value={a.reason} />
         ) : null}
       </View>
 
@@ -466,7 +434,7 @@ function AppointmentCard({
             onPress={onReschedule}
             style={[styles.actionButton, { backgroundColor: palette.tint200 }]}
           >
-            <FigmaIcon name="appt-reschedule" />
+            <Icon name="repeat" size={16} color={palette.primary} />
             <Text style={[type.bodyMedium, { color: palette.primary }]}>Reporter</Text>
           </Pressable>
           <Pressable
@@ -479,7 +447,7 @@ function AppointmentCard({
               <ActivityIndicator color={palette.dangerInk} />
             ) : (
               <>
-                <FigmaIcon name={pending ? 'appt-cancel-pending' : 'appt-cancel'} />
+                <Icon name="close-circle-outline" size={16} color={palette.dangerInk} />
                 <Text style={[type.bodyMedium, { color: palette.dangerInk }]}>Annuler</Text>
               </>
             )}
@@ -496,7 +464,7 @@ function DetailRow({
   value,
   strong,
 }: {
-  icon: 'appt-calendar' | 'appt-calendar-pending' | 'appt-motif' | 'appt-motif-pending';
+  icon: IconName;
   label: string;
   value: string;
   strong?: boolean;
@@ -504,7 +472,7 @@ function DetailRow({
   return (
     <View style={styles.detailRow}>
       <View style={[styles.detailIcon, shadow.soft]}>
-        <FigmaIcon name={icon} />
+        <Icon name={icon} size={16} color={palette.primary} />
       </View>
       <View style={styles.flex}>
         <Text style={type.caption}>{label}</Text>
@@ -517,57 +485,7 @@ function DetailRow({
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: palette.page },
   flex: { flex: 1, minWidth: 0 },
-  header: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 2,
-    zIndex: 2,
-  },
-  headerRow: {
-    height: 64,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  brand: { fontFamily: fonts.semibold, fontSize: 18, lineHeight: 22.5, letterSpacing: -0.18, color: palette.ink },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  headerBell: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  headerAvatarWrap: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  headerAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: palette.tint100,
-    borderWidth: 2,
-    borderColor: palette.tint100,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerAvatarText: { fontFamily: fonts.semibold, fontSize: 12, color: palette.primary },
-  scroll: { paddingBottom: 96 },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 12,
-    paddingBottom: 8,
-    paddingHorizontal: 16,
-  },
-  titleText: { flex: 1, paddingRight: 8 },
-  titleActions: { flexDirection: 'row', gap: 4 },
-  roundButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: palette.tint100,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  roundButtonOn: { backgroundColor: palette.tint200 },
+  scroll: { paddingTop: 12, paddingBottom: 96 },
   searchWrap: { paddingHorizontal: 16, paddingBottom: 4 },
   search: {
     ...type.body,
@@ -675,7 +593,7 @@ const styles = StyleSheet.create({
   },
   alertTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   alertPill: { backgroundColor: palette.primary, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
-  alertPillText: { ...type.caption, fontFamily: fonts.bold, color: '#fff' },
+  alertPillText: { ...type.caption, fontFamily: fonts.bold, color: palette.white },
   alertLink: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingTop: 2, alignSelf: 'flex-start' },
   tipCard: {
     flexDirection: 'row',
@@ -704,5 +622,5 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 24,
   },
-  ctaText: { ...type.h2, color: '#fff', textAlign: 'center', flexShrink: 1 },
+  ctaText: { ...type.h2, color: palette.white, textAlign: 'center', flexShrink: 1 },
 });
