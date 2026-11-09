@@ -1,5 +1,7 @@
 process.env.JWT_SECRET = 'test-secret';
 process.env.OTP_SECRET = 'test-otp-secret';
+process.env.BREVO_API_KEY = 'test-brevo-key';
+process.env.BREVO_SENDER_EMAIL = 'test@example.com';
 
 jest.mock('../src/config/db', () => {
   const query = jest.fn();

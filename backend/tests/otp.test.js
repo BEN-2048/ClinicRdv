@@ -1,4 +1,6 @@
 process.env.OTP_SECRET = 'test-otp-secret';
+process.env.BREVO_API_KEY = 'test-brevo-key';
+process.env.BREVO_SENDER_EMAIL = 'test@example.com';
 
 const crypto = require('crypto');
 const { generateCode, hashCode } = require('../src/controllers/otp.controller');
