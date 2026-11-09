@@ -1,35 +1,144 @@
-const bcrypt = require('bcrypt');
+﻿const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
 const env = require('../config/env');
+const otp = require('./otp.controller');
 
-const sign = (u) => jwt.sign({ id: u.id, role: u.role }, env.jwtSecret, { expiresIn: env.jwtExpiresIn });
+const sign = (u) =>
+  jwt.sign(
+    { id: u.id, role: u.role },
+    env.jwtSecret,
+    { expiresIn: env.jwtExpiresIn }
+  );
 
 exports.register = async (req, res, next) => {
+  const client = await pool.connect();
+  let transactionStarted = false;
+
   try {
     const { email, password, firstName, lastName, phone } = req.body;
+    const normalizedEmail = email.trim().toLowerCase();
+
+    await client.query('BEGIN');
+    transactionStarted = true;
+
     const hash = await bcrypt.hash(password, 10);
-    // Les inscriptions publiques créent toujours des patients
-    const r = await pool.query(
-      `INSERT INTO users(email,password_hash,role,first_name,last_name,phone)
-       VALUES($1,$2,'patient',$3,$4,$5) RETURNING id,email,role,first_name,last_name`,
-      [email.toLowerCase(), hash, firstName, lastName, phone || null]);
-    res.status(201).json({ user: r.rows[0], token: sign(r.rows[0]) });
-  } catch (e) {
-    if (e.code === '23505') return res.status(409).json({ error: 'E-mail déjà utilisé' });
-    next(e);
+
+    const result = await client.query(
+      `INSERT INTO users
+        (email, password_hash, role, first_name, last_name, phone, is_verified)
+       VALUES ($1, $2, 'patient', $3, $4, $5, FALSE)
+       RETURNING id, email, role, first_name, last_name`,
+      [normalizedEmail, hash, firstName, lastName, phone || null]
+    );
+
+    const user = result.rows[0];
+
+    const verification = await otp.createVerification(
+      client,
+      user.id,
+      user.email
+    );
+
+    await client.query('COMMIT');
+    transactionStarted = false;
+
+    res.status(201).json({
+      message: 'Compte cree. Verifiez votre adresse e-mail.',
+      email: user.email,
+      expiresIn: verification.expiresIn,
+    });
+  } catch (error) {
+    if (transactionStarted) {
+      await client.query('ROLLBACK').catch(() => {});
+    }
+
+    if (error.code === '23505') {
+      return res.status(409).json({ error: 'E-mail deja utilise' });
+    }
+
+    next(error);
+  } finally {
+    client.release();
   }
 };
 
 exports.login = async (req, res, next) => {
   try {
-    const r = await pool.query('SELECT * FROM users WHERE email=$1', [req.body.email.toLowerCase()]);
-    const u = r.rows[0];
-    if (!u || !(await bcrypt.compare(req.body.password, u.password_hash)))
+    const email = req.body.email.trim().toLowerCase();
+
+    const result = await pool.query(
+      'SELECT * FROM users WHERE LOWER(email) = LOWER($1)',
+      [email]
+    );
+
+    const user = result.rows[0];
+
+    if (!user || !(await bcrypt.compare(req.body.password, user.password_hash))) {
       return res.status(401).json({ error: 'Identifiants incorrects' });
+    }
+
+    if (user.role === 'patient' && user.is_verified === false) {
+      return res.status(403).json({
+        code: 'EMAIL_NOT_VERIFIED',
+        error: 'Veuillez verifier votre adresse e-mail avant de vous connecter.',
+      });
+    }
+
     res.json({
-      user: { id: u.id, email: u.email, role: u.role, first_name: u.first_name, last_name: u.last_name },
-      token: sign(u),
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        first_name: user.first_name,
+        last_name: user.last_name,
+      },
+      token: sign(user),
     });
-  } catch (e) { next(e); }
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.verifyEmail = async (req, res, next) => {
+  try {
+    const result = await otp.verifyCode(
+      req.body.email.trim().toLowerCase(),
+      req.body.code
+    );
+
+    if (!result.ok) {
+      return res.status(400).json({ error: result.reason });
+    }
+
+    res.json({
+      message: 'Adresse e-mail verifiee avec succes.',
+      user: result.user,
+      token: sign(result.user),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.resendOtp = async (req, res, next) => {
+  try {
+    const result = await otp.resendCode(
+      req.body.email.trim().toLowerCase()
+    );
+
+    if (!result.ok) {
+      return res.status(result.waitSeconds ? 429 : 400).json({
+        error: result.reason,
+        waitSeconds: result.waitSeconds,
+      });
+    }
+
+    res.json({
+      message: 'Nouveau code envoye par e-mail.',
+      expiresIn: result.expiresIn,
+    });
+  } catch (error) {
+    next(error);
+  }
 };

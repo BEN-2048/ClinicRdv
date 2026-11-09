@@ -1,20 +1,38 @@
 process.env.JWT_SECRET = 'test-secret';
+process.env.OTP_SECRET = 'test-otp-secret';
 
 jest.mock('../src/config/db', () => {
   const query = jest.fn();
-  const client = { query, release: jest.fn() };
-  return { query, connect: jest.fn(async () => client) };
+  const clientQuery = jest.fn();
+  const client = { query: clientQuery, release: jest.fn() };
+
+  return {
+    query,
+    connect: jest.fn(async () => client),
+    __clientQuery: clientQuery,
+  };
 });
 
+jest.mock('@getbrevo/brevo', () => ({
+  BrevoClient: jest.fn().mockImplementation(() => ({
+    transactionalEmails: {
+      sendTransacEmail: jest.fn().mockResolvedValue({
+        data: { messageId: 'test-message-id' },
+      }),
+    },
+  })),
+}));
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const pool = require('../src/config/db');
+const clientQuery = pool.__clientQuery;
 const app = require('../src/app');
 
 const token = (role, id = 1) => `Bearer ${jwt.sign({ id, role }, 'test-secret')}`;
 
 beforeEach(() => {
   pool.query.mockReset();
+  clientQuery.mockReset();
   pool.query.mockResolvedValue({ rows: [{ count: 1, status: 'confirmed', id: 1 }], rowCount: 1 });
 });
 
@@ -99,17 +117,45 @@ describe('tableau de bord médecin', () => {
 });
 
 describe('inscription publique', () => {
-  test('impossible de choisir le rôle secretary', async () => {
-    pool.query.mockResolvedValueOnce({
-      rows: [{ id: 1, email: 'x@y.fr', role: 'patient', first_name: 'A', last_name: 'B' }], rowCount: 1,
-    });
+  test('impossible de choisir le role secretary', async () => {
+    clientQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce({
+        rows: [{
+          id: 1,
+          email: 'x@y.fr',
+          role: 'patient',
+          first_name: 'A',
+          last_name: 'B',
+        }],
+        rowCount: 1,
+      })
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
     const res = await request(app).post('/api/auth/register').send({
-      email: 'x@y.fr', password: 'motdepasse', firstName: 'A', lastName: 'B', role: 'secretary',
+      email: 'x@y.fr',
+      password: 'motdepasse',
+      firstName: 'A',
+      lastName: 'B',
+      role: 'secretary',
     });
+
     expect(res.status).toBe(201);
-    const [sql, params] = pool.query.mock.calls[0];
-    expect(sql).toContain("'patient'");
-    expect(params).not.toContain('secretary');
-    expect(res.body.user.role).toBe('patient');
+
+    const insert = clientQuery.mock.calls.find(
+      ([sql]) => sql.includes('INSERT INTO users')
+    );
+
+    expect(insert).toBeDefined();
+    expect(insert[0]).toContain("'patient'");
+    expect(insert[0]).toContain('is_verified');
+    expect(insert[0]).toContain('FALSE');
+    expect(insert[1]).not.toContain('secretary');
+
+    expect(res.body.email).toBe('x@y.fr');
+    expect(res.body.token).toBeUndefined();
+    expect(res.body.user).toBeUndefined();
+    expect(clientQuery).toHaveBeenCalledTimes(4);
   });
 });

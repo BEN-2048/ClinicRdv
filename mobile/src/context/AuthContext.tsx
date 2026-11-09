@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { AuthApi, UsersApi } from '../api/services';
 
@@ -32,6 +32,7 @@ type Ctx = {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
+  verifyEmail: (email: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   updateUser: (data: UpdateUserData) => Promise<void>;
@@ -100,16 +101,23 @@ export function AuthProvider({
     setUser(data.user);
   };
 
-  // Inscription sans verification OTP
+  // L'inscription ne cree pas de session avant verification OTP.
   const register = async (data: RegisterData): Promise<void> => {
-    const response = await AuthApi.register(data);
-
-    await SecureStore.setItemAsync('token', response.data.token);
-    await SecureStore.setItemAsync('user', JSON.stringify(response.data.user));
-
-    setUser(response.data.user);
+    await AuthApi.register(data);
   };
 
+  const verifyEmail = async (email: string, code: string): Promise<void> => {
+    const { data } = await AuthApi.verifyEmail(email, code);
+
+    if (!data.token || !data.user) {
+      throw new Error('Reponse de verification incomplete.');
+    }
+
+    await SecureStore.setItemAsync('token', data.token);
+    await SecureStore.setItemAsync('user', JSON.stringify(data.user));
+
+    setUser(data.user);
+  };
   const logout = async (): Promise<void> => {
     await SecureStore.deleteItemAsync('token');
     await SecureStore.deleteItemAsync('user');
@@ -124,6 +132,7 @@ export function AuthProvider({
         loading,
         login,
         register,
+        verifyEmail,
         logout,
         refreshUser,
         updateUser,
