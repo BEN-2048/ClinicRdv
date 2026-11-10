@@ -5,6 +5,8 @@ import { MedicalRecordApi, PatientProfile, PatientRecord, PatientsApi, RecordApi
 import { errorMessage } from '../../api/client';
 import { RecordEntryForm, RecordSections } from '../../components/record/RecordSections';
 import { DocumentsPanel } from '../../components/record/DocumentsPanel';
+import { refreshEmergencyCardIfEnabled } from '../../services/emergencyCard';
+import { useAuth } from '../../context/AuthContext';
 import {
   Button,
   Card,
@@ -76,6 +78,7 @@ function StructuredPrescriptions({ item }: { item: Consultation }) {
 }
 
 export default function MedicalRecordScreen() {
+  const { user } = useAuth();
   const [tab, setTab] = useState<Tab>('synthese');
   const [summary, setSummary] = useState<PatientRecord | null>(null);
   const [declaring, setDeclaring] = useState(false);
@@ -116,6 +119,9 @@ export default function MedicalRecordScreen() {
         RecordApi.get(target.id),
       ]);
       setSummary(record.data);
+      if (user?.id != null) {
+        refreshEmergencyCardIfEnabled(String(user.id), record.data).catch(() => {});
+      }
       if (!Array.isArray(data?.consultations)) {
         throw new Error('Format du dossier médical invalide.');
       }

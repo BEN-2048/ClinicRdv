@@ -25,6 +25,7 @@ import MedicalRecordScreen from '../screens/patient/MedicalRecordScreen';
 import NotificationsScreen from '../screens/patient/NotificationsScreen';
 import WaitingListScreen from '../screens/patient/WaitingListScreen';
 import FamilyScreen from '../screens/patient/FamilyScreen';
+import EmergencyCardScreen from '../screens/patient/EmergencyCardScreen';
 import FacilityListScreen from '../screens/patient/FacilityListScreen';
 import FacilityDetailScreen from '../screens/patient/FacilityDetailScreen';
 import SharingScreen from '../screens/patient/SharingScreen';
@@ -200,11 +201,20 @@ export default function RootNavigator() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={stackOptions}>
         {authStatus === 'offline' && user ? (
-          <Stack.Screen
-            name="Offline"
-            component={OfflineScreen}
-            options={{ headerShown: false }}
-          />
+          <>
+            <Stack.Screen
+              name="Offline"
+              component={OfflineScreen}
+              options={{ headerShown: false }}
+            />
+            {user.role === 'patient' && (
+              <Stack.Screen
+                name="EmergencyCard"
+                component={EmergencyCardScreen}
+                options={{ title: 'Fiche d’urgence' }}
+              />
+            )}
+          </>
         ) : !user || authStatus !== 'authenticated' ? (
           <>
             <Stack.Screen
@@ -253,6 +263,14 @@ export default function RootNavigator() {
                 name="EmergencyAccess"
                 component={EmergencyAccessScreen}
                 options={{ title: 'Accès d’urgence' }}
+              />
+            )}
+
+            {user.role === 'patient' && (
+              <Stack.Screen
+                name="EmergencyCard"
+                component={EmergencyCardScreen}
+                options={{ title: 'Fiche d’urgence' }}
               />
             )}
 
