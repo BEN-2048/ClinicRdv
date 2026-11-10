@@ -10,6 +10,7 @@ const {
 } = require('../middleware/auth');
 
 const validate = require('../middleware/validate');
+const { createAuthLimiters } = require('../middleware/rateLimit');
 const s = require('../validators/schemas');
 
 const auth = require('../controllers/auth.controller');
@@ -25,16 +26,20 @@ const waitingList = require('../controllers/waitingList.controller');
 // AUTHENTIFICATION
 // =========================================
 
-router.post('/auth/register', validate(s.register), auth.register);
-router.post('/auth/login', validate(s.login), auth.login);
+const limits = createAuthLimiters();
+
+router.post('/auth/register', ...limits.register, validate(s.register), auth.register);
+router.post('/auth/login', ...limits.login, validate(s.login), auth.login);
 router.post(
   '/auth/verify-email',
+  ...limits.verifyEmail,
   validate(s.verifyEmail),
   auth.verifyEmail
 );
 
 router.post(
   '/auth/resend-otp',
+  ...limits.resendOtp,
   validate(s.resendOtp),
   auth.resendOtp
 );

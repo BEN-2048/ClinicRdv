@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const pool = require('../src/config/db');
+const { migrate } = require('./migrate');
 
 (async () => {
   const reset = process.argv.includes('--reset');
@@ -15,6 +16,7 @@ const pool = require('../src/config/db');
     const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
     await pool.query(sql);
     console.log('Schéma créé');
+    await migrate(pool);
   } catch (e) {
     console.error('Erreur db:init :', e.message);
     process.exitCode = 1;

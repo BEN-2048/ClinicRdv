@@ -19,7 +19,9 @@ exports.mine = async (req, res, next) => {
         JOIN doctors d ON d.id = a.doctor_id
         JOIN users u ON u.id = d.user_id
         JOIN specialties s ON s.id = d.specialty_id
-        LEFT JOIN consultation_notes cn ON cn.appointment_id = a.id
+        LEFT JOIN consultation_notes cn
+          ON cn.appointment_id = a.id
+         AND cn.status = 'completed'
         WHERE a.patient_id = $1
           AND (a.status = 'done' OR cn.id IS NOT NULL)
         ORDER BY a.starts_at DESC`,

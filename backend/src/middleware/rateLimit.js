@@ -1,0 +1,58 @@
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
+const env = require('../config/env');
+
+const MINUTE = 60 * 1000;
+
+const normalizedEmail = (req) =>
+  typeof req.body?.email === 'string'
+    ? req.body.email.trim().toLowerCase()
+    : '';
+
+const byIp = (req) => ipKeyGenerator(req.ip);
+const byEmail = (req) => normalizedEmail(req) || `ip:${byIp(req)}`;
+const byIpAndEmail = (req) => `${byIp(req)}|${normalizedEmail(req)}`;
+
+const limiter = ({ name, windowMs, limit, keyGenerator, skipSuccessfulRequests = false }) =>
+  rateLimit({
+    windowMs,
+    limit,
+    keyGenerator: (req) => `${name}:${keyGenerator(req)}`,
+    skipSuccessfulRequests,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    skip: () => !env.rateLimitEnabled,
+    handler: (req, res, next, options) => {
+      const retryAfter = Math.ceil(options.windowMs / 1000);
+      res.status(options.statusCode).json({
+        code: 'TOO_MANY_REQUESTS',
+        error: 'Trop de tentatives. Veuillez reessayer plus tard.',
+        retryAfter,
+      });
+    },
+  });
+
+const createAuthLimiters = () => ({
+  register: [
+    limiter({ name: 'register-ip', windowMs: 60 * MINUTE, limit: 10, keyGenerator: byIp }),
+  ],
+  login: [
+    limiter({ name: 'login-ip', windowMs: 15 * MINUTE, limit: 50, keyGenerator: byIp }),
+    limiter({
+      name: 'login-account',
+      windowMs: 15 * MINUTE,
+      limit: 5,
+      keyGenerator: byIpAndEmail,
+      skipSuccessfulRequests: true,
+    }),
+  ],
+  verifyEmail: [
+    limiter({ name: 'verify-ip', windowMs: 15 * MINUTE, limit: 30, keyGenerator: byIp }),
+    limiter({ name: 'verify-email', windowMs: 15 * MINUTE, limit: 10, keyGenerator: byEmail }),
+  ],
+  resendOtp: [
+    limiter({ name: 'resend-ip', windowMs: 60 * MINUTE, limit: 10, keyGenerator: byIp }),
+    limiter({ name: 'resend-email', windowMs: 60 * MINUTE, limit: 3, keyGenerator: byEmail }),
+  ],
+});
+
+module.exports = { createAuthLimiters };
