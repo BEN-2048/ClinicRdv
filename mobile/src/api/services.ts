@@ -17,6 +17,24 @@ export const AuthApi = {
 
   resendOtp: (email: string) =>
     api.post('/auth/resend-otp', { email }),
+
+  sessions: () =>
+    api.get<DeviceSession[]>('/auth/sessions'),
+
+  revokeSession: (sessionId: string) =>
+    api.delete(`/auth/sessions/${sessionId}`),
+
+  logoutAll: () =>
+    api.post<{ revoked: number }>('/auth/logout-all'),
+};
+
+export type DeviceSession = {
+  id: string;
+  device_label: string | null;
+  created_at: string;
+  last_used_at: string;
+  expires_at: string;
+  current: boolean;
 };
 
 // ============================================

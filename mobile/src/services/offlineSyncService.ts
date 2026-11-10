@@ -2,6 +2,7 @@ import {
   saveOfflineSnapshot,
 } from "../database/offlineRepository";
 import * as SecureStore from "expo-secure-store";
+import { currentSessionKey } from "./session";
 import {
   getOfflineSyncGeneration,
   isOfflineSyncGenerationValid,
@@ -88,10 +89,10 @@ export async function fetchOfflineSyncData(): Promise<{
   facilities: CachedFacility[];
 } | null> {
   const generation = getOfflineSyncGeneration();
-  const initialToken = await SecureStore.getItemAsync("token");
+  const initialSession = await currentSessionKey();
 
   if (
-    !initialToken ||
+    !initialSession ||
     !isOfflineSyncGenerationValid(generation)
   ) {
     return null;
@@ -154,11 +155,11 @@ export async function fetchOfflineSyncData(): Promise<{
     throw new Error("Medecins invalides : synchronisation annulee.");
   }
 
-  const currentToken = await SecureStore.getItemAsync("token");
+  const currentSession = await currentSessionKey();
 
   if (
-    !currentToken ||
-    currentToken !== initialToken ||
+    !currentSession ||
+    currentSession !== initialSession ||
     !isOfflineSyncGenerationValid(generation)
   ) {
     return null;
@@ -173,10 +174,10 @@ export async function fetchOfflineSyncData(): Promise<{
 
 export async function syncOfflineData(): Promise<boolean> {
   const generation = getOfflineSyncGeneration();
-  const initialToken = await SecureStore.getItemAsync("token");
+  const initialSession = await currentSessionKey();
   const savedUser = await SecureStore.getItemAsync("user");
 
-  if (!initialToken || !savedUser) return false;
+  if (!initialSession || !savedUser) return false;
 
   let userId: string;
 
@@ -198,12 +199,12 @@ export async function syncOfflineData(): Promise<boolean> {
   }
 
   return runOfflineSyncExclusive(async () => {
-    const currentToken = await SecureStore.getItemAsync("token");
+    const currentSession = await currentSessionKey();
     const currentUser = await SecureStore.getItemAsync("user");
 
     if (
-      !currentToken ||
-      currentToken !== initialToken ||
+      !currentSession ||
+      currentSession !== initialSession ||
       !currentUser ||
       !isOfflineSyncGenerationValid(generation)
     ) {

@@ -1,12 +1,22 @@
 import NetInfo from "@react-native-community/netinfo";
 import { AppState } from "react-native";
-import { jwtDecode } from "jwt-decode";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import { AuthApi, UsersApi } from "../api/services";
 import { clearUserCache, saveCachedProfile } from "../database/offlineRepository";
 import { invalidateOfflineSync, runOfflineSyncExclusive, getOfflineSyncGeneration, isOfflineSyncGenerationValid } from "../services/offlineSyncLock";
 import { syncOfflineData } from "../services/offlineSyncService";
+import {
+  clearStoredSession,
+  currentSessionKey,
+  onSessionRejected,
+  refreshSession,
+  revokeCurrentSession,
+  saveTokens,
+  tokenExpiresInMs,
+} from "../services/session";
+
+const REFRESH_MARGIN_MS = 2 * 60 * 1000;
 
 export type Role = "patient" | "doctor" | "admin" | "secretary";
 
@@ -61,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [sessionRestored, setSessionRestored] = useState(false);
 
   type SessionSnapshot = {
-    token: string;
+    key: string;
     userId: string;
     generation: number;
   };
@@ -69,12 +79,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const captureSession = async (): Promise<SessionSnapshot | null> => {
     const generation = getOfflineSyncGeneration();
 
-    const [token, savedUser] = await Promise.all([
-      SecureStore.getItemAsync("token"),
+    const [key, savedUser] = await Promise.all([
+      currentSessionKey(),
       SecureStore.getItemAsync("user"),
     ]);
 
-    if (!token || !savedUser) return null;
+    if (!key || !savedUser) return null;
 
     try {
       const parsedUser = JSON.parse(savedUser) as User;
@@ -85,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!isOfflineSyncGenerationValid(generation)) return null;
 
-      return { token, userId, generation };
+      return { key, userId, generation };
     } catch {
       return null;
     }
@@ -98,14 +108,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
 
-    const [currentToken, currentUser] = await Promise.all([
-      SecureStore.getItemAsync("token"),
+    const [currentKey, currentUser] = await Promise.all([
+      currentSessionKey(),
       SecureStore.getItemAsync("user"),
     ]);
 
     if (
-      !currentToken ||
-      currentToken !== snapshot.token ||
+      !currentKey ||
+      currentKey !== snapshot.key ||
       !currentUser ||
       !isOfflineSyncGenerationValid(snapshot.generation)
     ) {
@@ -158,13 +168,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const retryConnection = async (): Promise<boolean> => {
-    const snapshot = await captureSession();
+    let snapshot = await captureSession();
 
     if (!snapshot) return false;
 
     const clearSessionIfCurrent = async (): Promise<boolean> => {
       return runOfflineSyncExclusive(async () => {
-        if (!(await isSessionCurrent(snapshot))) return false;
+        if (!snapshot || !(await isSessionCurrent(snapshot))) return false;
 
         invalidateOfflineSync();
 
@@ -177,8 +187,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setAuthStatus("unauthenticated");
         }
 
-        await SecureStore.deleteItemAsync("token");
-        await SecureStore.deleteItemAsync("user");
+        await clearStoredSession();
 
         setUser(null);
         setAuthStatus("unauthenticated");
@@ -187,24 +196,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
     };
 
-    let tokenValid = false;
+    const [token, refreshToken] = await Promise.all([
+      SecureStore.getItemAsync("token"),
+      SecureStore.getItemAsync("refreshToken"),
+    ]);
 
-    try {
-      const payload = jwtDecode<{ exp?: number }>(snapshot.token);
-      tokenValid = !!payload.exp && payload.exp * 1000 > Date.now();
-    } catch {
-      tokenValid = false;
+    if (!refreshToken || tokenExpiresInMs(token) < REFRESH_MARGIN_MS) {
+      const result = await refreshSession();
+
+      if (result === "rejected") {
+        await clearSessionIfCurrent();
+        return false;
+      }
+
+      snapshot = (await captureSession()) ?? snapshot;
     }
 
-    if (!tokenValid) {
-      await clearSessionIfCurrent();
-      return false;
-    }
+    const current = snapshot;
 
     try {
       return await refreshUser();
     } catch (error: any) {
-      if (!(await isSessionCurrent(snapshot))) {
+      if (!(await isSessionCurrent(current))) {
         return false;
       }
 
@@ -216,7 +229,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         await runOfflineSyncExclusive(async () => {
-          if (!(await isSessionCurrent(snapshot))) return;
+          if (!(await isSessionCurrent(current))) return;
           setAuthStatus("offline");
         });
       }
@@ -267,7 +280,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const restoreSession = async () => {
       try {
-        const snapshot = await captureSession();
+        let snapshot = await captureSession();
 
         if (!active) return;
 
@@ -284,29 +297,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        let tokenValid = false;
+        const [storedToken, storedRefresh] = await Promise.all([
+          SecureStore.getItemAsync("token"),
+          SecureStore.getItemAsync("refreshToken"),
+        ]);
 
-        try {
-          const payload = jwtDecode<{ exp?: number }>(snapshot.token);
-          tokenValid = !!payload.exp && payload.exp * 1000 > Date.now();
-        } catch {
-          tokenValid = false;
+        const refreshResult =
+          !storedRefresh || tokenExpiresInMs(storedToken) < REFRESH_MARGIN_MS
+            ? await refreshSession()
+            : "ok";
+
+        if (refreshResult === "ok") {
+          snapshot = (await captureSession()) ?? snapshot;
         }
 
-        if (!tokenValid) {
+        const restored = snapshot;
+
+        if (refreshResult === "rejected") {
           await runOfflineSyncExclusive(async () => {
-            if (!(await isSessionCurrent(snapshot))) return;
+            if (!(await isSessionCurrent(restored))) return;
 
             invalidateOfflineSync();
 
             try {
-              await clearUserCache(snapshot.userId);
+              await clearUserCache(restored.userId);
             } catch (error) {
               console.warn("Nettoyage SQLite apres expiration impossible :", error);
             }
 
-            await SecureStore.deleteItemAsync("token");
-            await SecureStore.deleteItemAsync("user");
+            await clearStoredSession();
 
             if (active) {
               setUser(null);
@@ -322,7 +341,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (!active || !refreshed) return;
 
-          if (!(await isSessionCurrent(snapshot))) return;
+          if (!(await isSessionCurrent(restored))) return;
 
           void syncOfflineData().catch((syncError) => {
             console.warn(
@@ -331,16 +350,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             );
           });
         } catch (error: any) {
-          if (!(await isSessionCurrent(snapshot))) return;
+          if (!(await isSessionCurrent(restored))) return;
 
           if (error?.response?.status === 401) {
             await runOfflineSyncExclusive(async () => {
-              if (!(await isSessionCurrent(snapshot))) return;
+              if (!(await isSessionCurrent(restored))) return;
 
               invalidateOfflineSync();
 
               try {
-                await clearUserCache(snapshot.userId);
+                await clearUserCache(restored.userId);
               } catch (cacheError) {
                 console.warn(
                   "Nettoyage SQLite apres erreur 401 impossible :",
@@ -348,8 +367,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 );
               }
 
-              await SecureStore.deleteItemAsync("token");
-              await SecureStore.deleteItemAsync("user");
+              await clearStoredSession();
 
               if (active) {
                 setUser(null);
@@ -359,14 +377,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } else if (!error?.response || error?.response?.status >= 500) {
             const savedUser = await SecureStore.getItemAsync("user");
 
-            if (!savedUser || !(await isSessionCurrent(snapshot))) return;
+            if (!savedUser || !(await isSessionCurrent(restored))) return;
 
             const cachedUser = JSON.parse(savedUser) as User;
 
-            if (String(cachedUser.id) !== snapshot.userId) return;
+            if (String(cachedUser.id) !== restored.userId) return;
 
             await runOfflineSyncExclusive(async () => {
-              if (!active || !(await isSessionCurrent(snapshot))) return;
+              if (!active || !(await isSessionCurrent(restored))) return;
 
               console.warn(
                 "Serveur ou connexion indisponible : session locale conservee",
@@ -376,7 +394,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
           } else {
             await runOfflineSyncExclusive(async () => {
-              if (!active || !(await isSessionCurrent(snapshot))) return;
+              if (!active || !(await isSessionCurrent(restored))) return;
 
               console.warn("Session non verifiable :", error);
               setUser(null);
@@ -410,6 +428,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       active = false;
     };
   }, []);
+  useEffect(() => {
+    return onSessionRejected(() => {
+      void runOfflineSyncExclusive(async () => {
+        const snapshot = await captureSession();
+        if (!snapshot) return;
+
+        invalidateOfflineSync();
+
+        try {
+          await clearUserCache(snapshot.userId);
+        } catch (error) {
+          console.warn("Nettoyage SQLite apres session refusee impossible :", error);
+        }
+
+        await clearStoredSession();
+        setUser(null);
+        setAuthStatus("unauthenticated");
+      });
+    });
+  }, []);
+
   useEffect(() => {
     let wasOffline = false;
     let checking = false;
@@ -470,17 +509,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (!token) return;
 
-        let expired = false;
+        if (tokenExpiresInMs(token) < REFRESH_MARGIN_MS) {
+          const result = await refreshSession();
 
-        try {
-          const payload = jwtDecode<{ exp?: number }>(token);
-          expired = !payload.exp || payload.exp * 1000 <= Date.now();
-        } catch {
-          expired = true;
-        }
-
-        if (expired) {
-          await retryConnection();
+          if (result === "rejected") {
+            await retryConnection();
+          }
         }
       } catch (error) {
         console.warn("Verification periodique du JWT impossible :", error);
@@ -513,7 +547,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await runOfflineSyncExclusive(async () => {
       invalidateOfflineSync();
 
-      await SecureStore.setItemAsync("token", data.token);
+      await clearStoredSession();
+      await saveTokens(data);
       await SecureStore.setItemAsync("user", JSON.stringify(data.user));
 
       setUser(data.user);
@@ -556,7 +591,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await runOfflineSyncExclusive(async () => {
       invalidateOfflineSync();
 
-      await SecureStore.setItemAsync("token", data.token);
+      await clearStoredSession();
+      await saveTokens(data);
       await SecureStore.setItemAsync("user", JSON.stringify(data.user));
 
       setUser(data.user);
@@ -591,12 +627,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const loggedOut = await runOfflineSyncExclusive(async () => {
-      const [currentToken, currentUser] = await Promise.all([
-        SecureStore.getItemAsync("token"),
+      const [currentKey, currentUser] = await Promise.all([
+        currentSessionKey(),
         SecureStore.getItemAsync("user"),
       ]);
 
-      if (!currentToken || currentToken !== snapshot.token || !currentUser) {
+      if (!currentKey || currentKey !== snapshot.key || !currentUser) {
         return false;
       }
 
@@ -621,14 +657,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
       }
 
-      const [finalToken, finalUser] = await Promise.all([
-        SecureStore.getItemAsync("token"),
+      const [finalKey, finalUser] = await Promise.all([
+        currentSessionKey(),
         SecureStore.getItemAsync("user"),
       ]);
 
-      if (finalToken !== snapshot.token || !finalUser) {
+      if (finalKey !== snapshot.key || !finalUser) {
         return false;
       }
+
+      await revokeCurrentSession();
 
       try {
         if (String((JSON.parse(finalUser) as User).id) !== snapshot.userId) {
@@ -638,8 +676,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
 
-      await SecureStore.deleteItemAsync("token");
-      await SecureStore.deleteItemAsync("user");
+      await clearStoredSession();
 
       setUser(null);
       setAuthStatus("unauthenticated");

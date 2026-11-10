@@ -9,7 +9,9 @@ module.exports = {
   port: process.env.PORT || 4000,
   databaseUrl: process.env.DATABASE_URL,
   jwtSecret: process.env.JWT_SECRET,
-  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
+  accessTokenTtl: process.env.ACCESS_TOKEN_TTL || '15m',
+  refreshTokenDays: positiveInteger(process.env.REFRESH_TOKEN_DAYS, 30),
+  sessionMaxDays: positiveInteger(process.env.SESSION_MAX_DAYS, 90),
 
   brevoApiKey: process.env.BREVO_API_KEY,
   brevoSenderEmail: process.env.BREVO_SENDER_EMAIL,

@@ -50,6 +50,14 @@ router.post(
   auth.verifyEmail
 );
 
+const refreshLimiter = createUserLimiter('auth-refresh', 600);
+router.post('/auth/refresh', refreshLimiter, validate(s.refreshTokenBody), auth.refresh);
+router.post('/auth/logout', validate(s.refreshTokenBody), auth.logout);
+router.post('/auth/upgrade-session', refreshLimiter, validate(s.upgradeSessionBody), auth.upgradeSession);
+router.post('/auth/logout-all', authenticate, auth.logoutAll);
+router.get('/auth/sessions', authenticate, auth.listSessions);
+router.delete('/auth/sessions/:sessionId', authenticate, auth.revokeSession);
+
 router.post(
   '/auth/resend-otp',
   ...limits.resendOtp,

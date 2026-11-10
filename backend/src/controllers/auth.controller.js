@@ -1,15 +1,9 @@
 ﻿const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
-const env = require('../config/env');
 const otp = require('./otp.controller');
+const sessions = require('../services/session.service');
 
-const sign = (u) =>
-  jwt.sign(
-    { id: u.id, role: u.role },
-    env.jwtSecret,
-    { expiresIn: env.jwtExpiresIn }
-  );
+const deviceOf = (req) => ({ deviceLabel: req.get('x-device-name'), ip: req.ip });
 
 exports.register = async (req, res, next) => {
   const client = await pool.connect();
@@ -93,7 +87,7 @@ exports.login = async (req, res, next) => {
         first_name: user.first_name,
         last_name: user.last_name,
       },
-      token: sign(user),
+      ...(await sessions.createSession(user, deviceOf(req))),
     });
   } catch (error) {
     next(error);
@@ -114,7 +108,7 @@ exports.verifyEmail = async (req, res, next) => {
     res.json({
       message: 'Adresse e-mail verifiee avec succes.',
       user: result.user,
-      token: sign(result.user),
+      ...(await sessions.createSession(result.user, deviceOf(req))),
     });
   } catch (error) {
     next(error);
@@ -138,6 +132,57 @@ exports.resendOtp = async (req, res, next) => {
       message: 'Nouveau code envoye par e-mail.',
       expiresIn: result.expiresIn,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.refresh = async (req, res, next) => {
+  try {
+    res.json(await sessions.refresh(req.body.refreshToken));
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.logout = async (req, res, next) => {
+  try {
+    await sessions.revokeByRefreshToken(req.body.refreshToken);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.logoutAll = async (req, res, next) => {
+  try {
+    const count = await sessions.revokeAll(req.user.id, 'logout_all');
+    res.json({ revoked: count });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.listSessions = async (req, res, next) => {
+  try {
+    res.json(await sessions.list(req.user.id, req.user.sid ?? null));
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.revokeSession = async (req, res, next) => {
+  try {
+    await sessions.revokeOne(req.user.id, req.params.sessionId);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.upgradeSession = async (req, res, next) => {
+  try {
+    res.json(await sessions.upgradeLegacy(req.body.token, deviceOf(req)));
   } catch (error) {
     next(error);
   }

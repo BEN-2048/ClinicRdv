@@ -1,10 +1,12 @@
 
-import axios from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import { DEVICE_NAME, notifySessionRejected, refreshSession } from '../services/session';
 
 export const api = axios.create({
   baseURL: process.env.EXPO_PUBLIC_API_URL,
   timeout: 10000,
+  headers: { 'X-Device-Name': DEVICE_NAME },
 });
 
 
@@ -18,6 +20,35 @@ api.interceptors.request.use(async (config) => {
   }
 
   return config;
+});
+
+type RetriableConfig = InternalAxiosRequestConfig & { _sessionRetried?: boolean };
+
+const PUBLIC_AUTH_ROUTES = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/verify-email',
+  '/auth/resend-otp',
+  '/auth/refresh',
+  '/auth/upgrade-session',
+  '/auth/logout',
+];
+
+api.interceptors.response.use(undefined, async (error: AxiosError) => {
+  const config = error.config as RetriableConfig | undefined;
+  const url = config?.url ?? '';
+
+  if (error.response?.status !== 401 || !config || config._sessionRetried || PUBLIC_AUTH_ROUTES.includes(url)) {
+    throw error;
+  }
+
+  const result = await refreshSession();
+  if (result === 'ok') {
+    config._sessionRetried = true;
+    return api(config);
+  }
+  if (result === 'rejected') notifySessionRejected();
+  throw error;
 });
 
 export const errorMessage = (e: any): string => {

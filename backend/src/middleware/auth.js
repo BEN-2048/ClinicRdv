@@ -6,10 +6,14 @@ exports.authenticate = (req, res, next) => {
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return res.status(401).json({ error: 'Authentification requise' });
   try {
-    req.user = jwt.verify(token, env.jwtSecret); // { id, role }
+    req.user = jwt.verify(token, env.jwtSecret);
     next();
-  } catch {
-    res.status(401).json({ error: 'Jeton invalide ou expiré' });
+  } catch (error) {
+    const expired = error?.name === 'TokenExpiredError';
+    res.status(401).json({
+      error: expired ? 'Jeton expiré' : 'Jeton invalide ou expiré',
+      code: expired ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID',
+    });
   }
 };
 
