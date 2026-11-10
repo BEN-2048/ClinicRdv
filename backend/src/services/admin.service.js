@@ -18,10 +18,10 @@ exports.dashboard = async () => {
     pool.query(
       `SELECT a.id, a.starts_at, a.status,
               du.first_name || ' ' || du.last_name AS doctor_name,
-              pu.first_name || ' ' || pu.last_name AS patient_name
+              pp.first_name || ' ' || pp.last_name AS patient_name
          FROM appointments a
          JOIN doctors d ON d.id=a.doctor_id JOIN users du ON du.id=d.user_id
-         JOIN users pu ON pu.id=a.patient_id
+         JOIN patients pp ON pp.id=a.patient_profile_id
         WHERE a.starts_at >= now() AND a.status IN ('pending','confirmed')
         ORDER BY a.starts_at LIMIT 10`),
   ]);

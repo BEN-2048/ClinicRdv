@@ -103,9 +103,11 @@ describe('rendez-vous', () => {
     expect(res.status).toBe(403);
   });
 
-  test('GET /appointments/mine pour un patient reste filtré sur lui-même', async () => {
+  test('GET /appointments/mine pour un patient reste filtré sur ses profils accessibles', async () => {
     await request(app).get('/api/appointments/mine').set('Authorization', token('patient', 3));
-    expect(pool.query.mock.calls[0][0]).toMatch(/a\.patient_id\s*=\s*\$1/);
+    const sql = pool.query.mock.calls[0][0].replace(/\s+/g, ' ');
+    expect(sql).toContain('a.patient_profile_id IN ( SELECT p.id FROM patients p WHERE p.user_id = $1');
+    expect(sql).toContain("g.guardian_user_id = $1 AND g.status IN ('pending', 'verified')");
     expect(pool.query.mock.calls[0][1]).toEqual([3]);
   });
 });

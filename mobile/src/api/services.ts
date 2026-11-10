@@ -89,6 +89,9 @@ export type ConsultationResponse = {
   appointment_reason: string | null;
 
   patient_id: number;
+  patient_profile_id?: number;
+  patient_number?: string | null;
+  patient_birth_date?: string | null;
   patient_first_name: string;
   patient_last_name: string;
   patient_email: string;
@@ -121,8 +124,8 @@ export type ConsultationResponse = {
 // ============================================
 
 export const AppointmentsApi = {
-  book: (doctorId: number, startsAt: string, reason?: string) =>
-    api.post('/appointments', { doctorId, startsAt, reason }),
+  book: (doctorId: number, startsAt: string, reason?: string, patientProfileId?: number) =>
+    api.post('/appointments', { doctorId, startsAt, reason, patientProfileId }),
 
   mine: (scope?: 'upcoming' | 'past') =>
     api.get('/appointments/mine', { params: { scope } }),
@@ -288,7 +291,62 @@ export type DoctorInput = {
 // ADMINISTRATION / SECRÃ‰TARIAT
 // ============================================
 
+export type PatientRelationship = 'parent' | 'legal_guardian';
+export type GuardianLinkStatus = 'pending' | 'verified' | 'rejected' | 'revoked';
+
+export type PatientProfile = {
+  id: number;
+  patient_number: string;
+  first_name: string;
+  last_name: string;
+  birth_date: string | null;
+  sex: 'female' | 'male' | null;
+  relationship: 'self' | PatientRelationship;
+  link_status: 'self' | GuardianLinkStatus;
+};
+
+export type DependentInput = {
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  sex?: 'female' | 'male';
+  relationship: PatientRelationship;
+};
+
+export type GuardianLink = {
+  id: number;
+  relationship: PatientRelationship;
+  status: GuardianLinkStatus;
+  status_reason: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+  guardian_user_id: number;
+  guardian_name: string;
+  guardian_email: string;
+  guardian_phone: string | null;
+  patient_id: number;
+  patient_number: string;
+  patient_first_name: string;
+  patient_last_name: string;
+  birth_date: string | null;
+  possible_duplicates: number;
+};
+
+export const PatientsApi = {
+  mine: () =>
+    api.get<PatientProfile[]>('/patients/mine'),
+
+  addDependent: (data: DependentInput) =>
+    api.post<PatientProfile>('/patients/dependents', data),
+};
+
 export const StaffApi = {
+  guardianLinks: (status: GuardianLinkStatus = 'pending') =>
+    api.get<GuardianLink[]>('/admin/guardian-links', { params: { status } }),
+
+  reviewGuardianLink: (id: number, status: Exclude<GuardianLinkStatus, 'pending'>, reason?: string) =>
+    api.patch(`/admin/guardian-links/${id}`, { status, reason: reason || undefined }),
+
   dashboard: () =>
     api.get('/admin/dashboard'),
 

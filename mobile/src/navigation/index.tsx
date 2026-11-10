@@ -24,6 +24,7 @@ import MyAppointmentsScreen from '../screens/patient/MyAppointmentsScreen';
 import MedicalRecordScreen from '../screens/patient/MedicalRecordScreen';
 import NotificationsScreen from '../screens/patient/NotificationsScreen';
 import WaitingListScreen from '../screens/patient/WaitingListScreen';
+import FamilyScreen from '../screens/patient/FamilyScreen';
 
 import DoctorDashboardScreen from '../screens/doctor/DoctorDashboardScreen';
 import DoctorAgendaScreen from '../screens/doctor/DoctorAgendaScreen';
@@ -41,6 +42,7 @@ import SecretaryStatsScreen from '../screens/secretary/SecretaryStatsScreen';
 import SecretaryBookScreen from '../screens/secretary/SecretaryBookScreen';
 import SecretaryDoctorFormScreen from '../screens/secretary/SecretaryDoctorFormScreen';
 import SecretaryDoctorScheduleScreen from '../screens/secretary/SecretaryDoctorScheduleScreen';
+import GuardianLinksScreen from '../screens/secretary/GuardianLinksScreen';
 
 
 const Stack = createNativeStackNavigator();
@@ -227,6 +229,22 @@ export default function RootNavigator() {
                 name="Notifications"
                 component={NotificationsScreen}
                 options={{ title: 'Notifications' }}
+              />
+            )}
+
+            {user.role === 'patient' && (
+              <Stack.Screen
+                name="Family"
+                component={FamilyScreen}
+                options={{ title: 'Ma famille' }}
+              />
+            )}
+
+            {(user.role === 'secretary' || user.role === 'admin') && (
+              <Stack.Screen
+                name="GuardianLinks"
+                component={GuardianLinksScreen}
+                options={{ title: 'Liens familiaux' }}
               />
             )}
 

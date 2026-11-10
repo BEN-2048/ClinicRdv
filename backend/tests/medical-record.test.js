@@ -44,7 +44,9 @@ describe('GET /api/medical-record/me', () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual([]);
     expect(pool.query).toHaveBeenCalledTimes(1);
-    expect(pool.query.mock.calls[0][0]).toContain('a.patient_id = $1');
+    expect(pool.query.mock.calls[0][0]).toContain(
+      'a.patient_profile_id = (SELECT id FROM patients WHERE user_id = $1)'
+    );
     expect(pool.query.mock.calls[0][1]).toEqual([7]);
   });
 

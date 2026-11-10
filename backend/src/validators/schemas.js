@@ -13,7 +13,28 @@ exports.book = z.object({
   doctorId: z.number().int().positive(),
   startsAt: z.string().datetime(),
   reason: z.string().max(500).optional(),
+  patientProfileId: z.number().int().positive().optional(),
 });
+
+exports.addDependent = z.object({
+  firstName: z.string().trim().min(1).max(80),
+  lastName: z.string().trim().min(1).max(80),
+  birthDate: z.string().date('Format AAAA-MM-JJ'),
+  sex: z.enum(['female', 'male']).optional(),
+  relationship: z.enum(['parent', 'legal_guardian']),
+}).strict();
+
+exports.guardianLinksQuery = z.object({
+  status: z.enum(['pending', 'verified', 'rejected', 'revoked']).optional(),
+});
+
+exports.reviewGuardianLink = z.object({
+  status: z.enum(['verified', 'rejected', 'revoked']),
+  reason: z.string().trim().max(255).optional(),
+}).strict().refine(
+  (o) => o.status === 'verified' || (o.reason && o.reason.length > 0),
+  { message: 'Un motif est obligatoire pour refuser ou revoquer un lien' }
+);
 exports.reschedule = z.object({ startsAt: z.string().datetime() });
 exports.notes = z.object({ notes: z.string().max(5000), prescription: z.string().max(5000).optional() });
 exports.workingHours = z.object({

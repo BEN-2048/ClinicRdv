@@ -22,7 +22,7 @@ exports.mine = async (req, res, next) => {
         LEFT JOIN consultation_notes cn
           ON cn.appointment_id = a.id
          AND cn.status = 'completed'
-        WHERE a.patient_id = $1
+        WHERE a.patient_profile_id = (SELECT id FROM patients WHERE user_id = $1)
           AND (a.status = 'done' OR cn.id IS NOT NULL)
         ORDER BY a.starts_at DESC`,
       [req.user.id]

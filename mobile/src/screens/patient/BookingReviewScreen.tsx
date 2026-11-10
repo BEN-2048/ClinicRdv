@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Switch, Text, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { AppointmentsApi } from '../../api/services';
+import { AppointmentsApi, PatientProfile, PatientsApi } from '../../api/services';
 import {
   Avatar,
   Button,
   Card,
+  Chip,
   ErrorState,
   Icon,
   Input,
@@ -62,6 +63,21 @@ export default function BookingReviewScreen() {
   const [remindersEnabled, setRemindersEnabled] = useState(true);
   const [booking, setBooking] = useState(false);
   const [reasonError, setReasonError] = useState<string | null>(null);
+  const [profiles, setProfiles] = useState<PatientProfile[]>([]);
+  const [profileId, setProfileId] = useState<number | null>(null);
+
+  useEffect(() => {
+    PatientsApi.mine()
+      .then(({ data }) => {
+        const bookable = data.filter((p) => ['self', 'pending', 'verified'].includes(p.link_status));
+        setProfiles(bookable);
+        const requested = bookable.find((p) => p.id === route.params?.profileId);
+        setProfileId(requested?.id ?? bookable.find((p) => p.link_status === 'self')?.id ?? bookable[0]?.id ?? null);
+      })
+      .catch(() => setProfiles([]));
+  }, []);
+
+  const selectedProfile = profiles.find((p) => p.id === profileId);
 
   if (!doctor || !slot?.startsAt || !slot?.endsAt) {
     return (
@@ -90,9 +106,17 @@ export default function BookingReviewScreen() {
 
     setBooking(true);
     try {
-      const response = await AppointmentsApi.book(doctor.id, slot.startsAt, reason.trim());
+      const response = await AppointmentsApi.book(
+        doctor.id,
+        slot.startsAt,
+        reason.trim(),
+        selectedProfile && selectedProfile.link_status !== 'self' ? selectedProfile.id : undefined
+      );
       navigation.replace('BookingConfirm', {
         appointment: response.data,
+        patientName: selectedProfile && selectedProfile.link_status !== 'self'
+          ? `${selectedProfile.first_name} ${selectedProfile.last_name}`
+          : undefined,
         doctor: {
           id: doctor.id,
           name: fullName,
@@ -103,7 +127,7 @@ export default function BookingReviewScreen() {
       });
     } catch (err: any) {
       if (err?.response?.status === 409) {
-        navigation.navigate('BookingConflict', { doctor, slot, reason: reason.trim() });
+        navigation.navigate('BookingConflict', { doctor, slot, reason: reason.trim(), profileId });
         return;
       }
       Alert.alert(
@@ -180,6 +204,26 @@ export default function BookingReviewScreen() {
           </View>
         </View>
       </Card>
+
+      {profiles.length > 1 ? (
+        <Card style={s.form}>
+          <View style={s.formTitle}>
+            <Icon name="people-outline" size="md" color={color.primary} />
+            <Text style={type.h2}>Pour qui est ce rendez-vous ?</Text>
+          </View>
+          <View style={s.chips}>
+            {profiles.map((p) => (
+              <Chip
+                key={p.id}
+                label={p.link_status === 'self' ? 'Moi-même' : `${p.first_name} ${p.last_name}`}
+                selected={p.id === profileId}
+                onPress={() => setProfileId(p.id)}
+              />
+            ))}
+          </View>
+          {selectedProfile ? <Text style={s.muted}>N° patient : {selectedProfile.patient_number}</Text> : null}
+        </Card>
+      ) : null}
 
       <Notice
         icon="location-outline"
@@ -298,6 +342,7 @@ const s = StyleSheet.create({
   priceLabel: { flexDirection: 'row', alignItems: 'center', gap: space.xs, flexShrink: 1 },
   form: { gap: space.md },
   formTitle: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
   reminder: {
     flexDirection: 'row',
     alignItems: 'center',
