@@ -115,7 +115,7 @@ describe('Isolement des données entre établissements', () => {
     await request(app).patch(`/api/appointments/${OTHER_APPOINTMENT}/cancel`).set('Authorization', token('secretary'));
     const update = pool.query.mock.calls.find(([sql]) => sql.includes('UPDATE appointments'));
     expect(update[0]).toContain('facility_id = ANY($4::int[])');
-    expect(update[1]).toEqual([OTHER_APPOINTMENT, true, 50, [1]]);
+    expect(update[1]).toEqual([OTHER_APPOINTMENT, true, 50, [1], 'facility', 'other', null]);
   });
 });
 

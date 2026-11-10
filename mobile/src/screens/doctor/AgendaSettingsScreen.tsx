@@ -8,6 +8,8 @@ const api: ScheduleApi = {
   leaves: () => DoctorsApi.leaves(),
   addLeave: (startDate, endDate, reason) => DoctorsApi.addLeave({ startDate, endDate, reason: reason || undefined }),
   deleteLeave: (leaveId) => DoctorsApi.deleteLeave(leaveId),
+  conflicts: () => DoctorsApi.conflicts(),
+  cancelConflicts: (ids, note) => DoctorsApi.cancelConflicts(ids, note),
 };
 
 export default function AgendaSettingsScreen() {

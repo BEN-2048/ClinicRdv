@@ -116,7 +116,16 @@ export default function FacilityDetailScreen() {
           <SectionTitle title="Services" />
           <View style={s.chips}>
             {facility.services.map((sv) => (
-              <Chip key={sv.code} label={sv.available_24h ? `${sv.name} · 24h/24` : sv.name} />
+              <Chip
+                key={sv.code}
+                label={
+                  sv.unavailable_until
+                    ? `${sv.name} · indisponible jusqu’au ${new Date(sv.unavailable_until).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`
+                    : sv.available_24h
+                      ? `${sv.name} · 24h/24`
+                      : sv.name
+                }
+              />
             ))}
           </View>
         </>

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
-import { WorkingHour } from '../../api/services';
+import { UnavailabilityConflict, WorkingHour } from '../../api/services';
 import {
   Button,
   Card,
@@ -29,7 +29,19 @@ export type ScheduleApi = {
   leaves: () => Promise<{ data: any }>;
   addLeave: (startDate: string, endDate: string, reason?: string) => Promise<unknown>;
   deleteLeave: (leaveId: number) => Promise<unknown>;
+  conflicts: () => Promise<{ data: UnavailabilityConflict[] }>;
+  cancelConflicts: (appointmentIds: number[], note?: string) => Promise<{ data: { cancelled: number; skipped: number } }>;
 };
+
+const formatConflict = (c: UnavailabilityConflict) =>
+  new Intl.DateTimeFormat('fr-FR', {
+    timeZone: c.timezone,
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(c.starts_at));
 
 export default function ScheduleEditor({ api, header }: { api: ScheduleApi; header?: React.ReactNode }) {
 
@@ -42,6 +54,19 @@ export default function ScheduleEditor({ api, header }: { api: ScheduleApi; head
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [conflicts, setConflicts] = useState<UnavailabilityConflict[]>([]);
+  const [conflictNote, setConflictNote] = useState('');
+  const [cancelling, setCancelling] = useState(false);
+
+  const loadConflicts = useCallback(async () => {
+    try {
+      const res = await api.conflicts();
+      setConflicts(res.data);
+      return res.data;
+    } catch {
+      return [];
+    }
+  }, [api]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,16 +76,48 @@ export default function ScheduleEditor({ api, header }: { api: ScheduleApi; head
       setHours(wh.data.hours as WorkingHour[]);
       setMinutes(wh.data.consultationMinutes);
       setLeaves(lv.data as Leave[]);
+      await loadConflicts();
     } catch (err) {
       setError(errorText(err, 'Impossible de charger les horaires.'));
     } finally {
       setLoading(false);
     }
-  }, [api]);
+  }, [api, loadConflicts]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const cancelConflicts = () =>
+    Alert.alert(
+      'Annuler ces rendez-vous',
+      `${conflicts.length} rendez-vous seront annulés. Chaque patient sera prévenu dans l’application et par SMS, avec une invitation à choisir un autre créneau.`,
+      [
+        { text: 'Retour', style: 'cancel' },
+        {
+          text: 'Annuler et prévenir',
+          style: 'destructive',
+          onPress: async () => {
+            setCancelling(true);
+            try {
+              const res = await api.cancelConflicts(conflicts.map((c) => c.id), conflictNote.trim() || undefined);
+              setConflictNote('');
+              await loadConflicts();
+              Alert.alert(
+                'Patients prévenus',
+                res.data.skipped
+                  ? `${res.data.cancelled} rendez-vous annulés. ${res.data.skipped} n’étaient plus concernés.`
+                  : `${res.data.cancelled} rendez-vous annulés.`
+              );
+            } catch (err) {
+              Alert.alert('Erreur', errorText(err, 'L’annulation a échoué.'));
+            } finally {
+              setCancelling(false);
+            }
+          },
+        },
+      ]
+    );
 
   const updateHour = (index: number, key: 'startTime' | 'endTime', value: string) =>
     setHours((prev) => prev.map((h, i) => (i === index ? { ...h, [key]: value } : h)));
@@ -102,6 +159,13 @@ export default function ScheduleEditor({ api, header }: { api: ScheduleApi; head
       setLeaveReason('');
       const lv = await api.leaves();
       setLeaves(lv.data as Leave[]);
+      const found = await loadConflicts();
+      if (found.length) {
+        Alert.alert(
+          'Rendez-vous à traiter',
+          `${found.length} rendez-vous tombent pendant vos absences. Ils ne sont pas annulés automatiquement : consultez la liste « Rendez-vous à traiter ».`
+        );
+      }
     } catch (err) {
       Alert.alert('Erreur', errorText(err, "L'ajout du congé a échoué."));
     }
@@ -117,6 +181,7 @@ export default function ScheduleEditor({ api, header }: { api: ScheduleApi; head
           try {
             await api.deleteLeave(leave.id);
             setLeaves((prev) => prev.filter((l) => l.id !== leave.id));
+            await loadConflicts();
           } catch (err) {
             Alert.alert('Erreur', errorText(err, 'La suppression a échoué.'));
           }
@@ -187,6 +252,42 @@ export default function ScheduleEditor({ api, header }: { api: ScheduleApi; head
         })}
       </Card>
       <Button title="Enregistrer les horaires" icon="save-outline" loading={saving} onPress={saveHours} />
+
+      {conflicts.length ? (
+        <>
+          <SectionTitle title="Rendez-vous à traiter" />
+          <Card style={shared.card}>
+            <Text style={type.body}>
+              Ces rendez-vous tombent pendant un congé ou une plage bloquée. Annulez-les pour prévenir les patients, ou supprimez l’absence si elle est erronée.
+            </Text>
+            {conflicts.map((c, i) => (
+              <ListItem
+                key={c.id}
+                icon={c.cause === 'leave' ? 'airplane-outline' : 'remove-circle-outline'}
+                iconColor={color.dangerInk}
+                title={`${formatConflict(c)} · ${c.patient_name}`}
+                subtitle={[c.facility_name, c.cause === 'leave' ? 'Congé' : 'Plage bloquée', c.cause_reason].filter(Boolean).join(' · ')}
+                chevron={false}
+                style={i > 0 ? s.divider : undefined}
+              />
+            ))}
+            <Input
+              label="Message aux patients (facultatif)"
+              value={conflictNote}
+              onChangeText={setConflictNote}
+              maxLength={255}
+              placeholder="Ex. : le Dr reprend ses consultations le 2 décembre"
+            />
+            <Button
+              title={`Annuler et prévenir ${conflicts.length} patient${conflicts.length > 1 ? 's' : ''}`}
+              icon="notifications-outline"
+              variant="danger"
+              loading={cancelling}
+              onPress={cancelConflicts}
+            />
+          </Card>
+        </>
+      ) : null}
 
       <SectionTitle title="Congés" />
       {leaves.length === 0 ? (

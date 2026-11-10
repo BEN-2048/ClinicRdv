@@ -16,7 +16,11 @@ exports.search = async ({ q, city, specialtyId, service, lat, lng, limit = 30 } 
             f.phone, f.emergency_phone, f.latitude, f.longitude, f.timezone,
             CASE WHEN f.latitude IS NULL THEN NULL ELSE round((${distance})::numeric, 1) END AS distance_km,
             COALESCE((SELECT array_agg(fs.service_code ORDER BY fs.service_code)
-                        FROM facility_services fs WHERE fs.facility_id = f.id), '{}') AS services,
+                        FROM facility_services fs WHERE fs.facility_id = f.id
+                         AND (fs.unavailable_until IS NULL OR fs.unavailable_until <= now())), '{}') AS services,
+            COALESCE((SELECT array_agg(fs.service_code ORDER BY fs.service_code)
+                        FROM facility_services fs WHERE fs.facility_id = f.id
+                         AND fs.unavailable_until > now()), '{}') AS unavailable_services,
             COALESCE((SELECT array_agg(sp.name ORDER BY sp.name)
                         FROM facility_specialties x JOIN specialties sp ON sp.id = x.specialty_id
                        WHERE x.facility_id = f.id), '{}') AS specialties,
@@ -31,7 +35,8 @@ exports.search = async ({ q, city, specialtyId, service, lat, lng, limit = 30 } 
         AND ($3::int IS NULL OR EXISTS (
               SELECT 1 FROM facility_specialties x WHERE x.facility_id = f.id AND x.specialty_id = $3))
         AND ($4::text IS NULL OR EXISTS (
-              SELECT 1 FROM facility_services fs WHERE fs.facility_id = f.id AND fs.service_code = $4))
+              SELECT 1 FROM facility_services fs WHERE fs.facility_id = f.id AND fs.service_code = $4
+                 AND (fs.unavailable_until IS NULL OR fs.unavailable_until <= now())))
       ORDER BY ${hasPosition ? 'distance_km NULLS LAST,' : ''} f.name
       LIMIT $5`,
     [q?.trim() || null, city?.trim() || null, specialtyId ?? null, service ?? null, limit,
@@ -56,7 +61,9 @@ exports.get = async (id) => {
       [id]
     ),
     pool.query(
-      `SELECT hs.code, hs.name, fs.available_24h
+      `SELECT hs.code, hs.name, fs.available_24h,
+              CASE WHEN fs.unavailable_until > now() THEN fs.unavailable_until END AS unavailable_until,
+              CASE WHEN fs.unavailable_until > now() THEN fs.unavailable_reason END AS unavailable_reason
          FROM facility_services fs JOIN health_services hs ON hs.code = fs.service_code
         WHERE fs.facility_id = $1 ORDER BY hs.name`,
       [id]

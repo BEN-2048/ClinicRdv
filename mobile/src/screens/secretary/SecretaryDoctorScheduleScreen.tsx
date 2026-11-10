@@ -20,6 +20,8 @@ export default function SecretaryDoctorScheduleScreen() {
       leaves: () => StaffApi.leaves(doctorId),
       addLeave: (start, end, reason) => StaffApi.addLeave(doctorId, start, end, reason),
       deleteLeave: (leaveId) => StaffApi.deleteLeave(doctorId, leaveId),
+      conflicts: () => StaffApi.conflicts(doctorId),
+      cancelConflicts: (ids, note) => StaffApi.cancelConflicts(doctorId, ids, note),
     }),
     [doctorId]
   );

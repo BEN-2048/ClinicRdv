@@ -95,17 +95,17 @@ describe('rendez-vous', () => {
       .mockResolvedValueOnce({ rows: [{ id: 1, name: 'Etablissement principal', city: 'Lubumbashi', status: 'active', role: 'secretary' }], rowCount: 1 });
     await request(app).patch('/api/admin/appointments/5/cancel').set('Authorization', token('secretary', 9));
     const update = pool.query.mock.calls.find(([q]) => q.includes('UPDATE appointments'));
-    expect(update[1]).toEqual([5, true, 9, [1]]);
+    expect(update[1]).toEqual([5, true, 9, [1], 'facility', 'other', null]);
   });
 
   test('annulation par un patient : limitée à ses RDV', async () => {
     await request(app).patch('/api/appointments/5/cancel').set('Authorization', token('patient', 3));
-    expect(pool.query.mock.calls[0][1]).toEqual([5, false, 3, null]);
+    expect(pool.query.mock.calls[0][1]).toEqual([5, false, 3, null, 'patient', 'patient_request', null]);
   });
 
   test('annulation par un médecin : limitée à ses RDV', async () => {
     await request(app).patch('/api/appointments/5/cancel').set('Authorization', token('doctor', 4));
-    expect(pool.query.mock.calls[0][1]).toEqual([5, false, 4, null]);
+    expect(pool.query.mock.calls[0][1]).toEqual([5, false, 4, null, 'doctor', 'other', null]);
   });
 
   test('report via la route patient interdit au secrétaire', async () => {

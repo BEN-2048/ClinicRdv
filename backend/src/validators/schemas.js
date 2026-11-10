@@ -253,7 +253,19 @@ exports.facilityServices = z.object({
   services: z.array(z.object({
     code: z.string().regex(/^[a-z_]{2,30}$/),
     available24h: z.boolean().optional(),
+    unavailableUntil: z.string().datetime({ offset: true }).nullable().optional(),
+    unavailableReason: z.string().trim().max(255).nullable().optional(),
   })).max(30),
+}).strict();
+
+exports.cancelAppointment = z.object({
+  reason: z.enum(['doctor_unavailable', 'service_unavailable', 'facility_closed', 'other']).optional(),
+  note: z.string().trim().max(255).optional(),
+}).strict().default({});
+
+exports.cancelConflicts = z.object({
+  appointmentIds: z.array(z.number().int().positive()).min(1).max(100),
+  note: z.string().trim().max(255).optional(),
 }).strict();
 
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);

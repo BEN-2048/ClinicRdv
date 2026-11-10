@@ -1,5 +1,7 @@
 const svc = require('../services/admin.service');
 const appts = require('../services/appointments.service');
+const unavailability = require('../services/unavailability.service');
+const scopes = require('../services/scope.service');
 
 const wrap = (fn) => async (req, res, next) => { try { await fn(req, res); } catch (e) { next(e); } };
 const intParam = (req, name) => {
@@ -44,6 +46,10 @@ exports.deleteBlock = wrap(async (req, res) => {
 
 exports.listAppointments = wrap(async (req, res) => res.json(await appts.listAll(req.query, req.scope)));
 exports.bookAppointment = wrap(async (req, res) => res.status(201).json(await appts.bookFor(req.body, req.scope)));
-exports.cancelAppointment = wrap(async (req, res) => res.json(await appts.cancel(intParam(req, 'id'), req.user)));
+exports.cancelAppointment = wrap(async (req, res) => res.json(await appts.cancel(intParam(req, 'id'), req.user, req.body)));
+exports.listConflicts = wrap(async (req, res) =>
+  res.json(await unavailability.listConflicts(intParam(req, 'id'), scopes.scopeParam(req.scope))));
+exports.cancelConflicts = wrap(async (req, res) =>
+  res.json(await unavailability.cancelConflicts(intParam(req, 'id'), req.body, req.user, scopes.scopeParam(req.scope))));
 exports.rescheduleAppointment = wrap(async (req, res) =>
   res.json(await appts.reschedule(intParam(req, 'id'), req.user, req.body.startsAt)));

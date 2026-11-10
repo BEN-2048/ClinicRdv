@@ -46,8 +46,10 @@ Ce pilote est **refusé en production**.
 | Avertissement : mot de passe modifié | Numéro vérifié du compte |
 | Avertissement : numéro remplacé | **Ancien** numéro |
 | Avertissement : adresse e-mail liée au compte | Numéro vérifié du compte |
+| Rendez-vous annulé par le médecin ou l'établissement | Titulaire du compte (si les SMS sont activés) |
+| Créneau libéré (liste d'attente) | Patients inscrits, au plus 10 par créneau, une fois toutes les 30 min |
 
-Les avertissements comptent dans les plafonds. Si un plafond est atteint, l'avertissement n'est pas envoyé (journalisé `failed`), mais l'opération est quand même effectuée.
+Les codes et les avertissements ont chacun leur plafond par numéro (5 par 24 h chacun) : des avertissements nombreux n'empêchent jamais de recevoir un code de récupération. Le plafond quotidien global (200) compte tous les SMS. Si un plafond est atteint, l'avertissement n'est pas envoyé (journalisé `failed`), mais l'opération est quand même effectuée.
 
 ## E-mails : `EMAIL_DRIVER`
 

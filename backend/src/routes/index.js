@@ -186,6 +186,16 @@ router.delete(
 );
 
 
+router.get('/doctors/me/conflicts', authenticate, requireRole('doctor'), doctors.myConflicts);
+router.post(
+  '/doctors/me/conflicts/cancel',
+  authenticate,
+  requireRole('doctor'),
+  validate(s.cancelConflicts),
+  doctors.cancelMyConflicts
+);
+
+
 // Créneaux bloqués
 router.get(
   '/doctors/me/blocked-slots',
@@ -358,6 +368,7 @@ router.get(
 router.patch(
   '/appointments/:id/cancel',
   authenticate,
+  validate(s.cancelAppointment),
   appts.cancel
 );
 
@@ -530,6 +541,10 @@ staff.delete(
 );
 
 
+staff.get('/doctors/:id/conflicts', admin.listConflicts);
+staff.post('/doctors/:id/conflicts/cancel', validate(s.cancelConflicts), admin.cancelConflicts);
+
+
 // Gestion des créneaux bloqués
 staff.get(
   '/doctors/:id/blocked-slots',
@@ -563,6 +578,7 @@ staff.post(
 
 staff.patch(
   '/appointments/:id/cancel',
+  validate(s.cancelAppointment),
   admin.cancelAppointment
 );
 

@@ -13,14 +13,15 @@ const MESSAGES = {
   phone_change: (code) => `ClinicRDV: code de confirmation du nouveau numero ${code} (valable ${env.otpExpiresMinutes} min).`,
 };
 
-const assertCaps = async (db, phone) => {
+const assertCaps = async (db, phone, notices = false) => {
   const r = await db.query(
     `SELECT
        (SELECT count(*)::int FROM sms_outbox
-         WHERE destination = $1 AND status = 'sent' AND created_at > now() - interval '24 hours') AS per_number,
+         WHERE destination = $1 AND status = 'sent' AND created_at > now() - interval '24 hours'
+           AND (purpose = 'notice') = $2) AS per_number,
        (SELECT count(*)::int FROM sms_outbox
          WHERE status = 'sent' AND created_at > now() - interval '24 hours') AS global`,
-    [phone]
+    [phone, notices]
   );
   const counts = r.rows[0] ?? { per_number: 0, global: 0 };
   if (counts.per_number >= env.smsPerNumberDaily) {
@@ -154,7 +155,7 @@ exports.resendSignup = async (phone) => {
 exports.notify = async (phone, text) => {
   let driverName = env.smsDriver;
   try {
-    await assertCaps(pool, phone);
+    await assertCaps(pool, phone, true);
     const driver = getSmsDriver();
     driverName = driver.name;
     await driver.send(phone, toGsm7(text));
