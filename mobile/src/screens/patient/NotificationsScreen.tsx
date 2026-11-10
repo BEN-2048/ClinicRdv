@@ -65,6 +65,7 @@ const NOTIFICATION_ICONS: Record<NotificationType, { name: IconName; fg: string;
   appointment_confirmed: { name: 'checkmark-circle-outline', fg: color.success, bg: color.successSoft },
   appointment_cancelled: { name: 'close-circle-outline', fg: color.dangerInk, bg: color.dangerSoft },
   general: { name: 'notifications-outline', fg: color.textSecondary, bg: color.primarySubtle },
+  record_emergency_access: { name: 'alert-circle-outline', fg: color.dangerInk, bg: color.dangerSoft },
 };
 
 export default function NotificationsScreen() {

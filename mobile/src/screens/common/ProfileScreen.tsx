@@ -174,6 +174,15 @@ export default function ProfileScreen() {
             style={s.divider}
           />
         ) : null}
+        {isPatient ? (
+          <ListItem
+            icon="share-social-outline"
+            title="Partage et historique des accès"
+            subtitle="Autoriser un établissement, voir qui a consulté votre dossier"
+            onPress={() => navigation.navigate('Sharing')}
+            style={s.divider}
+          />
+        ) : null}
         {user?.role === 'secretary' || user?.role === 'admin' ? (
           <ListItem
             icon="people-circle-outline"
@@ -197,6 +206,16 @@ export default function ProfileScreen() {
             title="Horaires et congés"
             subtitle="Plages de consultation, durée et absences"
             onPress={() => navigation.navigate('AgendaSettings')}
+          />
+        ) : null}
+        {isDoctor ? (
+          <ListItem
+            icon="medkit-outline"
+            iconColor={color.dangerInk}
+            title="Accès d’urgence à un dossier"
+            subtitle="Patient hors d’état de consentir · justification obligatoire"
+            onPress={() => navigation.navigate('EmergencyAccess')}
+            style={s.divider}
           />
         ) : null}
         <ListItem

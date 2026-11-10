@@ -19,7 +19,7 @@ describe('canAccessPatient', () => {
 
   test('patient - profil inexistant', async () => {
     const result = await canAccessPatient({ id: 7, role: 'patient' }, 999, 'book', dbReturning([]));
-    expect(result).toEqual({ exists: false, basis: null, facilityIds: null, allowed: false });
+    expect(result).toEqual({ exists: false, basis: null, facilityIds: null, sharing: null, allowed: false });
   });
 
   test('medecin traitant - lit et complete le dossier, limite a ses etablissements de soins', async () => {

@@ -55,12 +55,14 @@ const createAuthLimiters = () => ({
   ],
 });
 
-const createUploadLimiter = () =>
+const createUserLimiter = (name, limit, windowMs = 60 * MINUTE) =>
   limiter({
-    name: 'document-upload',
-    windowMs: 60 * MINUTE,
-    limit: 30,
+    name,
+    windowMs,
+    limit,
     keyGenerator: (req) => (req.user ? `user:${req.user.id}` : byIp(req)),
   });
 
-module.exports = { createAuthLimiters, createUploadLimiter };
+const createUploadLimiter = () => createUserLimiter('document-upload', 30);
+
+module.exports = { createAuthLimiters, createUploadLimiter, createUserLimiter };

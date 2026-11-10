@@ -27,6 +27,8 @@ import WaitingListScreen from '../screens/patient/WaitingListScreen';
 import FamilyScreen from '../screens/patient/FamilyScreen';
 import FacilityListScreen from '../screens/patient/FacilityListScreen';
 import FacilityDetailScreen from '../screens/patient/FacilityDetailScreen';
+import SharingScreen from '../screens/patient/SharingScreen';
+import EmergencyAccessScreen from '../screens/doctor/EmergencyAccessScreen';
 
 import DoctorDashboardScreen from '../screens/doctor/DoctorDashboardScreen';
 import DoctorAgendaScreen from '../screens/doctor/DoctorAgendaScreen';
@@ -235,6 +237,22 @@ export default function RootNavigator() {
                 name="Notifications"
                 component={NotificationsScreen}
                 options={{ title: 'Notifications' }}
+              />
+            )}
+
+            {user.role === 'patient' && (
+              <Stack.Screen
+                name="Sharing"
+                component={SharingScreen}
+                options={{ title: 'Partage et accès' }}
+              />
+            )}
+
+            {user.role === 'doctor' && (
+              <Stack.Screen
+                name="EmergencyAccess"
+                component={EmergencyAccessScreen}
+                options={{ title: 'Accès d’urgence' }}
               />
             )}
 

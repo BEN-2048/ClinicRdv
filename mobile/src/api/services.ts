@@ -178,7 +178,8 @@ export type NotificationType =
   | 'waiting_list'
   | 'prescription'
   | 'appointment_confirmed'
-  | 'appointment_cancelled';
+  | 'appointment_cancelled'
+  | 'record_emergency_access';
 
 export type PatientNotification = {
   id: number;
@@ -725,10 +726,11 @@ export type PatientRecord = {
   medications: MedicationEntry[];
   immunizations: ImmunizationEntry[];
   access: {
-    basis: 'self' | 'guardian_verified' | 'treating_doctor';
+    basis: 'self' | 'guardian_verified' | 'treating_doctor' | 'emergency_access';
     canWriteClinical: boolean;
     canDeclare: boolean;
     facilities: { id: number; name: string }[];
+    sharing: { summaryAll: boolean; fullAll: boolean; consent: boolean; emergency: boolean } | null;
   };
 };
 
@@ -920,4 +922,57 @@ export const DocumentsApi = {
 
   markEnteredInError: (id: number, reason: string) =>
     api.post<MedicalDocument>(`/documents/${id}/entered-in-error`, { reason }),
+};
+
+export type RecordConsent = {
+  id: number;
+  patient_id: number;
+  facility_id: number;
+  facility_name: string;
+  facility_city: string | null;
+  scope: 'summary' | 'full';
+  granted_at: string;
+  expires_at: string | null;
+  revoked_at: string | null;
+  granted_by_name: string | null;
+  active: boolean;
+};
+
+export type AccessHistoryEntry = {
+  id: number;
+  created_at: string;
+  action: string;
+  granted: boolean;
+  basis: string | null;
+  resource: string | null;
+  user_role: string;
+  actor: string | null;
+  is_me: boolean;
+};
+
+export const SharingApi = {
+  consents: (patientId: number) =>
+    api.get<RecordConsent[]>(`/patients/${patientId}/consents`),
+
+  grant: (patientId: number, data: { facilityId: number; scope: 'summary' | 'full'; durationDays: 30 | 90 | 180 | 365 | null }) =>
+    api.post<RecordConsent>(`/patients/${patientId}/consents`, data),
+
+  revoke: (consentId: number) =>
+    api.post<RecordConsent>(`/consents/${consentId}/revoke`),
+
+  accessHistory: (patientId: number) =>
+    api.get<AccessHistoryEntry[]>(`/patients/${patientId}/access-history`),
+};
+
+export type EmergencyLookup = {
+  patient: { id: number; patient_number: string; first_name: string; last_name: string; birth_date: string | null; sex: string | null };
+  facilities: { id: number; name: string }[];
+};
+
+export const EmergencyApi = {
+  lookup: (patientNumber: string) =>
+    api.get<EmergencyLookup>('/emergency/patient-lookup', { params: { number: patientNumber } }),
+
+  start: (patientId: number, reason: string, facilityId?: number) =>
+    api.post(`/patients/${patientId}/emergency-access`, { reason, facilityId }),
 };
