@@ -32,6 +32,7 @@ import AppointmentDetailScreen from '../screens/doctor/AppointmentDetailScreen';
 
 import ClinicManagementScreen from '../screens/admin/ClinicManagementScreen';
 import ProfileScreen from '../screens/common/ProfileScreen';
+import OfflineScreen from '../screens/common/OfflineScreen';
 
 import SecretaryDashboardScreen from '../screens/secretary/SecretaryDashboardScreen';
 import SecretaryAppointmentsScreen from '../screens/secretary/SecretaryAppointmentsScreen';
@@ -174,7 +175,7 @@ const tabsForRole: Record<Role, React.ComponentType> = {
 // ============================================
 
 export default function RootNavigator() {
-  const { user, loading } = useAuth();
+  const { user, loading, authStatus } = useAuth();
 
   if (loading) {
     return (
@@ -188,7 +189,13 @@ export default function RootNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={stackOptions}>
-        {!user ? (
+        {authStatus === 'offline' && user ? (
+          <Stack.Screen
+            name="Offline"
+            component={OfflineScreen}
+            options={{ headerShown: false }}
+          />
+        ) : !user || authStatus !== 'authenticated' ? (
           <>
             <Stack.Screen
               name="Login"

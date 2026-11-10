@@ -69,19 +69,29 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', [
-      { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Se déconnecter',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await logout();
-          } catch {
-            Alert.alert('Erreur', 'La déconnexion a échoué.');
-          }
+    Alert.alert(
+      'Déconnexion',
+      'Voulez-vous vraiment vous déconnecter ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Se déconnecter',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+            } catch (error) {
+              const message =
+                error instanceof Error &&
+                error.message.includes("impossible de supprimer les donnees locales")
+                  ? "La déconnexion a été interrompue car les données locales n'ont pas pu être supprimées. Veuillez réessayer."
+                  : "La déconnexion a échoué. Veuillez réessayer.";
+
+              Alert.alert("Erreur", message);
+            }
+          },
         },
-      },
+
     ]);
   };
 

@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -14,6 +14,8 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { AppointmentsApi, AppointmentStatus, WaitingAlertSummary, WaitingListApi } from '../../api/services';
+import { useAuth } from '../../context/AuthContext';
+import { getCachedAppointments } from '../../database/offlineRepository';
 import Icon, { IconName } from '../../components/ui/Icon';
 import AppHeader from '../../components/ui/AppHeader';
 import {
@@ -93,8 +95,22 @@ const tabOf = (a: Appointment, now: number): TabKey => {
 
 const apiError = (e: any, fallback: string) => e?.response?.data?.error || fallback;
 
+const isNetworkFailure = (error: any): boolean => {
+  if (error?.response) return false;
+
+  return (
+    error?.code === 'ERR_NETWORK' ||
+    error?.code === 'ECONNABORTED' ||
+    error?.message === 'Network Error' ||
+    error?.message === 'timeout exceeded' ||
+    error?.message === 'Network request failed'
+  );
+};
+
 export default function MyAppointmentsScreen() {
   const navigation = useNavigation<any>();
+  const { user } = useAuth();
+  const userId = user?.id != null ? String(user.id) : null;
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [alerts, setAlerts] = useState<WaitingAlertSummary[]>([]);
@@ -102,12 +118,37 @@ export default function MyAppointmentsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [usingOfflineCache, setUsingOfflineCache] = useState(false);
+  const [appointmentsOwnerId, setAppointmentsOwnerId] = useState<string | null>(null);
+  const loadGeneration = useRef(0);
+  const lastLoadedUserId = useRef<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [reverse, setReverse] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
 
   const load = useCallback(async (refresh = false) => {
+    const generation = ++loadGeneration.current;
+
+    if (lastLoadedUserId.current !== userId) {
+      lastLoadedUserId.current = userId;
+      setAppointments([]);
+      setAppointmentsOwnerId(null);
+      setAlerts([]);
+      setUsingOfflineCache(false);
+    }
+
+    if (!userId) {
+      setAppointments([]);
+      setAppointmentsOwnerId(null);
+      setAlerts([]);
+      setUsingOfflineCache(false);
+      setError(null);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     if (refresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
@@ -117,31 +158,63 @@ export default function MyAppointmentsScreen() {
         WaitingListApi.mine().catch(() => ({ data: [] as WaitingAlertSummary[] })),
       ]);
       if (!Array.isArray(apptRes.data)) throw new Error('Format de réponse inattendu.');
+      if (generation !== loadGeneration.current) return;
       setAppointments(apptRes.data as Appointment[]);
+      setAppointmentsOwnerId(userId);
       setAlerts(alertRes.data);
+      setUsingOfflineCache(false);
     } catch (e: any) {
-      setError(apiError(e, e?.message || 'Impossible de charger les rendez-vous.'));
+      if (generation !== loadGeneration.current) return;
+
+      if (isNetworkFailure(e)) {
+        try {
+          const cached = await getCachedAppointments(userId);
+
+          if (generation !== loadGeneration.current) return;
+
+          setAppointments(cached as Appointment[]);
+          setAppointmentsOwnerId(userId);
+          setAlerts([]);
+          setUsingOfflineCache(true);
+          setError(null);
+        } catch (cacheError) {
+          if (generation !== loadGeneration.current) return;
+
+          console.warn('Lecture du cache SQLite impossible :', cacheError);
+          setError('Impossible de consulter les rendez-vous hors ligne.');
+        }
+      } else {
+        setError(apiError(e, e?.message || 'Impossible de charger les rendez-vous.'));
+      }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (generation === loadGeneration.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  }, []);
+  }, [userId]);
 
   useFocusEffect(
     useCallback(() => {
-      load();
+      void load();
+
+      return () => {
+        loadGeneration.current += 1;
+      };
     }, [load]),
   );
 
   const grouped = useMemo(() => {
     const now = Date.now();
     const groups: Record<TabKey, Appointment[]> = { upcoming: [], past: [], cancelled: [] };
-    appointments.forEach((a) => groups[tabOf(a, now)].push(a));
+    if (userId && appointmentsOwnerId === userId) {
+      appointments.forEach((a) => groups[tabOf(a, now)].push(a));
+    }
     groups.upcoming.sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
     groups.past.sort((a, b) => +new Date(b.starts_at) - +new Date(a.starts_at));
     groups.cancelled.sort((a, b) => +new Date(b.starts_at) - +new Date(a.starts_at));
     return groups;
-  }, [appointments]);
+  }, [appointments, appointmentsOwnerId, userId]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -252,6 +325,16 @@ export default function MyAppointmentsScreen() {
         </View>
 
         <View style={styles.list}>
+          {usingOfflineCache && !loading ? (
+            <View style={[styles.messageCard, shadow.soft]}>
+              <Text style={[type.bodyMedium, { color: palette.amberInk, textAlign: 'center' }]}>
+                Mode hors ligne
+              </Text>
+              <Text style={[type.body, { color: palette.inkSoft, textAlign: 'center', marginTop: 4 }]}>
+                Rendez-vous enregistrés sur cet appareil. Ces informations peuvent ne pas être à jour.
+              </Text>
+            </View>
+          ) : null}
           {loading ? <ActivityIndicator size="large" color={palette.primary} style={{ paddingVertical: 32 }} /> : null}
 
           {!loading && error ? (
@@ -278,7 +361,7 @@ export default function MyAppointmentsScreen() {
                   key={a.id}
                   appointment={a}
                   highlight={tab === 'upcoming' && i === 0 && !reverse}
-                  showActions={tab === 'upcoming'}
+                  showActions={tab === 'upcoming' && !usingOfflineCache}
                   busy={busyId === a.id}
                   onReschedule={() => reschedule(a)}
                   onCancel={() => cancel(a)}
