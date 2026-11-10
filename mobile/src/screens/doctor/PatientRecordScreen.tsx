@@ -13,10 +13,11 @@ import {
 } from '../../api/services';
 import { Button, Card, Chip, EmptyState, ErrorState, Input, Loader, Notice, Screen, SegmentedTabs } from '../../components/ui';
 import { PrescriptionCard } from '../../components/record/PrescriptionViews';
+import { DocumentsPanel } from '../../components/record/DocumentsPanel';
 import { KIND_LABEL, RecordEntryForm, RecordSections } from '../../components/record/RecordSections';
 import { color, space, type } from '../../theme';
 
-type Tab = 'synthese' | 'consultations' | 'ordonnances';
+type Tab = 'synthese' | 'consultations' | 'ordonnances' | 'documents';
 
 const VITAL_LABELS: [keyof ConsultationHistoryEntry, string, string][] = [
   ['blood_pressure', 'TA', ''],
@@ -118,6 +119,7 @@ export default function PatientRecordScreen() {
           { key: 'synthese', label: 'Synthèse' },
           { key: 'consultations', label: 'Consultations' },
           { key: 'ordonnances', label: 'Ordonnances' },
+          { key: 'documents', label: 'Documents' },
         ]}
       />
 
@@ -157,6 +159,13 @@ export default function PatientRecordScreen() {
         ) : (
           prescriptions.map((rx) => <PrescriptionCard key={rx.id} prescription={rx} />)
         )
+      ) : tab === 'documents' ? (
+        <DocumentsPanel
+          patientId={patientId}
+          clinician
+          canUpload={record.access.canWriteClinical}
+          facilities={record.access.facilities}
+        />
       ) : null}
 
       {tab !== 'synthese' ? null : adding ? (

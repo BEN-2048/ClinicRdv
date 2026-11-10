@@ -4,6 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { MedicalRecordApi, PatientProfile, PatientRecord, PatientsApi, RecordApi } from '../../api/services';
 import { errorMessage } from '../../api/client';
 import { RecordEntryForm, RecordSections } from '../../components/record/RecordSections';
+import { DocumentsPanel } from '../../components/record/DocumentsPanel';
 import {
   Button,
   Card,
@@ -299,13 +300,18 @@ export default function MedicalRecordScreen() {
           ))
         )
       ) : tab === 'documents' ? (
-        <Card>
-          <EmptyState
-            icon="document-attach-outline"
-            title="Documents médicaux"
-            message="Aucun document téléchargeable n'est actuellement disponible."
+        summary ? (
+          <DocumentsPanel
+            key={summary.patient.id}
+            patientId={summary.patient.id}
+            clinician={false}
+            canUpload={summary.access.canDeclare}
           />
-        </Card>
+        ) : (
+          <Card>
+            <EmptyState icon="document-attach-outline" title="Documents indisponibles" />
+          </Card>
+        )
       ) : prescriptions.length === 0 ? (
         <Card>
           <EmptyState

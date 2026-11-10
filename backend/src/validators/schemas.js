@@ -355,3 +355,20 @@ exports.positiveIdParams = z.object({
 exports.patientIdParams = z.object({
   patientId: z.coerce.number().int().positive(),
 });
+
+const booleanField = z.enum(['true', 'false']).transform((v) => v === 'true');
+
+exports.documentUpload = z.object({
+  category: z.enum(['prescription', 'lab_result', 'imaging_report', 'medical_report', 'certificate', 'vaccination_card', 'other']),
+  title: z.string().trim().min(1).max(150),
+  description: z.string().trim().max(1000).optional(),
+  documentDate: z.string().date().optional(),
+  facilityId: z.coerce.number().int().positive().optional(),
+  appointmentId: z.coerce.number().int().positive().optional(),
+  confidential: booleanField.optional(),
+  releaseNow: booleanField.optional(),
+}).strict();
+
+exports.fileTokenParams = z.object({
+  token: z.string().regex(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/).max(600),
+});

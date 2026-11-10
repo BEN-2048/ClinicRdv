@@ -832,3 +832,92 @@ export const ConsultationsApi = {
   addAddendum: (appointmentId: number, content: string) =>
     api.post<Addendum[]>(`/appointments/${appointmentId}/consultation/addenda`, { content }),
 };
+
+export type DocumentCategory =
+  | 'prescription'
+  | 'lab_result'
+  | 'imaging_report'
+  | 'medical_report'
+  | 'certificate'
+  | 'vaccination_card'
+  | 'other';
+
+export const DOCUMENT_CATEGORY_LABEL: Record<DocumentCategory, string> = {
+  lab_result: 'Résultat d’analyse',
+  imaging_report: 'Imagerie',
+  medical_report: 'Compte rendu',
+  prescription: 'Ordonnance',
+  certificate: 'Certificat',
+  vaccination_card: 'Carnet de vaccination',
+  other: 'Autre',
+};
+
+export type MedicalDocument = {
+  id: number;
+  patient_id: number;
+  facility_id: number | null;
+  facility_name: string | null;
+  appointment_id: number | null;
+  category: DocumentCategory;
+  title: string;
+  description: string | null;
+  document_date: string | null;
+  mime_type: 'application/pdf' | 'image/jpeg' | 'image/png';
+  size_bytes: number;
+  source: 'clinician' | 'patient';
+  confidential: boolean;
+  released_at: string | null;
+  uploaded_at: string;
+  uploaded_by_name: string | null;
+  entered_in_error: boolean;
+  error_reason: string | null;
+};
+
+export type DocumentUploadInput = {
+  file: { uri: string; name: string; mimeType: string };
+  category: DocumentCategory;
+  title: string;
+  description?: string;
+  documentDate?: string;
+  facilityId?: number;
+  confidential?: boolean;
+  releaseNow?: boolean;
+};
+
+const absoluteFileUrl = (url: string) => {
+  if (/^https?:\/\//.test(url)) return url;
+  const origin = (api.defaults.baseURL ?? '').replace(/\/api\/?$/, '');
+  return `${origin}${url}`;
+};
+
+export const DocumentsApi = {
+  list: (patientId: number) =>
+    api.get<MedicalDocument[]>(`/patients/${patientId}/documents`),
+
+  upload: (patientId: number, input: DocumentUploadInput) => {
+    const form = new FormData();
+    form.append('file', { uri: input.file.uri, name: input.file.name, type: input.file.mimeType } as any);
+    form.append('category', input.category);
+    form.append('title', input.title);
+    if (input.description) form.append('description', input.description);
+    if (input.documentDate) form.append('documentDate', input.documentDate);
+    if (input.facilityId) form.append('facilityId', String(input.facilityId));
+    if (input.confidential !== undefined) form.append('confidential', String(input.confidential));
+    if (input.releaseNow !== undefined) form.append('releaseNow', String(input.releaseNow));
+    return api.post<MedicalDocument>(`/patients/${patientId}/documents`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60000,
+    });
+  },
+
+  downloadUrl: async (id: number) => {
+    const { data } = await api.post<{ url: string; expiresAt: string }>(`/documents/${id}/download-link`);
+    return absoluteFileUrl(data.url);
+  },
+
+  release: (id: number) =>
+    api.post<MedicalDocument>(`/documents/${id}/release`),
+
+  markEnteredInError: (id: number, reason: string) =>
+    api.post<MedicalDocument>(`/documents/${id}/entered-in-error`, { reason }),
+};
