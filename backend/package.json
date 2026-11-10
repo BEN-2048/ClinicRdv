@@ -9,6 +9,8 @@
     "db:reset": "node db/init.js --reset",
     "db:seed": "node db/seed.js",
     "db:migrate": "node db/migrate.js",
+    "db:backup": "node scripts/backup.js",
+    "db:restore": "node scripts/restore.js",
     "test": "jest"
   },
   "dependencies": {

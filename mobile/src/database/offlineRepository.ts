@@ -29,6 +29,7 @@ export type CachedDoctor = {
 };
 
 import { getOfflineDatabase } from "./offlineDatabase";
+import { clearEmergencyCards } from "../services/emergencyCard";
 
 export async function saveCachedProfile(
   profile: CachedProfile,
@@ -249,6 +250,8 @@ export async function clearUserCache(userId: string): Promise<void> {
       userId,
     );
   });
+
+  await clearEmergencyCards(userId);
 }
 
 export async function saveOfflineSnapshot(

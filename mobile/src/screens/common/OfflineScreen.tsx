@@ -11,10 +11,12 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 
 export default function OfflineScreen() {
   const { user, retryConnection } = useAuth();
+  const navigation = useNavigation<any>();
   const [retrying, setRetrying] = useState(false);
   const [appointments, setAppointments] = useState<CachedAppointment[]>([]);
   const [appointmentsOwnerId, setAppointmentsOwnerId] = useState<string | null>(null);
@@ -96,6 +98,16 @@ export default function OfflineScreen() {
       </Text>
 
       {userId ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => navigation.navigate('EmergencyCard')}
+          style={styles.emergencyButton}
+        >
+          <Text style={styles.emergencyButtonText}>Afficher ma fiche d’urgence</Text>
+        </Pressable>
+      ) : null}
+
+      {userId ? (
         <View style={styles.appointmentSection}>
           <Text style={styles.sectionTitle}>Mes rendez-vous enregistrés</Text>
 
@@ -170,6 +182,18 @@ export default function OfflineScreen() {
 }
 
 const styles = StyleSheet.create({
+  emergencyButton: {
+    marginBottom: 20,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#B91C1C',
+    alignItems: 'center',
+  },
+  emergencyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
   container: {
     flexGrow: 1,
     padding: 24,

@@ -183,6 +183,16 @@ export default function ProfileScreen() {
             style={s.divider}
           />
         ) : null}
+        {isPatient ? (
+          <ListItem
+            icon="medkit-outline"
+            iconColor={color.dangerInk}
+            title="Fiche d’urgence hors ligne"
+            subtitle="Allergies, antécédents et traitements, même sans Internet"
+            onPress={() => navigation.navigate('EmergencyCard')}
+            style={s.divider}
+          />
+        ) : null}
         {user?.role === 'secretary' || user?.role === 'admin' ? (
           <ListItem
             icon="people-circle-outline"
