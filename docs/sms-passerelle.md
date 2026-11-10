@@ -35,3 +35,22 @@ Ce pilote est **refusé en production**.
 - Le téléphone passerelle doit rester allumé, avec l'application ouverte.
 - Les SMS sont décomptés du forfait de la SIM. L'opérateur peut bloquer un envoi massif.
 - Le journal `sms_outbox` enregistre chaque envoi (destinataire, statut), **jamais le code**.
+
+## SMS envoyés par l'application
+
+| Usage | Destinataire |
+|---|---|
+| Code d'inscription | Numéro saisi à l'inscription |
+| Code « Mot de passe oublié » | Numéro vérifié du compte |
+| Code de changement de numéro | Nouveau numéro |
+| Avertissement : mot de passe modifié | Numéro vérifié du compte |
+| Avertissement : numéro remplacé | **Ancien** numéro |
+| Avertissement : adresse e-mail liée au compte | Numéro vérifié du compte |
+
+Les avertissements comptent dans les plafonds. Si un plafond est atteint, l'avertissement n'est pas envoyé (journalisé `failed`), mais l'opération est quand même effectuée.
+
+## E-mails : `EMAIL_DRIVER`
+
+- Laissé vide : Brevo si `BREVO_API_KEY` est renseignée (offre gratuite, 300 e-mails par jour), sinon le pilote `console`.
+- `EMAIL_DRIVER=console` : le code s'affiche dans le terminal du serveur (`[E-mail de développement] ...`). Refusé en production.
+- Une adresse e-mail confirmée permet de se connecter et de récupérer son compte si les SMS n'arrivent pas.

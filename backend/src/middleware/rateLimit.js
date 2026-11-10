@@ -63,6 +63,14 @@ const createAuthLimiters = () => ({
     limiter({ name: 'resend-phone-ip', windowMs: 60 * MINUTE, limit: 10, keyGenerator: byIp }),
     limiter({ name: 'resend-phone', windowMs: 60 * MINUTE, limit: 3, keyGenerator: byEmail }),
   ],
+  forgotPassword: [
+    limiter({ name: 'forgot-ip', windowMs: 60 * MINUTE, limit: 10, keyGenerator: byIp }),
+    limiter({ name: 'forgot-account', windowMs: 60 * MINUTE, limit: 3, keyGenerator: byEmail }),
+  ],
+  resetPassword: [
+    limiter({ name: 'reset-ip', windowMs: 15 * MINUTE, limit: 30, keyGenerator: byIp }),
+    limiter({ name: 'reset-account', windowMs: 15 * MINUTE, limit: 10, keyGenerator: byEmail }),
+  ],
   resendOtp: [
     limiter({ name: 'resend-ip', windowMs: 60 * MINUTE, limit: 10, keyGenerator: byIp }),
     limiter({ name: 'resend-email', windowMs: 60 * MINUTE, limit: 3, keyGenerator: byEmail }),

@@ -3,6 +3,7 @@ const pool = require('../config/db');
 const otp = require('./otp.controller');
 const sessions = require('../services/session.service');
 const phoneOtp = require('../services/phoneOtp.service');
+const account = require('../services/account.service');
 const { normalizeDrcPhone, formatDrcPhone } = require('../utils/phone');
 
 const invalidPhone = (res) =>
@@ -248,6 +249,22 @@ exports.resendPhoneOtp = async (req, res, next) => {
     if (!phone) return invalidPhone(res);
     const result = await phoneOtp.resendSignup(phone);
     res.json({ message: 'Nouveau code envoyé par SMS.', expiresIn: result.expiresIn });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.forgotPassword = async (req, res, next) => {
+  try {
+    res.json(await account.requestRecovery(req.body.identifier));
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.resetPassword = async (req, res, next) => {
+  try {
+    res.json(await account.resetPassword(req.body));
   } catch (error) {
     next(error);
   }

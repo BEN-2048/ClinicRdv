@@ -15,6 +15,12 @@ export const AuthApi = {
   resendPhoneOtp: (phone: string) =>
     api.post<{ expiresIn: number }>('/auth/resend-phone-otp', { phone }),
 
+  forgotPassword: (identifier: string) =>
+    api.post<{ message: string; expiresIn: number }>('/auth/forgot-password', { identifier }),
+
+  resetPassword: (identifier: string, code: string, newPassword: string) =>
+    api.post<{ message: string }>('/auth/reset-password', { identifier, code, newPassword }),
+
   register: (data: object) =>
     api.post('/auth/register', data),
 
@@ -650,6 +656,27 @@ export const UsersApi = {
     phone?: string | null;
   }) =>
     api.patch('/users/me', data),
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api.post<{ message: string }>('/users/me/password', { currentPassword, newPassword }),
+
+  requestPhoneChange: (phone: string, password: string) =>
+    api.post<{ message: string; phone: string; expiresIn: number }>('/users/me/phone', { phone, password }),
+
+  resendPhoneChange: () =>
+    api.post<{ message: string; phone: string; expiresIn: number }>('/users/me/phone/resend', {}),
+
+  confirmPhoneChange: (code: string) =>
+    api.post<{ message: string; phone: string }>('/users/me/phone/confirm', { code }),
+
+  requestEmailChange: (email: string, password: string) =>
+    api.post<{ message: string; email: string; expiresIn: number }>('/users/me/email', { email, password }),
+
+  resendEmailChange: () =>
+    api.post<{ message: string; email: string; expiresIn: number }>('/users/me/email/resend', {}),
+
+  confirmEmailChange: (code: string) =>
+    api.post<{ message: string; email: string }>('/users/me/email/confirm', { code }),
 };
 
 export type WaitingTimeSlot = 'all_day' | 'morning' | 'afternoon' | 'evening';

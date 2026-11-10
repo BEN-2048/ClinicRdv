@@ -21,6 +21,36 @@ exports.verifyPhone = z.object({
 exports.resendPhoneOtp = z.object({
   phone: z.string().trim().min(6).max(30),
 }).strict();
+
+const newPassword = z.string().min(8, 'Minimum 8 caractères').max(128, 'Maximum 128 caractères');
+const otpCode = z.string().regex(/^\d{6}$/, 'Le code doit contenir 6 chiffres');
+
+exports.forgotPassword = z.object({
+  identifier: z.string().trim().min(3).max(255),
+}).strict();
+
+exports.resetPassword = z.object({
+  identifier: z.string().trim().min(3).max(255),
+  code: otpCode,
+  newPassword,
+}).strict();
+
+exports.changePassword = z.object({
+  currentPassword: z.string().min(1).max(128),
+  newPassword,
+}).strict();
+
+exports.phoneChange = z.object({
+  phone: z.string().trim().min(6).max(30),
+  password: z.string().min(1).max(128),
+}).strict();
+
+exports.emailChange = z.object({
+  email: z.string().trim().email('Adresse e-mail invalide').max(255),
+  password: z.string().min(1).max(128),
+}).strict();
+
+exports.confirmCode = z.object({ code: otpCode }).strict();
 exports.slotsQuery = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format AAAA-MM-JJ'),
   facilityId: z.coerce.number().int().positive().optional(),
