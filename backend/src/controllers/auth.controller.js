@@ -2,6 +2,20 @@
 const pool = require('../config/db');
 const otp = require('./otp.controller');
 const sessions = require('../services/session.service');
+const phoneOtp = require('../services/phoneOtp.service');
+const { normalizeDrcPhone, formatDrcPhone } = require('../utils/phone');
+
+const invalidPhone = (res) =>
+  res.status(400).json({ code: 'INVALID_PHONE', error: 'Numéro de téléphone congolais invalide (ex. 081 234 5678)' });
+
+const publicUser = (user) => ({
+  id: user.id,
+  email: user.email,
+  role: user.role,
+  first_name: user.first_name,
+  last_name: user.last_name,
+  phone_e164: user.phone_e164 ?? null,
+});
 
 const deviceOf = (req) => ({ deviceLabel: req.get('x-device-name'), ip: req.ip });
 
@@ -10,8 +24,17 @@ exports.register = async (req, res, next) => {
   let transactionStarted = false;
 
   try {
-    const { email, password, firstName, lastName, phone } = req.body;
-    const normalizedEmail = email.trim().toLowerCase();
+    const { email, password, firstName, lastName } = req.body;
+    const phone = normalizeDrcPhone(req.body.phone);
+    if (!phone) return invalidPhone(res);
+
+    const taken = await client.query(
+      'SELECT 1 FROM users WHERE phone_e164 = $1 AND phone_verified_at IS NOT NULL',
+      [phone]
+    );
+    if (taken.rowCount) {
+      return res.status(409).json({ code: 'PHONE_TAKEN', error: 'Ce numéro est déjà associé à un compte' });
+    }
 
     await client.query('BEGIN');
     transactionStarted = true;
@@ -20,26 +43,25 @@ exports.register = async (req, res, next) => {
 
     const result = await client.query(
       `INSERT INTO users
-        (email, password_hash, role, first_name, last_name, phone, is_verified)
-       VALUES ($1, $2, 'patient', $3, $4, $5, FALSE)
-       RETURNING id, email, role, first_name, last_name`,
-      [normalizedEmail, hash, firstName, lastName, phone || null]
+        (email, pending_email, password_hash, role, first_name, last_name, phone, phone_e164, is_verified)
+       VALUES (NULL, $1, $2, 'patient', $3, $4, $5, $6, FALSE)
+       RETURNING id`,
+      [email ? email.toLowerCase() : null, hash, firstName, lastName, formatDrcPhone(phone), phone]
     );
 
-    const user = result.rows[0];
-
-    const verification = await otp.createVerification(
-      client,
-      user.id,
-      user.email
-    );
+    const verification = await phoneOtp.sendCode(client, {
+      userId: result.rows[0].id,
+      phone,
+      purpose: 'signup',
+    });
 
     await client.query('COMMIT');
     transactionStarted = false;
 
     res.status(201).json({
-      message: 'Compte cree. Verifiez votre adresse e-mail.',
-      email: user.email,
+      message: 'Compte créé. Saisissez le code reçu par SMS.',
+      phone,
+      verification: 'sms',
       expiresIn: verification.expiresIn,
     });
   } catch (error) {
@@ -48,7 +70,7 @@ exports.register = async (req, res, next) => {
     }
 
     if (error.code === '23505') {
-      return res.status(409).json({ error: 'E-mail deja utilise' });
+      return res.status(409).json({ code: 'PHONE_TAKEN', error: 'Ce numéro est déjà associé à un compte' });
     }
 
     next(error);
@@ -59,17 +81,40 @@ exports.register = async (req, res, next) => {
 
 exports.login = async (req, res, next) => {
   try {
-    const email = req.body.email.trim().toLowerCase();
+    const identifier = String(req.body.identifier ?? req.body.email).trim();
+    const byEmail = identifier.includes('@');
+    const phone = byEmail ? null : normalizeDrcPhone(identifier);
 
-    const result = await pool.query(
-      'SELECT * FROM users WHERE LOWER(email) = LOWER($1)',
-      [email]
-    );
-
-    const user = result.rows[0];
-
-    if (!user || !(await bcrypt.compare(req.body.password, user.password_hash))) {
+    if (!byEmail && !phone) {
       return res.status(401).json({ error: 'Identifiants incorrects' });
+    }
+
+    const result = byEmail
+      ? await pool.query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [identifier.toLowerCase()])
+      : await pool.query(
+        `SELECT * FROM users WHERE phone_e164 = $1
+          ORDER BY (phone_verified_at IS NULL), created_at DESC LIMIT 5`,
+        [phone]
+      );
+
+    let user = null;
+    for (const candidate of result.rows) {
+      if (await bcrypt.compare(req.body.password, candidate.password_hash)) {
+        user = candidate;
+        break;
+      }
+    }
+
+    if (!user) {
+      return res.status(401).json({ error: 'Identifiants incorrects' });
+    }
+
+    if (!byEmail && !user.phone_verified_at) {
+      return res.status(403).json({
+        code: 'PHONE_NOT_VERIFIED',
+        phone,
+        error: 'Veuillez vérifier votre numéro de téléphone avant de vous connecter.',
+      });
     }
 
     if (user.role === 'patient' && user.is_verified === false) {
@@ -80,13 +125,7 @@ exports.login = async (req, res, next) => {
     }
 
     res.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        first_name: user.first_name,
-        last_name: user.last_name,
-      },
+      user: publicUser(user),
       ...(await sessions.createSession(user, deviceOf(req))),
     });
   } catch (error) {
@@ -183,6 +222,32 @@ exports.revokeSession = async (req, res, next) => {
 exports.upgradeSession = async (req, res, next) => {
   try {
     res.json(await sessions.upgradeLegacy(req.body.token, deviceOf(req)));
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.verifyPhone = async (req, res, next) => {
+  try {
+    const phone = normalizeDrcPhone(req.body.phone);
+    if (!phone) return invalidPhone(res);
+    const user = await phoneOtp.verifySignup(phone, req.body.code);
+    res.json({
+      message: 'Numéro vérifié avec succès.',
+      user: publicUser(user),
+      ...(await sessions.createSession(user, deviceOf(req))),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.resendPhoneOtp = async (req, res, next) => {
+  try {
+    const phone = normalizeDrcPhone(req.body.phone);
+    if (!phone) return invalidPhone(res);
+    const result = await phoneOtp.resendSignup(phone);
+    res.json({ message: 'Nouveau code envoyé par SMS.', expiresIn: result.expiresIn });
   } catch (error) {
     next(error);
   }

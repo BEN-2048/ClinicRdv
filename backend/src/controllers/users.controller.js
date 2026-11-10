@@ -2,6 +2,7 @@
 
 const PROFILE_SELECT = `
   SELECT u.id, u.email, u.role, u.first_name, u.last_name, u.phone, u.created_at,
+         u.phone_e164, u.phone_verified_at, u.pending_email,
          p.id AS patient_id, p.patient_number
     FROM users u
     LEFT JOIN patients p ON p.user_id = u.id

@@ -12,6 +12,7 @@ import Icon, { IconName } from '../components/ui/Icon';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import VerifyEmailScreen from '../screens/auth/VerifyEmailScreen';
+import VerifyPhoneScreen from '../screens/auth/VerifyPhoneScreen';
 
 import HomeScreen from '../screens/patient/HomeScreen';
 import DoctorListScreen from '../screens/patient/DoctorListScreen';
@@ -232,6 +233,11 @@ export default function RootNavigator() {
             <Stack.Screen
               name="VerifyEmail"
               component={VerifyEmailScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="VerifyPhone"
+              component={VerifyPhoneScreen}
               options={{ headerShown: false }}
             />
           </>

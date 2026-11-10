@@ -6,8 +6,14 @@ import { api } from './client';
 // ============================================
 
 export const AuthApi = {
-  login: (email: string, password: string) =>
-    api.post('/auth/login', { email, password }),
+  login: (identifier: string, password: string) =>
+    api.post('/auth/login', { identifier, password }),
+
+  verifyPhone: (phone: string, code: string) =>
+    api.post('/auth/verify-phone', { phone, code }),
+
+  resendPhoneOtp: (phone: string) =>
+    api.post<{ expiresIn: number }>('/auth/resend-phone-otp', { phone }),
 
   register: (data: object) =>
     api.post('/auth/register', data),

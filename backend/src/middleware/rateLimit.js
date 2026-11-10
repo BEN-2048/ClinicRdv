@@ -3,10 +3,16 @@ const env = require('../config/env');
 
 const MINUTE = 60 * 1000;
 
-const normalizedEmail = (req) =>
-  typeof req.body?.email === 'string'
-    ? req.body.email.trim().toLowerCase()
-    : '';
+const { normalizeDrcPhone } = require('../utils/phone');
+
+const normalizedEmail = (req) => {
+  const body = req.body ?? {};
+  const raw = body.identifier ?? body.email ?? body.phone;
+  if (typeof raw !== 'string') return '';
+  const value = raw.trim();
+  if (value.includes('@')) return value.toLowerCase();
+  return normalizeDrcPhone(value) ?? value;
+};
 
 const byIp = (req) => ipKeyGenerator(req.ip);
 const byEmail = (req) => normalizedEmail(req) || `ip:${byIp(req)}`;
@@ -48,6 +54,14 @@ const createAuthLimiters = () => ({
   verifyEmail: [
     limiter({ name: 'verify-ip', windowMs: 15 * MINUTE, limit: 30, keyGenerator: byIp }),
     limiter({ name: 'verify-email', windowMs: 15 * MINUTE, limit: 10, keyGenerator: byEmail }),
+  ],
+  verifyPhone: [
+    limiter({ name: 'verify-phone-ip', windowMs: 15 * MINUTE, limit: 30, keyGenerator: byIp }),
+    limiter({ name: 'verify-phone', windowMs: 15 * MINUTE, limit: 10, keyGenerator: byEmail }),
+  ],
+  resendPhone: [
+    limiter({ name: 'resend-phone-ip', windowMs: 60 * MINUTE, limit: 10, keyGenerator: byIp }),
+    limiter({ name: 'resend-phone', windowMs: 60 * MINUTE, limit: 3, keyGenerator: byEmail }),
   ],
   resendOtp: [
     limiter({ name: 'resend-ip', windowMs: 60 * MINUTE, limit: 10, keyGenerator: byIp }),

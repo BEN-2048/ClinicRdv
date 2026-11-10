@@ -21,6 +21,13 @@ module.exports = {
   otpMaxAttempts: positiveInteger(process.env.OTP_MAX_ATTEMPTS, 5),
   otpResendCooldownSeconds: positiveInteger(process.env.OTP_RESEND_COOLDOWN_SECONDS, 60),
 
+  smsDriver: process.env.SMS_DRIVER || 'console',
+  smsgateUrl: process.env.SMSGATE_URL,
+  smsgateUsername: process.env.SMSGATE_USERNAME,
+  smsgatePassword: process.env.SMSGATE_PASSWORD,
+  smsDailyCap: positiveInteger(process.env.SMS_DAILY_CAP, 200),
+  smsPerNumberDaily: positiveInteger(process.env.SMS_PER_NUMBER_DAILY, 5),
+
   nodeEnv: process.env.NODE_ENV || 'development',
 
   rateLimitEnabled: process.env.RATE_LIMIT_ENABLED
