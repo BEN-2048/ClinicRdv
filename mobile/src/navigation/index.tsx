@@ -45,6 +45,8 @@ import SecretaryBookScreen from '../screens/secretary/SecretaryBookScreen';
 import SecretaryDoctorFormScreen from '../screens/secretary/SecretaryDoctorFormScreen';
 import SecretaryDoctorScheduleScreen from '../screens/secretary/SecretaryDoctorScheduleScreen';
 import GuardianLinksScreen from '../screens/secretary/GuardianLinksScreen';
+import FacilitiesManageScreen from '../screens/admin/FacilitiesManageScreen';
+import FacilityEditScreen from '../screens/admin/FacilityEditScreen';
 
 
 const Stack = createNativeStackNavigator();
@@ -248,6 +250,22 @@ export default function RootNavigator() {
                 name="GuardianLinks"
                 component={GuardianLinksScreen}
                 options={{ title: 'Liens familiaux' }}
+              />
+            )}
+
+            {(user.role === 'secretary' || user.role === 'admin') && (
+              <Stack.Screen
+                name="FacilitiesManage"
+                component={FacilitiesManageScreen}
+                options={{ title: 'Établissements' }}
+              />
+            )}
+
+            {(user.role === 'secretary' || user.role === 'admin') && (
+              <Stack.Screen
+                name="FacilityEdit"
+                component={FacilityEditScreen}
+                options={{ title: 'Établissement' }}
               />
             )}
 

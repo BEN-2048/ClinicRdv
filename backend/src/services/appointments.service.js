@@ -2,6 +2,13 @@
 const pool = require('../config/db');
 const { getAvailableSlots, resolveFacility } = require('./slots.service');
 const { isStaff } = require('../middleware/auth');
+const scopes = require('./scope.service');
+
+const staffFacilities = async (user) => {
+  if (!isStaff(user.role)) return { staff: false, facilities: null };
+  const scope = await scopes.loadStaffScope(user);
+  return { staff: true, facilities: scopes.scopeParam(scope) };
+};
 const { accessibleProfilesSql, resolveBookingProfile } = require('./patients.service');
 const { localDateString } = require('../utils/timezone');
 
@@ -93,20 +100,21 @@ exports.book = async (patientId, { doctorId, startsAt, reason, patientProfileId,
 
 // Annuler un rendez-vous
 exports.cancel = async (id, user) => {
+  const staff = await staffFacilities(user);
   const r = await pool.query(
     `UPDATE appointments
         SET status = 'cancelled'
       WHERE id = $1
         AND status IN ('pending', 'confirmed')
         AND (
-          $2::boolean
+          ($2::boolean AND ($4::int[] IS NULL OR facility_id = ANY($4::int[])))
           OR patient_profile_id IN ${accessibleProfilesSql('$3')}
           OR doctor_id = (
             SELECT id FROM doctors WHERE user_id = $3
           )
         )
       RETURNING *`,
-    [id, isStaff(user.role), user.id]
+    [id, staff.staff, user.id, staff.facilities]
   );
 
   if (!r.rowCount) {
@@ -132,6 +140,7 @@ exports.cancel = async (id, user) => {
 exports.reschedule = async (id, user, startsAt) => {
   const date = parseStartsAt(startsAt);
   const iso = date.toISOString();
+  const staff = await staffFacilities(user);
   const client = await pool.connect();
 
   try {
@@ -139,10 +148,12 @@ exports.reschedule = async (id, user, startsAt) => {
 
     const cur = await client.query(
       `SELECT * FROM appointments
-        WHERE id=$1 AND ($3::boolean OR patient_profile_id IN ${accessibleProfilesSql('$2')})
+        WHERE id=$1
+          AND (($3::boolean AND ($4::int[] IS NULL OR facility_id = ANY($4::int[])))
+               OR patient_profile_id IN ${accessibleProfilesSql('$2')})
           AND status IN ('pending','confirmed')
         FOR UPDATE`,
-      [id, user.id, isStaff(user.role)]
+      [id, user.id, staff.staff, staff.facilities]
     );
 
     if (!cur.rowCount) {
@@ -235,7 +246,10 @@ exports.listAll = async ({
   doctorId,
   status,
   patientId,
-} = {}) => {
+  facilityId,
+} = {}, scope) => {
+  if (!scope) throw new Error('Périmètre du personnel requis');
+  if (facilityId) scopes.assertFacilityInScope(scope, facilityId);
   const r = await pool.query(
     `SELECT a.*,
             du.first_name || ' ' || du.last_name AS doctor_name,
@@ -259,15 +273,20 @@ exports.listAll = async ({
         AND ($2::int IS NULL OR a.doctor_id = $2)
         AND ($3::appt_status IS NULL OR a.status = $3)
         AND ($4::int IS NULL OR a.patient_id = $4)
+        AND ($5::int[] IS NULL OR a.facility_id = ANY($5::int[]))
+        AND ($6::int IS NULL OR a.facility_id = $6)
       ORDER BY a.starts_at`,
-    [date || null, doctorId || null, status || null, patientId || null]
+    [date || null, doctorId || null, status || null, patientId || null,
+      scopes.scopeParam(scope), facilityId || null]
   );
 
   return r.rows;
 };
 
 // Réservation effectuée par un membre du personnel
-exports.bookFor = async ({ patientId, ...data }) => {
+exports.bookFor = async ({ patientId, ...data }, scope) => {
+  if (!scope) throw new Error('Périmètre du personnel requis');
+  const facilityId = await scopes.pickFacilityInScope(scope, data.doctorId, data.facilityId ?? null);
   const p = await pool.query(
     `SELECT 1
        FROM users
@@ -279,7 +298,7 @@ exports.bookFor = async ({ patientId, ...data }) => {
     throw httpError(404, 'Patient introuvable');
   }
 
-  return exports.book(patientId, data);
+  return exports.book(patientId, { ...data, facilityId: facilityId ?? undefined });
 };
 
 exports.httpError = httpError;

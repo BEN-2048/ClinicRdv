@@ -106,6 +106,7 @@ exports.adminAppointmentsQuery = z.object({
   doctorId: z.coerce.number().int().positive().optional(),
   patientId: z.coerce.number().int().positive().optional(),
   status: z.enum(['pending', 'confirmed', 'cancelled', 'done']).optional(),
+  facilityId: z.coerce.number().int().positive().optional(),
 });
 exports.statsQuery = z.object({ from: isoDate.optional(), to: isoDate.optional() });
 exports.patientsQuery = z.object({ q: z.string().max(80).optional() });
@@ -169,3 +170,79 @@ exports.verifyEmail = z.object({
 exports.resendOtp = z.object({
   email: z.string().email(),
 }).strict();
+
+const facilityFields = {
+  name: z.string().trim().min(2).max(150),
+  type: z.enum(['hospital', 'clinic', 'medical_center', 'health_center']),
+  description: z.string().trim().max(2000).nullable(),
+  address: z.string().trim().max(255).nullable(),
+  city: z.string().trim().max(80).nullable(),
+  province: z.string().trim().max(80).nullable(),
+  latitude: z.number().min(-90).max(90).nullable(),
+  longitude: z.number().min(-180).max(180).nullable(),
+  phone: z.string().trim().max(30).nullable(),
+  emergencyPhone: z.string().trim().max(30).nullable(),
+  email: z.string().trim().email().max(255).nullable(),
+  timezone: z.enum(['Africa/Kinshasa', 'Africa/Lubumbashi']),
+  status: z.enum(['pending', 'active', 'suspended']),
+};
+
+const coordinatesTogether = (o) =>
+  (o.latitude === undefined) === (o.longitude === undefined);
+
+exports.createFacility = z.object(facilityFields)
+  .partial()
+  .required({ name: true, type: true, timezone: true })
+  .strict()
+  .refine(coordinatesTogether, 'latitude et longitude doivent etre fournies ensemble');
+
+exports.updateFacility = z.object(facilityFields)
+  .partial()
+  .strict()
+  .refine((o) => Object.keys(o).length > 0, 'Aucun champ a modifier')
+  .refine(coordinatesTogether, 'latitude et longitude doivent etre fournies ensemble');
+
+exports.facilityParams = z.object({ facilityId: z.coerce.number().int().positive() });
+
+exports.facilityServices = z.object({
+  services: z.array(z.object({
+    code: z.string().regex(/^[a-z_]{2,30}$/),
+    available24h: z.boolean().optional(),
+  })).max(30),
+}).strict();
+
+const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+
+exports.facilityOpeningHours = z.object({
+  hours: z.array(z.object({
+    weekday: z.number().int().min(0).max(6),
+    opensAt: hhmm,
+    closesAt: hhmm,
+  })).max(28),
+}).strict();
+
+exports.facilitySpecialties = z.object({
+  specialtyIds: z.array(z.number().int().positive()).max(100),
+}).strict();
+
+exports.addFacilityMember = z.object({
+  email: z.string().trim().email(),
+  role: z.enum(['facility_admin', 'secretary']),
+  firstName: z.string().trim().min(1).max(80).optional(),
+  lastName: z.string().trim().min(1).max(80).optional(),
+  password: z.string().min(8, 'Minimum 8 caractères').optional(),
+}).strict();
+
+exports.attachDoctor = z.object({
+  doctorId: z.number().int().positive(),
+  fee: z.number().nonnegative().nullable().optional(),
+}).strict();
+
+exports.updateAffiliation = z.object({
+  status: z.enum(['active', 'inactive']).optional(),
+  fee: z.number().nonnegative().nullable().optional(),
+}).strict().refine((o) => Object.keys(o).length > 0, 'Aucun champ a modifier');
+
+exports.workingHoursQuery = z.object({
+  facilityId: z.coerce.number().int().positive().optional(),
+});

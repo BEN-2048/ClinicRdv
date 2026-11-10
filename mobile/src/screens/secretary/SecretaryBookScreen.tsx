@@ -29,7 +29,7 @@ type Patient = {
   phone: string | null;
   patient_number: string | null;
 };
-type Slot = { startsAt: string; endsAt: string; available: boolean };
+type Slot = { startsAt: string; endsAt: string; available: boolean; facilityId?: number };
 
 export default function SecretaryBookScreen() {
   const navigation = useNavigation<any>();
@@ -102,7 +102,7 @@ export default function SecretaryBookScreen() {
         await StaffApi.reschedule(existing.id, slot.startsAt);
         Alert.alert('Rendez-vous reporté', `Nouveau créneau : ${formatDateTime(slot.startsAt)}`);
       } else if (patient) {
-        await StaffApi.book(patient.id, doctorId, slot.startsAt, reason.trim());
+        await StaffApi.book(patient.id, doctorId, slot.startsAt, reason.trim(), slot.facilityId);
         Alert.alert('Rendez-vous créé', `${patient.first_name} ${patient.last_name} · ${formatDateTime(slot.startsAt)}`);
       }
       navigation.goBack();

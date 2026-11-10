@@ -370,6 +370,74 @@ export const FacilitiesApi = {
     api.get<{ services: { code: string; name: string }[]; cities: string[] }>('/facilities/meta'),
 };
 
+export type FacilityStatus = 'pending' | 'active' | 'suspended';
+
+export type StaffScope = {
+  platformAdmin: boolean;
+  facilities: { id: number; name: string; city: string | null; status: FacilityStatus; role: 'facility_admin' | 'secretary' }[] | null;
+};
+
+export type ManagedFacilitySummary = {
+  id: number;
+  code: string;
+  name: string;
+  type: FacilityType;
+  city: string | null;
+  status: FacilityStatus;
+  is_default: boolean;
+  timezone: FacilityTimeZone;
+  doctors_count: number;
+  members_count: number;
+  can_manage: boolean;
+};
+
+export type FacilityInput = {
+  name: string;
+  type: FacilityType;
+  timezone: FacilityTimeZone;
+  status?: FacilityStatus;
+  description?: string | null;
+  address?: string | null;
+  city?: string | null;
+  province?: string | null;
+  phone?: string | null;
+  emergencyPhone?: string | null;
+  email?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+};
+
+export type FacilityMemberInput = {
+  email: string;
+  role: 'facility_admin' | 'secretary';
+  firstName?: string;
+  lastName?: string;
+  password?: string;
+};
+
+export type ManagedFacility = {
+  id: number;
+  code: string;
+  name: string;
+  type: FacilityType;
+  description: string | null;
+  address: string | null;
+  city: string | null;
+  province: string | null;
+  latitude: string | null;
+  longitude: string | null;
+  phone: string | null;
+  emergency_phone: string | null;
+  email: string | null;
+  timezone: FacilityTimeZone;
+  status: FacilityStatus;
+  is_default: boolean;
+  can_manage: boolean;
+  services: { code: string; available24h: boolean }[];
+  members: { id: number; role: 'facility_admin' | 'secretary'; status: 'active' | 'revoked'; user_id: number; email: string; first_name: string; last_name: string }[];
+  doctors: { doctor_id: number; status: 'active' | 'inactive'; fee: string | null; first_name: string; last_name: string; specialty: string }[];
+};
+
 export type PatientRelationship = 'parent' | 'legal_guardian';
 export type GuardianLinkStatus = 'pending' | 'verified' | 'rejected' | 'revoked';
 
@@ -494,14 +562,43 @@ export const StaffApi = {
     patientId: number,
     doctorId: number,
     startsAt: string,
-    reason?: string
+    reason?: string,
+    facilityId?: number
   ) =>
     api.post('/admin/appointments', {
       patientId,
       doctorId,
       startsAt,
       reason: reason || undefined,
+      facilityId,
     }),
+
+  scope: () =>
+    api.get<StaffScope>('/admin/me/scope'),
+
+  facilities: () =>
+    api.get<ManagedFacilitySummary[]>('/admin/facilities'),
+
+  facility: (id: number) =>
+    api.get<ManagedFacility>(`/admin/facilities/${id}`),
+
+  createFacility: (data: FacilityInput) =>
+    api.post<ManagedFacility>('/admin/facilities', data),
+
+  updateFacility: (id: number, data: Partial<FacilityInput>) =>
+    api.patch<ManagedFacility>(`/admin/facilities/${id}`, data),
+
+  setFacilityServices: (id: number, services: { code: string; available24h?: boolean }[]) =>
+    api.put<ManagedFacility>(`/admin/facilities/${id}/services`, { services }),
+
+  addFacilityMember: (id: number, data: FacilityMemberInput) =>
+    api.post<ManagedFacility>(`/admin/facilities/${id}/members`, data),
+
+  revokeFacilityMember: (id: number, memberId: number) =>
+    api.delete<ManagedFacility>(`/admin/facilities/${id}/members/${memberId}`),
+
+  updateAffiliation: (id: number, doctorId: number, data: { status?: 'active' | 'inactive'; fee?: number | null }) =>
+    api.patch<ManagedFacility & { upcoming_appointments: number }>(`/admin/facilities/${id}/doctors/${doctorId}`, data),
 
   cancel: (id: number) =>
     api.patch(`/admin/appointments/${id}/cancel`),
