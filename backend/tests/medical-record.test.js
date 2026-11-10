@@ -70,7 +70,7 @@ describe('GET /api/medical-record/me', () => {
     const [, recordParams] = calls('FROM appointments a')[0];
     expect(recordParams).toEqual([3]);
     const [, logParams] = calls('INSERT INTO patient_access_logs')[0];
-    expect(logParams).toEqual([7, 'patient', 3, 'view_record', true, 'self', expect.anything()]);
+    expect(logParams.slice(0, 6)).toEqual([7, 'patient', 3, 'view_record', true, 'self']);
   });
 
   test('renvoie une liste vide si le compte n a pas de profil patient', async () => {

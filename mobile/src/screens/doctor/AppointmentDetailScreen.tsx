@@ -321,6 +321,15 @@ export default function AppointmentDetailScreen() {
           </View>
         </Card>
 
+        {consultation.patient_profile_id ? (
+          <Button
+            title="Dossier du patient"
+            icon="folder-open-outline"
+            variant="secondary"
+            onPress={() => navigation.navigate('PatientRecord', { patientId: consultation.patient_profile_id })}
+          />
+        ) : null}
+
         <Card style={s.section}>
           <View style={s.rowBetween}>
             <Text style={type.h2}>Rendez-vous</Text>

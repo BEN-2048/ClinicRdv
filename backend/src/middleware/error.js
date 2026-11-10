@@ -19,5 +19,8 @@ exports.errorHandler = (err, req, res, next) => {
     return res.status(413).json({ error: 'Corps de requete trop volumineux' });
   }
 
-  res.status(status).json({ error: err.message || 'Requete invalide' });
+  res.status(status).json({
+    error: err.message || 'Requete invalide',
+    ...(Array.isArray(err.details) ? { details: err.details } : {}),
+  });
 };

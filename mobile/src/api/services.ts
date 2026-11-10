@@ -660,3 +660,89 @@ export const MedicalRecordApi = {
   forPatient: (patientId: number) =>
     api.get(`/medical-record/patients/${patientId}`),
 };
+
+export type RecordKind = 'allergies' | 'conditions' | 'medications' | 'immunizations';
+
+type RecordEntryBase = {
+  id: number;
+  patient_id: number;
+  facility_id: number | null;
+  facility_name: string | null;
+  source: 'clinician' | 'patient';
+  confidential: boolean;
+  recorded_by_name: string | null;
+  recorded_by_role: string | null;
+  recorded_at: string;
+  updated_at: string;
+  notes: string | null;
+  entered_in_error: boolean;
+  error_reason: string | null;
+};
+
+export type AllergyEntry = RecordEntryBase & {
+  substance: string;
+  reaction: string | null;
+  severity: 'mild' | 'moderate' | 'severe' | 'unknown';
+  status: 'active' | 'resolved';
+  noted_on: string | null;
+};
+
+export type ConditionEntry = RecordEntryBase & {
+  label: string;
+  icd10_code: string | null;
+  onset_date: string | null;
+  status: 'active' | 'resolved';
+};
+
+export type MedicationEntry = RecordEntryBase & {
+  name: string;
+  dosage: string | null;
+  frequency: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  status: 'active' | 'stopped';
+};
+
+export type ImmunizationEntry = RecordEntryBase & {
+  vaccine: string;
+  dose_label: string | null;
+  administered_on: string;
+  lot_number: string | null;
+};
+
+export type PatientRecord = {
+  patient: {
+    id: number;
+    patient_number: string;
+    first_name: string;
+    last_name: string;
+    birth_date: string | null;
+    sex: 'female' | 'male' | null;
+  };
+  allergies: AllergyEntry[];
+  conditions: ConditionEntry[];
+  medications: MedicationEntry[];
+  immunizations: ImmunizationEntry[];
+  access: {
+    basis: 'self' | 'guardian_verified' | 'treating_doctor';
+    canWriteClinical: boolean;
+    canDeclare: boolean;
+    facilities: { id: number; name: string }[];
+  };
+};
+
+export const RecordApi = {
+  get: (patientId: number, includeErrors = false) =>
+    api.get<PatientRecord>(`/patients/${patientId}/record`, {
+      params: includeErrors ? { includeErrors: 'true' } : undefined,
+    }),
+
+  add: (patientId: number, kind: RecordKind, data: Record<string, unknown>) =>
+    api.post(`/patients/${patientId}/record/${kind}`, data),
+
+  update: (patientId: number, kind: RecordKind, entryId: number, data: Record<string, unknown>) =>
+    api.patch(`/patients/${patientId}/record/${kind}/${entryId}`, data),
+
+  markEnteredInError: (patientId: number, kind: RecordKind, entryId: number, reason: string) =>
+    api.post(`/patients/${patientId}/record/${kind}/${entryId}/entered-in-error`, { reason }),
+};

@@ -1,8 +1,11 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { MedicalRecordApi, PatientProfile, PatientsApi } from '../../api/services';
+import { MedicalRecordApi, PatientProfile, PatientRecord, PatientsApi, RecordApi } from '../../api/services';
+import { errorMessage } from '../../api/client';
+import { RecordEntryForm, RecordSections } from '../../components/record/RecordSections';
 import {
+  Button,
   Card,
   Chip,
   EmptyState,
@@ -30,7 +33,7 @@ type Consultation = {
   note_created_at: string | null;
 };
 
-type Tab = 'consultations' | 'documents' | 'traitements';
+type Tab = 'synthese' | 'consultations' | 'documents' | 'traitements';
 
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat('fr-FR', {
@@ -41,7 +44,10 @@ const formatDate = (value: string) =>
   }).format(new Date(value));
 
 export default function MedicalRecordScreen() {
-  const [tab, setTab] = useState<Tab>('consultations');
+  const [tab, setTab] = useState<Tab>('synthese');
+  const [summary, setSummary] = useState<PatientRecord | null>(null);
+  const [declaring, setDeclaring] = useState(false);
+  const [savingDeclaration, setSavingDeclaration] = useState(false);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [profiles, setProfiles] = useState<PatientProfile[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -69,16 +75,22 @@ export default function MedicalRecordScreen() {
 
       if (!target || target.link_status === 'pending') {
         setConsultations([]);
+        setSummary(null);
         return;
       }
 
-      const { data } = await MedicalRecordApi.forPatient(target.id);
+      const [{ data }, record] = await Promise.all([
+        MedicalRecordApi.forPatient(target.id),
+        RecordApi.get(target.id),
+      ]);
+      setSummary(record.data);
       if (!Array.isArray(data?.consultations)) {
         throw new Error('Format du dossier médical invalide.');
       }
       setConsultations(data.consultations as Consultation[]);
     } catch (err: any) {
       setConsultations([]);
+      setSummary(null);
       setError(err?.response?.data?.error || err?.message || 'Impossible de charger le dossier médical.');
     } finally {
       setLoading(false);
@@ -155,6 +167,7 @@ export default function MedicalRecordScreen() {
         value={tab}
         onChange={setTab}
         tabs={[
+          { key: 'synthese', label: 'Synthèse' },
           { key: 'consultations', label: 'Consultations' },
           { key: 'documents', label: 'Documents' },
           { key: 'traitements', label: 'Traitements' },
@@ -167,6 +180,43 @@ export default function MedicalRecordScreen() {
         <Card>
           <ErrorState message={error} onRetry={() => load()} />
         </Card>
+      ) : tab === 'synthese' ? (
+        summary ? (
+          <>
+            {summary.access.canDeclare ? (
+              declaring ? (
+                <RecordEntryForm
+                  kind="allergies"
+                  clinician={false}
+                  saving={savingDeclaration}
+                  onCancel={() => setDeclaring(false)}
+                  onSubmit={async (data) => {
+                    setSavingDeclaration(true);
+                    try {
+                      await RecordApi.add(summary.patient.id, 'allergies', data);
+                      setDeclaring(false);
+                      await load(true, selectedRef.current);
+                    } catch (e) {
+                      Alert.alert('Déclaration impossible', errorMessage(e));
+                    } finally {
+                      setSavingDeclaration(false);
+                    }
+                  }}
+                />
+              ) : (
+                <Button title="Déclarer une allergie" icon="add" variant="secondary" onPress={() => setDeclaring(true)} />
+              )
+            ) : null}
+            <RecordSections record={summary} />
+            <Text style={s.footnote}>
+              Les informations « Déclaré par le patient » seront vérifiées par votre médecin lors d’une prochaine consultation.
+            </Text>
+          </>
+        ) : (
+          <Card>
+            <EmptyState icon="document-text-outline" title="Synthèse indisponible" />
+          </Card>
+        )
       ) : tab === 'consultations' ? (
         consultations.length === 0 ? (
           <Card>
@@ -247,6 +297,7 @@ export default function MedicalRecordScreen() {
 }
 
 const s = StyleSheet.create({
+  footnote: { ...type.caption, color: color.textMuted, textAlign: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
   flex: { flex: 1, minWidth: 0 },
   profile: {
