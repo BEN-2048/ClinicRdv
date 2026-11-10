@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS btree_gist;
 -- Ces commandes suppriment toutes les anciennes tables et leurs données.
 -- Ne pas exécuter ce fichier sur une base contenant des données à conserver.
 
-DROP TABLE IF EXISTS schema_migrations, consultation_addenda, prescription_items, prescriptions,
+DROP TABLE IF EXISTS schema_migrations, medical_documents, consultation_addenda, prescription_items, prescriptions,
   record_revisions, immunizations, patient_medications,
   patient_conditions, patient_allergies, doctor_affiliations, facility_members,
   facility_specialties, facility_services, health_services, facility_opening_hours, facilities,

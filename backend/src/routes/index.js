@@ -25,6 +25,8 @@ const facilities = require('../controllers/facilities.controller');
 const facilityAdmin = require('../controllers/facilityAdmin.controller');
 const record = require('../controllers/record.controller');
 const rx = require('../controllers/prescriptions.controller');
+const documents = require('../controllers/documents.controller');
+const { createUploadLimiter } = require('../middleware/rateLimit');
 const {
   staffScopeMiddleware,
   doctorInScopeMiddleware,
@@ -266,6 +268,30 @@ router.get(
   validate(s.patientIdParams, 'params'),
   rx.listForPatient
 );
+
+const uploadLimiter = createUploadLimiter();
+const documentAccess = [authenticate, requireRole('patient', 'doctor')];
+
+router.get('/patients/:patientId/documents', ...documentAccess, validate(s.patientIdParams, 'params'), documents.list);
+router.post(
+  '/patients/:patientId/documents',
+  ...documentAccess,
+  validate(s.patientIdParams, 'params'),
+  uploadLimiter,
+  documents.receiveFile,
+  validate(s.documentUpload),
+  documents.upload
+);
+router.post('/documents/:id/download-link', ...documentAccess, validate(s.positiveIdParams, 'params'), documents.downloadLink);
+router.post('/documents/:id/release', ...documentAccess, validate(s.positiveIdParams, 'params'), documents.release);
+router.post(
+  '/documents/:id/entered-in-error',
+  ...documentAccess,
+  validate(s.positiveIdParams, 'params'),
+  validate(s.enteredInError),
+  documents.enteredInError
+);
+router.get('/files/:token', validate(s.fileTokenParams, 'params'), documents.serveFile);
 
 router.get(
   '/patients/:patientId/consultations',
