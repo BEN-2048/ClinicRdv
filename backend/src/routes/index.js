@@ -20,6 +20,7 @@ const admin = require('../controllers/admin.controller');
 const users = require('../controllers/users.controller');
 const medicalRecord = require('../controllers/medicalRecord.controller');
 const waitingList = require('../controllers/waitingList.controller');
+const patients = require('../controllers/patients.controller');
 
 
 // =========================================
@@ -51,12 +52,27 @@ router.post(
 
 router.get('/users/me', authenticate, users.getMe);
 router.get('/medical-record/me', authenticate, requireRole('patient'), medicalRecord.mine);
+router.get(
+  '/medical-record/patients/:patientId',
+  authenticate,
+  requireRole('patient'),
+  medicalRecord.forPatient
+);
 
 router.patch(
   '/users/me',
   authenticate,
   validate(s.updateProfile),
   users.updateMe
+);
+
+router.get('/patients/mine', authenticate, requireRole('patient'), patients.mine);
+router.post(
+  '/patients/dependents',
+  authenticate,
+  requireRole('patient'),
+  validate(s.addDependent),
+  patients.addDependent
 );
 
 
@@ -299,6 +315,18 @@ staff.get(
 );
 
 staff.get('/specialties', admin.specialties);
+
+staff.get(
+  '/guardian-links',
+  validate(s.guardianLinksQuery, 'query'),
+  patients.listGuardianLinks
+);
+
+staff.patch(
+  '/guardian-links/:id',
+  validate(s.reviewGuardianLink),
+  patients.reviewGuardianLink
+);
 
 
 // Gestion des médecins

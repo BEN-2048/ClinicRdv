@@ -2,6 +2,7 @@
 const pool = require('../config/db');
 const { getAvailableSlots } = require('./slots.service');
 const { isStaff } = require('../middleware/auth');
+const { accessibleProfilesSql, resolveBookingProfile } = require('./patients.service');
 
 const httpError = (status, message) =>
   Object.assign(new Error(message), { status });
@@ -47,8 +48,9 @@ const createPatientNotification = async ({
 };
 
 // Réserver un rendez-vous
-exports.book = async (patientId, { doctorId, startsAt, reason }) => {
+exports.book = async (patientId, { doctorId, startsAt, reason, patientProfileId }) => {
   const iso = new Date(startsAt).toISOString();
+  const profileId = await resolveBookingProfile(patientId, patientProfileId);
 
   const slots = await getAvailableSlots(
     doctorId,
@@ -68,10 +70,10 @@ exports.book = async (patientId, { doctorId, startsAt, reason }) => {
   try {
     const r = await pool.query(
       `INSERT INTO appointments
-        (patient_id, doctor_id, starts_at, ends_at, status, reason)
-       VALUES ($1, $2, $3, $4, 'confirmed', $5)
+        (patient_id, patient_profile_id, doctor_id, starts_at, ends_at, status, reason)
+       VALUES ($1, $2, $3, $4, $5, 'confirmed', $6)
        RETURNING *`,
-      [patientId, doctorId, slot.startsAt, slot.endsAt, reason || null]
+      [patientId, profileId, doctorId, slot.startsAt, slot.endsAt, reason || null]
     );
 
     const appointment = r.rows[0];
@@ -105,7 +107,7 @@ exports.cancel = async (id, user) => {
         AND status IN ('pending', 'confirmed')
         AND (
           $2::boolean
-          OR patient_id = $3
+          OR patient_profile_id IN ${accessibleProfilesSql('$3')}
           OR doctor_id = (
             SELECT id FROM doctors WHERE user_id = $3
           )
@@ -144,7 +146,7 @@ exports.reschedule = async (id, user, startsAt) => {
 
     const cur = await client.query(
       `SELECT * FROM appointments
-        WHERE id=$1 AND ($3::boolean OR patient_id=$2)
+        WHERE id=$1 AND ($3::boolean OR patient_profile_id IN ${accessibleProfilesSql('$2')})
           AND status IN ('pending','confirmed')
         FOR UPDATE`,
       [id, user.id, isStaff(user.role)]
@@ -200,7 +202,7 @@ exports.reschedule = async (id, user, startsAt) => {
 exports.listForUser = async (user, { scope } = {}) => {
   const base = user.role === 'doctor'
     ? 'a.doctor_id = (SELECT id FROM doctors WHERE user_id = $1)'
-    : 'a.patient_id = $1';
+    : `a.patient_profile_id IN ${accessibleProfilesSql('$1')}`;
 
   const time = scope === 'past'
     ? 'a.starts_at < now()'
@@ -211,11 +213,14 @@ exports.listForUser = async (user, { scope } = {}) => {
   const r = await pool.query(
     `SELECT a.*,
             u.first_name || ' ' || u.last_name AS doctor_name,
-            s.name AS specialty
+            s.name AS specialty,
+            pp.patient_number,
+            pp.first_name || ' ' || pp.last_name AS patient_name
        FROM appointments a
        JOIN doctors d ON d.id = a.doctor_id
        JOIN users u ON u.id = d.user_id
        JOIN specialties s ON s.id = d.specialty_id
+       JOIN patients pp ON pp.id = a.patient_profile_id
       WHERE ${base}
         AND ${time}
       ORDER BY a.starts_at`,
@@ -236,13 +241,15 @@ exports.listAll = async ({
     `SELECT a.*,
             du.first_name || ' ' || du.last_name AS doctor_name,
             s.name AS specialty,
-            pu.first_name || ' ' || pu.last_name AS patient_name,
+            pp.first_name || ' ' || pp.last_name AS patient_name,
+            pp.patient_number,
             pu.phone AS patient_phone
        FROM appointments a
        JOIN doctors d ON d.id = a.doctor_id
        JOIN users du ON du.id = d.user_id
        JOIN specialties s ON s.id = d.specialty_id
        JOIN users pu ON pu.id = a.patient_id
+       JOIN patients pp ON pp.id = a.patient_profile_id
       WHERE (
         $1::date IS NULL
         OR (a.starts_at AT TIME ZONE 'Africa/Lubumbashi')::date = $1::date
@@ -292,8 +299,11 @@ exports.getConsultation = async (appointmentId, userId) => {
         a.reason AS appointment_reason,
 
         p.id AS patient_id,
-        p.first_name AS patient_first_name,
-        p.last_name AS patient_last_name,
+        pp.id AS patient_profile_id,
+        pp.patient_number,
+        pp.birth_date AS patient_birth_date,
+        pp.first_name AS patient_first_name,
+        pp.last_name AS patient_last_name,
         p.email AS patient_email,
         p.phone AS patient_phone,
 
@@ -321,6 +331,7 @@ exports.getConsultation = async (appointmentId, userId) => {
      FROM appointments a
      JOIN doctors d ON d.id = a.doctor_id
      JOIN users p ON p.id = a.patient_id
+     JOIN patients pp ON pp.id = a.patient_profile_id
      LEFT JOIN consultation_notes c ON c.appointment_id = a.id
 
      WHERE a.id = $1

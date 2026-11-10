@@ -1,13 +1,15 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { MedicalRecordApi, UsersApi } from '../../api/services';
+import { MedicalRecordApi, PatientProfile, PatientsApi } from '../../api/services';
 import {
   Card,
+  Chip,
   EmptyState,
   ErrorState,
   Icon,
   Loader,
+  Notice,
   Screen,
   SegmentedTabs,
 } from '../../components/ui';
@@ -41,25 +43,42 @@ const formatDate = (value: string) =>
 export default function MedicalRecordScreen() {
   const [tab, setTab] = useState<Tab>('consultations');
   const [consultations, setConsultations] = useState<Consultation[]>([]);
-  const [patientName, setPatientName] = useState('');
+  const [profiles, setProfiles] = useState<PatientProfile[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const selectedRef = useRef<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (refresh = false) => {
+  const load = useCallback(async (refresh = false, wantedId: number | null = null) => {
     if (refresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
 
     try {
-      const [records, profile] = await Promise.all([MedicalRecordApi.mine(), UsersApi.getMe()]);
-      if (!Array.isArray(records.data)) {
+      const { data: all } = await PatientsApi.mine();
+      const visible = all.filter((p) => ['self', 'pending', 'verified'].includes(p.link_status));
+      setProfiles(visible);
+
+      const target =
+        visible.find((p) => p.id === wantedId) ??
+        visible.find((p) => p.link_status === 'self') ??
+        visible[0];
+      setSelectedId(target?.id ?? null);
+      selectedRef.current = target?.id ?? null;
+
+      if (!target || target.link_status === 'pending') {
+        setConsultations([]);
+        return;
+      }
+
+      const { data } = await MedicalRecordApi.forPatient(target.id);
+      if (!Array.isArray(data?.consultations)) {
         throw new Error('Format du dossier médical invalide.');
       }
-      setConsultations(records.data as Consultation[]);
-      const user = profile.data?.user ?? profile.data;
-      setPatientName([user?.first_name, user?.last_name].filter(Boolean).join(' '));
+      setConsultations(data.consultations as Consultation[]);
     } catch (err: any) {
+      setConsultations([]);
       setError(err?.response?.data?.error || err?.message || 'Impossible de charger le dossier médical.');
     } finally {
       setLoading(false);
@@ -69,14 +88,41 @@ export default function MedicalRecordScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      load();
+      load(false, selectedRef.current);
     }, [load])
   );
+
+  const selected = profiles.find((p) => p.id === selectedId);
+  const patientName = selected ? `${selected.first_name} ${selected.last_name}` : '';
+  const isSelf = selected?.link_status === 'self';
 
   const prescriptions = consultations.filter((item) => item.prescription?.trim());
 
   return (
-    <Screen refreshing={refreshing} onRefresh={() => load(true)}>
+    <Screen refreshing={refreshing} onRefresh={() => load(true, selectedId)}>
+      {profiles.length > 1 ? (
+        <View style={s.chips}>
+          {profiles.map((p) => (
+            <Chip
+              key={p.id}
+              label={p.link_status === 'self' ? 'Moi' : p.first_name}
+              icon={p.link_status === 'pending' ? 'time-outline' : undefined}
+              selected={p.id === selectedId}
+              onPress={() => load(false, p.id)}
+            />
+          ))}
+        </View>
+      ) : null}
+
+      {selected?.link_status === 'pending' ? (
+        <Notice
+          tone="warning"
+          icon="lock-closed-outline"
+          title="Dossier non accessible pour le moment"
+          message="Présentez l’acte de naissance ou le jugement de tutelle à la clinique. Le dossier sera visible dès que le lien sera vérifié."
+        />
+      ) : null}
+
       <View style={s.profile}>
         <View style={s.profileIcon}>
           <Icon name="folder-open-outline" size="lg" color={color.onPrimary} />
@@ -86,7 +132,9 @@ export default function MedicalRecordScreen() {
           <Text style={s.profileName} numberOfLines={1}>
             {patientName || 'Mon dossier médical'}
           </Text>
-          <Text style={s.profileDescription}>Informations médicales associées à votre compte</Text>
+          <Text style={s.profileDescription}>
+            {[selected?.patient_number, isSelf ? 'Votre dossier' : 'Dossier d’un proche'].filter(Boolean).join(' · ')}
+          </Text>
         </View>
       </View>
 
@@ -199,6 +247,7 @@ export default function MedicalRecordScreen() {
 }
 
 const s = StyleSheet.create({
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
   flex: { flex: 1, minWidth: 0 },
   profile: {
     flexDirection: 'row',

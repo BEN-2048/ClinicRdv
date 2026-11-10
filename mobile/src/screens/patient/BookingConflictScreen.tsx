@@ -87,6 +87,7 @@ export default function BookingConflictScreen() {
   const doctor = route.params?.doctor as Doctor | undefined;
   const originalSlot = route.params?.slot as Slot | undefined;
   const reason = route.params?.reason || '';
+  const profileId = route.params?.profileId as number | undefined;
 
   const [days, setDays] = useState<DayAvailability[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
@@ -154,7 +155,7 @@ export default function BookingConflictScreen() {
 
   const selectAlternative = () => {
     if (!selectedSlot) return;
-    navigation.replace('BookingReview', { doctor, slot: selectedSlot, reason });
+    navigation.replace('BookingReview', { doctor, slot: selectedSlot, reason, profileId });
   };
 
   const goToDoctors = () => navigation.navigate('Main', { screen: 'Médecins' });

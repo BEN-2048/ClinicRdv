@@ -19,6 +19,8 @@ export type User = {
   first_name: string;
   last_name: string;
   phone?: string | null;
+  patient_id?: number | null;
+  patient_number?: string | null;
 };
 
 type RegisterData = {

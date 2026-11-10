@@ -21,7 +21,14 @@ import {
 import { color, space, type } from '../../theme';
 import { Loading, clinicDate, clinicToday, errorText, formatDateTime, formatLongDate, formatTime, shared } from './shared';
 
-type Patient = { id: number; email: string; first_name: string; last_name: string; phone: string | null };
+type Patient = {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string | null;
+  patient_number: string | null;
+};
 type Slot = { startsAt: string; endsAt: string; available: boolean };
 
 export default function SecretaryBookScreen() {
@@ -140,7 +147,9 @@ export default function SecretaryBookScreen() {
                 <Text style={type.bodyMedium}>
                   {patient.first_name} {patient.last_name}
                 </Text>
-                <Text style={shared.muted}>{patient.phone || patient.email}</Text>
+                <Text style={shared.muted}>
+                  {[patient.patient_number, patient.phone || patient.email].filter(Boolean).join(' · ')}
+                </Text>
               </View>
               <Button title="Changer" size="sm" variant="secondary" fullWidth={false} onPress={() => setPatient(null)} />
             </Card>
@@ -150,7 +159,7 @@ export default function SecretaryBookScreen() {
                 icon="search"
                 value={query}
                 onChangeText={setQuery}
-                placeholder="Nom, e-mail ou téléphone"
+                placeholder="Nom, e-mail, téléphone ou N° patient"
                 autoCapitalize="none"
               />
               {patients.length === 0 ? (
@@ -161,7 +170,7 @@ export default function SecretaryBookScreen() {
                     <ListItem
                       key={p.id}
                       title={`${p.first_name} ${p.last_name}`}
-                      subtitle={p.phone || p.email}
+                      subtitle={[p.patient_number, p.phone || p.email].filter(Boolean).join(' · ')}
                       left={<Avatar name={`${p.first_name} ${p.last_name}`} size={40} />}
                       onPress={() => setPatient(p)}
                       style={i > 0 ? s.divider : undefined}

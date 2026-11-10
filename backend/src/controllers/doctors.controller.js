@@ -97,11 +97,12 @@ exports.dashboard = async (req, res, next) => {
 
     const appointmentsResult = await pool.query(
       `SELECT a.id, a.starts_at, a.ends_at, a.status,
-              a.reason, a.patient_id,
+              a.reason, a.patient_id, a.patient_profile_id,
+              p.patient_number,
               p.first_name AS patient_first_name,
               p.last_name AS patient_last_name
          FROM appointments a
-         JOIN users p ON p.id = a.patient_id
+         JOIN patients p ON p.id = a.patient_profile_id
         WHERE a.doctor_id = $1
         ORDER BY a.starts_at ASC`,
       [doctor.id]

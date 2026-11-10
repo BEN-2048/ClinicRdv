@@ -34,6 +34,8 @@ type Appointment = {
   status: AppointmentStatus;
   reason?: string | null;
   specialty?: string;
+  patient_profile_id?: number;
+  patient_name?: string;
 };
 
 type TabKey = 'upcoming' | 'past' | 'cancelled';
@@ -360,6 +362,7 @@ export default function MyAppointmentsScreen() {
                 <AppointmentCard
                   key={a.id}
                   appointment={a}
+                  forOther={!!user?.patient_id && !!a.patient_profile_id && a.patient_profile_id !== user.patient_id}
                   highlight={tab === 'upcoming' && i === 0 && !reverse}
                   showActions={tab === 'upcoming' && !usingOfflineCache}
                   busy={busyId === a.id}
@@ -445,6 +448,7 @@ export default function MyAppointmentsScreen() {
 function AppointmentCard({
   appointment: a,
   highlight,
+  forOther,
   showActions,
   busy,
   onReschedule,
@@ -452,6 +456,7 @@ function AppointmentCard({
 }: {
   appointment: Appointment;
   highlight: boolean;
+  forOther: boolean;
   showActions: boolean;
   busy: boolean;
   onReschedule: () => void;
@@ -491,6 +496,9 @@ function AppointmentCard({
         <InitialsAvatar name={name} dotColor={status.dot} dotRing />
         <View style={styles.flex}>
           <Text style={type.h2} numberOfLines={1}>{name}</Text>
+          {forOther && a.patient_name ? (
+            <Text style={[type.caption, { color: palette.primary }]} numberOfLines={1}>Pour : {a.patient_name}</Text>
+          ) : null}
           {a.specialty ? (
             <Text style={[type.bodyMedium, { color: palette.teal }]} numberOfLines={1}>{a.specialty}</Text>
           ) : null}

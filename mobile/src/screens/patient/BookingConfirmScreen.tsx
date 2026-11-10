@@ -52,6 +52,7 @@ export default function BookingConfirmScreen() {
 
   const appointment = route.params?.appointment as Appointment | undefined;
   const doctor = route.params?.doctor as DoctorInfo | undefined;
+  const patientName = route.params?.patientName as string | undefined;
 
   if (!appointment || !doctor || !appointment.id || !appointment.starts_at || !appointment.ends_at) {
     return (
@@ -92,6 +93,7 @@ export default function BookingConfirmScreen() {
       <Card style={s.section}>
         <Text style={type.h2}>Détails du rendez-vous</Text>
         <InfoRow icon="receipt-outline" label="Numéro de réservation" value={`#${appointment.id}`} strong />
+        {patientName ? <InfoRow icon="people-outline" label="Patient" value={patientName} strong /> : null}
         <InfoRow icon="person-outline" label="Médecin" value={`Dr. ${doctor.name}`} strong />
         <InfoRow icon="medkit-outline" label="Spécialité" value={doctor.specialty} />
         <InfoRow icon="calendar-outline" label="Date" value={formatDate(appointment.starts_at)} strong />

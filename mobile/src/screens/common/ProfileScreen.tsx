@@ -138,6 +138,14 @@ export default function ProfileScreen() {
           </>
         ) : (
           <>
+            {user?.role === 'patient' ? (
+              <InfoRow
+                icon="id-card-outline"
+                label="N° patient"
+                value={user.patient_number || 'En cours d’attribution'}
+                strong
+              />
+            ) : null}
             <InfoRow icon="person-outline" label="Prénom" value={user?.first_name || 'Non renseigné'} strong />
             <InfoRow icon="person-outline" label="Nom" value={user?.last_name || 'Non renseigné'} strong />
             <InfoRow icon="mail-outline" label="E-mail" value={user?.email || 'Non renseigné'} />
@@ -157,6 +165,23 @@ export default function ProfileScreen() {
             onPress={() => navigation.navigate('MedicalRecord')}
           />
         ) : null}
+        {isPatient ? (
+          <ListItem
+            icon="people-outline"
+            title="Ma famille"
+            subtitle="Enfants et personnes à charge"
+            onPress={() => navigation.navigate('Family')}
+            style={s.divider}
+          />
+        ) : null}
+        {user?.role === 'secretary' || user?.role === 'admin' ? (
+          <ListItem
+            icon="people-circle-outline"
+            title="Liens familiaux à vérifier"
+            subtitle="Valider les parents et tuteurs sur justificatif"
+            onPress={() => navigation.navigate('GuardianLinks')}
+          />
+        ) : null}
         {isDoctor ? (
           <ListItem
             icon="time-outline"
@@ -170,7 +195,7 @@ export default function ProfileScreen() {
           title="Notifications et alertes"
           subtitle={isPatient ? 'Préférences SMS et e-mail' : 'Bientôt disponible'}
           onPress={isPatient ? () => navigation.navigate('Notifications') : undefined}
-          style={isPatient || isDoctor ? s.divider : undefined}
+          style={s.divider}
         />
         <ListItem
           icon="lock-closed-outline"
