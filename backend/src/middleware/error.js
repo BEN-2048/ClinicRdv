@@ -21,6 +21,7 @@ exports.errorHandler = (err, req, res, next) => {
 
   res.status(status).json({
     error: err.message || 'Requete invalide',
+    ...(typeof err.code === 'string' && /^[A-Z_]+$/.test(err.code) ? { code: err.code } : {}),
     ...(Array.isArray(err.details) ? { details: err.details } : {}),
   });
 };

@@ -237,8 +237,9 @@ export default function ProfileScreen() {
         />
         <ListItem
           icon="lock-closed-outline"
-          title="Sécurité"
-          subtitle="Mot de passe et options de sécurité · bientôt disponible"
+          title="Mes appareils"
+          subtitle="Appareils connectés · déconnecter un appareil perdu"
+          onPress={() => navigation.navigate('Devices')}
           style={s.divider}
         />
         <ListItem

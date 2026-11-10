@@ -40,6 +40,7 @@ import PatientRecordScreen from '../screens/doctor/PatientRecordScreen';
 import ClinicManagementScreen from '../screens/admin/ClinicManagementScreen';
 import ProfileScreen from '../screens/common/ProfileScreen';
 import OfflineScreen from '../screens/common/OfflineScreen';
+import DevicesScreen from '../screens/common/DevicesScreen';
 
 import SecretaryDashboardScreen from '../screens/secretary/SecretaryDashboardScreen';
 import SecretaryAppointmentsScreen from '../screens/secretary/SecretaryAppointmentsScreen';
@@ -346,6 +347,12 @@ export default function RootNavigator() {
               name="WaitingList"
               component={WaitingListScreen}
               options={{ title: 'Alerte désistement' }}
+            />
+
+            <Stack.Screen
+              name="Devices"
+              component={DevicesScreen}
+              options={{ title: 'Mes appareils' }}
             />
 
             <Stack.Screen

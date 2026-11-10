@@ -389,3 +389,11 @@ exports.startEmergencyAccess = z.object({
   reason: z.string().trim().min(15, 'Décrivez la situation d’urgence (15 caractères minimum)').max(1000),
   facilityId: z.number().int().positive().optional(),
 }).strict();
+
+exports.refreshTokenBody = z.object({
+  refreshToken: z.string().min(40).max(200),
+}).strict();
+
+exports.upgradeSessionBody = z.object({
+  token: z.string().min(20).max(2000),
+}).strict();
