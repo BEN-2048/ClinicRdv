@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { AppointmentsApi, ConsultationInput, ConsultationResponse } from '../../api/services';
+import { AppointmentsApi, ConsultationInput, ConsultationResponse, ConsultationsApi } from '../../api/services';
+import { errorMessage } from '../../api/client';
+import { AppointmentPrescriptions } from '../../components/record/PrescriptionViews';
 import {
   Avatar,
   Button,
@@ -110,6 +112,8 @@ export default function AppointmentDetailScreen() {
   const [saving, setSaving] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [error, setError] = useState('');
+  const [addendum, setAddendum] = useState('');
+  const [savingAddendum, setSavingAddendum] = useState(false);
 
   const isCompleted = consultation?.consultation_status === 'completed';
   const busy = saving || completing;
@@ -410,6 +414,55 @@ export default function AppointmentDetailScreen() {
           })}
         </FormSection>
 
+        <AppointmentPrescriptions
+          appointmentId={appointmentId}
+          editable={consultation.appointment_status !== 'cancelled'}
+        />
+
+        {isCompleted ? (
+          <Card style={s.section}>
+            <Text style={type.h2}>Compléments</Text>
+            <Text style={s.muted}>
+              La fiche est verrouillée. Un complément est daté, signé à votre nom et ne peut plus être modifié.
+            </Text>
+            {(consultation.addenda ?? []).map((a) => (
+              <View key={a.id} style={s.addendum}>
+                <Text style={type.body}>{a.content}</Text>
+                <Text style={s.muted}>
+                  {[a.author ? `Dr. ${a.author}` : null, new Date(a.created_at).toLocaleString('fr-FR')].filter(Boolean).join(' · ')}
+                </Text>
+              </View>
+            ))}
+            <Input
+              label="Nouveau complément"
+              value={addendum}
+              onChangeText={setAddendum}
+              multiline
+              maxLength={5000}
+              placeholder="Résultat reçu, appel au patient, correction..."
+            />
+            <Button
+              title="Ajouter le complément"
+              icon="add"
+              variant="secondary"
+              disabled={!addendum.trim()}
+              loading={savingAddendum}
+              onPress={async () => {
+                setSavingAddendum(true);
+                try {
+                  const { data } = await ConsultationsApi.addAddendum(appointmentId, addendum.trim());
+                  setConsultation((cur) => (cur ? { ...cur, addenda: data as any } : cur));
+                  setAddendum('');
+                } catch (e) {
+                  Alert.alert('Ajout impossible', errorMessage(e));
+                } finally {
+                  setSavingAddendum(false);
+                }
+              }}
+            />
+          </Card>
+        ) : null}
+
         {consultation.consultation_updated_at ? (
           <Text style={s.lastUpdate}>
             Dernière modification : {new Date(consultation.consultation_updated_at).toLocaleString('fr-FR')}
@@ -425,6 +478,7 @@ const s = StyleSheet.create({
   patient: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   contact: { flexDirection: 'row', alignItems: 'center', gap: space.xxs, marginTop: 2 },
   muted: { ...type.caption, color: color.textMuted, flexShrink: 1 },
+  addendum: { gap: 2, paddingLeft: space.sm, borderLeftWidth: 3, borderLeftColor: color.primarySubtle },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   section: { gap: space.md },
   sectionHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm },

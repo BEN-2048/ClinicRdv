@@ -2,10 +2,29 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { errorMessage } from '../../api/client';
-import { PatientRecord, RecordApi, RecordKind } from '../../api/services';
-import { Button, Card, Chip, ErrorState, Input, Loader, Notice, Screen } from '../../components/ui';
+import {
+  ConsultationHistoryEntry,
+  ConsultationsApi,
+  PatientRecord,
+  Prescription,
+  PrescriptionsApi,
+  RecordApi,
+  RecordKind,
+} from '../../api/services';
+import { Button, Card, Chip, EmptyState, ErrorState, Input, Loader, Notice, Screen, SegmentedTabs } from '../../components/ui';
+import { PrescriptionCard } from '../../components/record/PrescriptionViews';
 import { KIND_LABEL, RecordEntryForm, RecordSections } from '../../components/record/RecordSections';
 import { color, space, type } from '../../theme';
+
+type Tab = 'synthese' | 'consultations' | 'ordonnances';
+
+const VITAL_LABELS: [keyof ConsultationHistoryEntry, string, string][] = [
+  ['blood_pressure', 'TA', ''],
+  ['heart_rate', 'FC', ' bpm'],
+  ['temperature', 'T°', ' °C'],
+  ['oxygen_saturation', 'SpO2', ' %'],
+  ['weight', 'Poids', ' kg'],
+];
 
 const ADDABLE: RecordKind[] = ['allergies', 'conditions', 'medications', 'immunizations'];
 const today = () => new Date().toISOString().slice(0, 10);
@@ -22,6 +41,18 @@ export default function PatientRecordScreen() {
   const [saving, setSaving] = useState(false);
   const [errorFor, setErrorFor] = useState<{ kind: RecordKind; id: number } | null>(null);
   const [errorReason, setErrorReason] = useState('');
+  const [tab, setTab] = useState<Tab>('synthese');
+  const [history, setHistory] = useState<ConsultationHistoryEntry[] | null>(null);
+  const [prescriptions, setPrescriptions] = useState<Prescription[] | null>(null);
+
+  useEffect(() => {
+    if (tab === 'consultations' && history === null) {
+      ConsultationsApi.history(patientId).then(({ data }) => setHistory(data)).catch((e) => Alert.alert('Historique indisponible', errorMessage(e)));
+    }
+    if (tab === 'ordonnances' && prescriptions === null) {
+      PrescriptionsApi.forPatient(patientId).then(({ data }) => setPrescriptions(data)).catch((e) => Alert.alert('Ordonnances indisponibles', errorMessage(e)));
+    }
+  }, [tab, history, prescriptions, patientId]);
 
   const load = useCallback(async () => {
     setError(null);
@@ -80,7 +111,55 @@ export default function PatientRecordScreen() {
         message={`Vous voyez les informations enregistrées dans vos établissements de soins (${record.access.facilities.map((f) => f.name).join(', ')}) et celles déclarées par le patient. Chaque consultation de ce dossier est journalisée.`}
       />
 
-      {adding ? (
+      <SegmentedTabs<Tab>
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { key: 'synthese', label: 'Synthèse' },
+          { key: 'consultations', label: 'Consultations' },
+          { key: 'ordonnances', label: 'Ordonnances' },
+        ]}
+      />
+
+      {tab === 'consultations' ? (
+        history === null ? (
+          <Loader label="Chargement de l’historique..." />
+        ) : history.length === 0 ? (
+          <EmptyState icon="pulse-outline" title="Aucune consultation terminée" />
+        ) : (
+          history.map((c) => (
+            <Card key={c.appointment_id} style={s.consult}>
+              <Text style={type.bodyMedium}>
+                {new Date(c.starts_at).toLocaleDateString('fr-FR', { timeZone: c.facility_timezone, day: 'numeric', month: 'long', year: 'numeric' })}
+              </Text>
+              <Text style={s.muted}>Dr. {c.doctor_name} · {c.specialty} · {c.facility_name}</Text>
+              {c.chief_complaint ? <Text style={s.line}><Text style={s.key}>Motif : </Text>{c.chief_complaint}</Text> : null}
+              {VITAL_LABELS.some(([k]) => c[k]) ? (
+                <Text style={s.line}>
+                  {VITAL_LABELS.filter(([k]) => c[k]).map(([k, label, unit]) => `${label} ${c[k]}${unit}`).join(' · ')}
+                </Text>
+              ) : null}
+              {c.clinical_examination ? <Text style={s.line}><Text style={s.key}>Examen : </Text>{c.clinical_examination}</Text> : null}
+              {c.diagnosis ? <Text style={s.line}><Text style={s.key}>Diagnostic : </Text>{c.diagnosis}</Text> : null}
+              {c.prescription ? <Text style={s.line}><Text style={s.key}>Prescription : </Text>{c.prescription}</Text> : null}
+              {c.notes ? <Text style={s.line}><Text style={s.key}>Notes : </Text>{c.notes}</Text> : null}
+              {c.addenda.map((a) => (
+                <Text key={a.id} style={s.addendum}>Complément{a.author ? ` (Dr. ${a.author})` : ''} : {a.content}</Text>
+              ))}
+            </Card>
+          ))
+        )
+      ) : tab === 'ordonnances' ? (
+        prescriptions === null ? (
+          <Loader label="Chargement des ordonnances..." />
+        ) : prescriptions.length === 0 ? (
+          <EmptyState icon="document-text-outline" title="Aucune ordonnance" />
+        ) : (
+          prescriptions.map((rx) => <PrescriptionCard key={rx.id} prescription={rx} />)
+        )
+      ) : null}
+
+      {tab !== 'synthese' ? null : adding ? (
         <RecordEntryForm
           kind={adding}
           clinician
@@ -99,7 +178,7 @@ export default function PatientRecordScreen() {
         </View>
       )}
 
-      <RecordSections
+      {tab === 'synthese' ? <RecordSections
         record={record}
         renderActions={(kind, entry) => {
           const e = entry as any;
@@ -161,7 +240,7 @@ export default function PatientRecordScreen() {
             </View>
           );
         }}
-      />
+      /> : null}
     </Screen>
   );
 }
@@ -173,4 +252,8 @@ const s = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, marginTop: space.xxs },
   inline: { gap: space.xs, marginTop: space.xs },
+  consult: { gap: 4 },
+  line: { ...type.body, color: color.textSecondary },
+  key: { ...type.bodyMedium, color: color.text },
+  addendum: { ...type.caption, color: color.primary, marginTop: 2 },
 });

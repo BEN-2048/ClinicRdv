@@ -12,7 +12,20 @@ const RECORD_SQL = `SELECT
     cn.id AS note_id,
     cn.notes,
     cn.prescription,
-    cn.created_at AS note_created_at
+    cn.created_at AS note_created_at,
+    COALESCE((SELECT json_agg(json_build_object('id', ad.id, 'content', ad.content, 'createdAt', ad.created_at)
+                              ORDER BY ad.created_at)
+                FROM consultation_addenda ad WHERE ad.appointment_id = a.id), '[]'::json) AS addenda,
+    COALESCE((SELECT json_agg(json_build_object(
+                'id', rx.id, 'status', rx.status, 'issuedAt', rx.issued_at, 'cancelReason', rx.cancel_reason,
+                'items', (SELECT json_agg(json_build_object('medicationName', i.medication_name, 'dosage', i.dosage,
+                                  'frequency', i.frequency, 'duration', i.duration, 'instructions', i.instructions)
+                                  ORDER BY i.position)
+                            FROM prescription_items i WHERE i.prescription_id = rx.id))
+              ORDER BY rx.issued_at)
+                FROM prescriptions rx
+               WHERE rx.appointment_id = a.id AND rx.status <> 'draft'
+                 AND NOT (rx.confidential AND $2::boolean)), '[]'::json) AS prescriptions
   FROM appointments a
   JOIN doctors d ON d.id = a.doctor_id
   JOIN users u ON u.id = d.user_id
@@ -25,7 +38,8 @@ const RECORD_SQL = `SELECT
   ORDER BY a.starts_at DESC`;
 
 const loadRecord = async (req, patientId) => {
-  await assertAccess(req.user, patientId, 'view_record', { ip: req.ip, audit: true });
+  const access = await assertAccess(req.user, patientId, 'view_record', { ip: req.ip, audit: true, resource: 'consultations' });
+  const hideConfidential = access.basis === 'guardian_verified';
 
   const [patient, consultations] = await Promise.all([
     pool.query(
@@ -33,7 +47,7 @@ const loadRecord = async (req, patientId) => {
          FROM patients WHERE id = $1`,
       [patientId]
     ),
-    pool.query(RECORD_SQL, [patientId]),
+    pool.query(RECORD_SQL, [patientId, hideConfidential]),
   ]);
 
   return { patient: patient.rows[0], consultations: consultations.rows };

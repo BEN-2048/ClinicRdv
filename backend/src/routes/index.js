@@ -24,6 +24,7 @@ const patients = require('../controllers/patients.controller');
 const facilities = require('../controllers/facilities.controller');
 const facilityAdmin = require('../controllers/facilityAdmin.controller');
 const record = require('../controllers/record.controller');
+const rx = require('../controllers/prescriptions.controller');
 const {
   staffScopeMiddleware,
   doctorInScopeMiddleware,
@@ -242,6 +243,36 @@ router.patch(
   requireRole('doctor'),
   validate(s.consultation),
   appts.completeConsultation
+);
+
+
+// =========================================
+// ORDONNANCES ET COMPLÉMENTS
+// =========================================
+
+const doctorById = [authenticate, requireRole('doctor'), validate(s.positiveIdParams, 'params')];
+
+router.get('/appointments/:id/prescriptions', ...doctorById, rx.listForAppointment);
+router.post('/appointments/:id/prescriptions', ...doctorById, validate(s.createPrescription), rx.create);
+router.post('/appointments/:id/consultation/addenda', ...doctorById, validate(s.addendum), rx.addAddendum);
+router.put('/prescriptions/:id', ...doctorById, validate(s.updatePrescription), rx.update);
+router.post('/prescriptions/:id/issue', ...doctorById, validate(s.issuePrescription), rx.issue);
+router.post('/prescriptions/:id/cancel', ...doctorById, validate(s.cancelPrescription), rx.cancel);
+
+router.get(
+  '/patients/:patientId/prescriptions',
+  authenticate,
+  requireRole('patient', 'doctor'),
+  validate(s.patientIdParams, 'params'),
+  rx.listForPatient
+);
+
+router.get(
+  '/patients/:patientId/consultations',
+  authenticate,
+  requireRole('doctor'),
+  validate(s.patientIdParams, 'params'),
+  rx.consultationHistory
 );
 
 

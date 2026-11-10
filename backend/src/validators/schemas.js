@@ -313,3 +313,45 @@ exports.recordQuery = z.object({
 exports.enteredInError = z.object({
   reason: z.string().trim().min(3).max(255),
 }).strict();
+
+const prescriptionItem = z.object({
+  medicationName: z.string().trim().min(1).max(200),
+  dosage: z.string().trim().max(100).nullable().optional(),
+  route: z.string().trim().max(50).nullable().optional(),
+  frequency: z.string().trim().max(100).nullable().optional(),
+  duration: z.string().trim().max(100).nullable().optional(),
+  quantity: z.string().trim().max(50).nullable().optional(),
+  instructions: z.string().trim().max(500).nullable().optional(),
+}).strict();
+
+exports.createPrescription = z.object({
+  items: z.array(prescriptionItem).min(1, 'Ajoutez au moins un médicament').max(30),
+  notes: z.string().trim().max(2000).nullable().optional(),
+  confidential: z.boolean().optional(),
+}).strict();
+
+exports.updatePrescription = z.object({
+  items: z.array(prescriptionItem).min(1).max(30).optional(),
+  notes: z.string().trim().max(2000).nullable().optional(),
+  confidential: z.boolean().optional(),
+}).strict().refine((o) => Object.keys(o).length > 0, 'Aucun champ a modifier');
+
+exports.issuePrescription = z.object({
+  addToMedications: z.boolean().optional(),
+}).strict();
+
+exports.cancelPrescription = z.object({
+  reason: z.string().trim().min(3).max(255),
+}).strict();
+
+exports.addendum = z.object({
+  content: z.string().trim().min(1).max(5000),
+}).strict();
+
+exports.positiveIdParams = z.object({
+  id: z.coerce.number().int().positive(),
+});
+
+exports.patientIdParams = z.object({
+  patientId: z.coerce.number().int().positive(),
+});

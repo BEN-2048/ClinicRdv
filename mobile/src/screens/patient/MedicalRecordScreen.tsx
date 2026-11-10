@@ -31,6 +31,14 @@ type Consultation = {
   notes: string | null;
   prescription: string | null;
   note_created_at: string | null;
+  addenda?: { id: number; content: string; createdAt: string }[];
+  prescriptions?: {
+    id: number;
+    status: 'issued' | 'cancelled';
+    issuedAt: string | null;
+    cancelReason: string | null;
+    items: { medicationName: string; dosage: string | null; frequency: string | null; duration: string | null; instructions: string | null }[] | null;
+  }[];
 };
 
 type Tab = 'synthese' | 'consultations' | 'documents' | 'traitements';
@@ -42,6 +50,29 @@ const formatDate = (value: string) =>
     month: 'long',
     year: 'numeric',
   }).format(new Date(value));
+
+function StructuredPrescriptions({ item }: { item: Consultation }) {
+  if (!item.prescriptions?.length) return null;
+  return (
+    <>
+      {item.prescriptions.map((rx) => (
+        <View key={rx.id} style={[s.note, s.prescriptionNote]}>
+          <Text style={s.noteTitle}>
+            Ordonnance{rx.issuedAt ? ` du ${formatDate(rx.issuedAt)}` : ''}{rx.status === 'cancelled' ? ' — annulée' : ''}
+          </Text>
+          {(rx.items ?? []).map((i, idx) => (
+            <Text key={idx} style={[s.detail, rx.status === 'cancelled' && s.cancelled]}>
+              {idx + 1}. {[i.medicationName, i.dosage, i.frequency, i.duration ? `pendant ${i.duration}` : null].filter(Boolean).join(' · ')}
+              {i.instructions ? `
+   ${i.instructions}` : ''}
+            </Text>
+          ))}
+          {rx.cancelReason ? <Text style={s.detail}>Motif : {rx.cancelReason}</Text> : null}
+        </View>
+      ))}
+    </>
+  );
+}
 
 export default function MedicalRecordScreen() {
   const [tab, setTab] = useState<Tab>('synthese');
@@ -108,7 +139,7 @@ export default function MedicalRecordScreen() {
   const patientName = selected ? `${selected.first_name} ${selected.last_name}` : '';
   const isSelf = selected?.link_status === 'self';
 
-  const prescriptions = consultations.filter((item) => item.prescription?.trim());
+  const prescriptions = consultations.filter((item) => item.prescription?.trim() || item.prescriptions?.length);
 
   return (
     <Screen refreshing={refreshing} onRefresh={() => load(true, selectedId)}>
@@ -257,6 +288,13 @@ export default function MedicalRecordScreen() {
                   <Text style={s.detail}>{item.prescription}</Text>
                 </View>
               ) : null}
+              <StructuredPrescriptions item={item} />
+              {item.addenda?.map((a) => (
+                <View key={a.id} style={s.note}>
+                  <Text style={s.noteTitle}>Complément du {formatDate(a.createdAt)}</Text>
+                  <Text style={s.detail}>{a.content}</Text>
+                </View>
+              ))}
             </Card>
           ))
         )
@@ -286,9 +324,12 @@ export default function MedicalRecordScreen() {
             <Text style={type.h3}>
               Dr. {item.doctor_first_name} {item.doctor_last_name}
             </Text>
-            <View style={[s.note, s.prescriptionNote]}>
-              <Text style={s.detail}>{item.prescription}</Text>
-            </View>
+            {item.prescription ? (
+              <View style={[s.note, s.prescriptionNote]}>
+                <Text style={s.detail}>{item.prescription}</Text>
+              </View>
+            ) : null}
+            <StructuredPrescriptions item={item} />
           </Card>
         ))
       )}
@@ -335,5 +376,6 @@ const s = StyleSheet.create({
     gap: space.xxs,
   },
   prescriptionNote: { backgroundColor: color.successSoft + '40' },
+  cancelled: { textDecorationLine: 'line-through', color: color.textMuted },
   noteTitle: { ...type.label, color: color.text },
 });
