@@ -1,6 +1,4 @@
-﻿BEGIN;
-
-ALTER TABLE users
+﻿ALTER TABLE users
   ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT TRUE;
 
 CREATE TABLE IF NOT EXISTS email_verifications (
@@ -17,5 +15,3 @@ CREATE TABLE IF NOT EXISTS email_verifications (
 
 CREATE INDEX IF NOT EXISTS idx_email_verifications_expiry
   ON email_verifications(expires_at);
-
-COMMIT;

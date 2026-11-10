@@ -47,4 +47,15 @@ describe('GET /api/medical-record/me', () => {
     expect(pool.query.mock.calls[0][0]).toContain('a.patient_id = $1');
     expect(pool.query.mock.calls[0][1]).toEqual([7]);
   });
+
+  test('n expose jamais les fiches de consultation en brouillon', async () => {
+    await request(app)
+      .get('/api/medical-record/me')
+      .set('Authorization', token('patient', 7));
+
+    const sql = pool.query.mock.calls[0][0].replace(/\s+/g, ' ');
+    expect(sql).toMatch(
+      /LEFT JOIN consultation_notes cn ON cn\.appointment_id = a\.id AND cn\.status = 'completed'/
+    );
+  });
 });

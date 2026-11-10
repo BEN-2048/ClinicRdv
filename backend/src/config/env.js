@@ -20,4 +20,9 @@ module.exports = {
   otpResendCooldownSeconds: positiveInteger(process.env.OTP_RESEND_COOLDOWN_SECONDS, 60),
 
   nodeEnv: process.env.NODE_ENV || 'development',
+
+  rateLimitEnabled: process.env.RATE_LIMIT_ENABLED
+    ? process.env.RATE_LIMIT_ENABLED === 'true'
+    : process.env.NODE_ENV !== 'test',
+  trustProxy: process.env.TRUST_PROXY,
 };
