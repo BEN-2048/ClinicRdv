@@ -6,7 +6,7 @@ exports.errorHandler = (err, req, res, next) => {
     ? err.status
     : 500;
 
-  if (status >= 500) {
+  if (status >= 500 && !err.expose) {
     console.error(err);
     return res.status(status).json({ error: 'Erreur serveur' });
   }
@@ -22,6 +22,7 @@ exports.errorHandler = (err, req, res, next) => {
   res.status(status).json({
     error: err.message || 'Requete invalide',
     ...(typeof err.code === 'string' && /^[A-Z_]+$/.test(err.code) ? { code: err.code } : {}),
+    ...(Number.isInteger(err.waitSeconds) ? { waitSeconds: err.waitSeconds } : {}),
     ...(Array.isArray(err.details) ? { details: err.details } : {}),
   });
 };

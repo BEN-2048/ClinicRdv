@@ -1,13 +1,26 @@
 const { z } = require('zod');
 
 exports.register = z.object({
-  email: z.string().email(),
+  phone: z.string().trim().min(6).max(30),
+  email: z.string().trim().email().max(255).optional(),
   password: z.string().min(8, 'Minimum 8 caractères'),
-  firstName: z.string().min(1).max(80),
-  lastName: z.string().min(1).max(80),
-  phone: z.string().max(30).optional(),
+  firstName: z.string().trim().min(1).max(80),
+  lastName: z.string().trim().min(1).max(80),
 });
-exports.login = z.object({ email: z.string().email(), password: z.string().min(1) });
+exports.login = z.object({
+  identifier: z.string().trim().min(3).max(255).optional(),
+  email: z.string().trim().email().optional(),
+  password: z.string().min(1),
+}).refine((o) => o.identifier || o.email, { message: 'Téléphone ou e-mail requis' });
+
+exports.verifyPhone = z.object({
+  phone: z.string().trim().min(6).max(30),
+  code: z.string().regex(/^\d{6}$/, 'Le code doit contenir 6 chiffres'),
+}).strict();
+
+exports.resendPhoneOtp = z.object({
+  phone: z.string().trim().min(6).max(30),
+}).strict();
 exports.slotsQuery = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format AAAA-MM-JJ'),
   facilityId: z.coerce.number().int().positive().optional(),

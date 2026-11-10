@@ -24,7 +24,8 @@ export type AuthStatus = "authenticated" | "offline" | "unauthenticated";
 
 export type User = {
   id: number;
-  email: string;
+  email: string | null;
+  phone_e164?: string | null;
   role: Role;
   first_name: string;
   last_name: string;
@@ -34,11 +35,11 @@ export type User = {
 };
 
 type RegisterData = {
-  email: string;
+  phone: string;
+  email?: string;
   password: string;
   firstName: string;
   lastName: string;
-  phone?: string;
 };
 
 type UpdateUserData = {
@@ -51,9 +52,10 @@ type Ctx = {
   user: User | null;
   authStatus: AuthStatus;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  login: (identifier: string, password: string) => Promise<void>;
+  register: (data: RegisterData) => Promise<{ phone: string }>;
   verifyEmail: (email: string, code: string) => Promise<void>;
+  verifyPhone: (phone: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<boolean>;
   retryConnection: () => Promise<boolean>;
@@ -151,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         await saveCachedProfile({
           user_id: String(updatedUser.id),
-          email: updatedUser.email,
+          email: updatedUser.email ?? "",
           role: updatedUser.role,
           first_name: updatedUser.first_name,
           last_name: updatedUser.last_name,
@@ -262,7 +264,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         await saveCachedProfile({
           user_id: String(updatedUser.id),
-          email: updatedUser.email,
+          email: updatedUser.email ?? "",
           role: updatedUser.role,
           first_name: updatedUser.first_name,
           last_name: updatedUser.last_name,
@@ -541,8 +543,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [sessionRestored]);
 
-  const login = async (email: string, password: string): Promise<void> => {
-    const { data } = await AuthApi.login(email, password);
+  const login = async (identifier: string, password: string): Promise<void> => {
+    const { data } = await AuthApi.login(identifier, password);
 
     await runOfflineSyncExclusive(async () => {
       invalidateOfflineSync();
@@ -558,7 +560,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await saveCachedProfile({
         user_id: String(data.user.id),
-        email: data.user.email,
+        email: data.user.email ?? "",
         role: data.user.role,
         first_name: data.user.first_name,
         last_name: data.user.last_name,
@@ -577,12 +579,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // L'inscription ne cree pas de session avant verification OTP.
-  const register = async (data: RegisterData): Promise<void> => {
-    await AuthApi.register(data);
+  const register = async (data: RegisterData): Promise<{ phone: string }> => {
+    const { data: response } = await AuthApi.register(data);
+    return { phone: response.phone };
+  };
+
+  const verifyPhone = async (phone: string, code: string): Promise<void> => {
+    const { data } = await AuthApi.verifyPhone(phone, code);
+    await startVerifiedSession(data);
   };
 
   const verifyEmail = async (email: string, code: string): Promise<void> => {
     const { data } = await AuthApi.verifyEmail(email, code);
+    await startVerifiedSession(data);
+  };
+
+  const startVerifiedSession = async (data: any): Promise<void> => {
 
     if (!data.token || !data.user) {
       throw new Error("Reponse de verification incomplete.");
@@ -602,7 +614,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await saveCachedProfile({
         user_id: String(data.user.id),
-        email: data.user.email,
+        email: data.user.email ?? "",
         role: data.user.role,
         first_name: data.user.first_name,
         last_name: data.user.last_name,
@@ -698,6 +710,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         register,
         verifyEmail,
+        verifyPhone,
         logout,
         refreshUser,
         retryConnection,

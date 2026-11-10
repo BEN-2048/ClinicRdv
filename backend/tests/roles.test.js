@@ -133,28 +133,20 @@ describe('tableau de bord médecin', () => {
 
 describe('inscription publique', () => {
   test('impossible de choisir le role secretary', async () => {
-    clientQuery
-      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
-      .mockResolvedValueOnce({
-        rows: [{
-          id: 1,
-          email: 'x@y.fr',
-          role: 'patient',
-          first_name: 'A',
-          last_name: 'B',
-        }],
-        rowCount: 1,
-      })
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [], rowCount: 0 });
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    clientQuery.mockImplementation(async (sql) =>
+      sql.includes('INSERT INTO users') ? { rows: [{ id: 1 }], rowCount: 1 } : { rows: [], rowCount: 0 }
+    );
 
     const res = await request(app).post('/api/auth/register').send({
+      phone: '081 234 5678',
       email: 'x@y.fr',
       password: 'motdepasse',
       firstName: 'A',
       lastName: 'B',
       role: 'secretary',
     });
+    console.log.mockRestore();
 
     expect(res.status).toBe(201);
 
@@ -168,9 +160,9 @@ describe('inscription publique', () => {
     expect(insert[0]).toContain('FALSE');
     expect(insert[1]).not.toContain('secretary');
 
-    expect(res.body.email).toBe('x@y.fr');
+    expect(res.body.phone).toBe('+243812345678');
+    expect(res.body.verification).toBe('sms');
     expect(res.body.token).toBeUndefined();
     expect(res.body.user).toBeUndefined();
-    expect(clientQuery).toHaveBeenCalledTimes(4);
   });
 });

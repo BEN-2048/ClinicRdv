@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../api/client';
 import { Button, Checkbox, Input, Notice, SegmentedTabs } from '../../components/ui';
+import { normalizeDrcPhone } from '../../utils/phone';
 import { AuthLayout, PasswordInput, auth } from './shared';
 
 type LoginRole = 'patient' | 'doctor' | 'secretary';
@@ -18,8 +19,9 @@ export default function LoginScreen({ navigation }: any) {
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
-    if (!email.trim() || !email.includes('@')) {
-      setError('Veuillez saisir une adresse e-mail valide.');
+    const identifier = email.trim();
+    if (!identifier || (!identifier.includes('@') && !normalizeDrcPhone(identifier))) {
+      setError('Saisissez votre numéro de téléphone (ex. 081 234 5678) ou votre adresse e-mail.');
       return;
     }
     if (!password) {
@@ -30,11 +32,13 @@ export default function LoginScreen({ navigation }: any) {
     setBusy(true);
     setError('');
     try {
-      await login(email.trim(), password);
+      await login(identifier, password);
     } catch (e) {
-      const response = (e as { response?: { status?: number; data?: { code?: string } } })?.response;
-      if (role === 'patient' && response?.status === 403 && response.data?.code === 'EMAIL_NOT_VERIFIED') {
-        navigation.navigate('VerifyEmail', { email: email.trim().toLowerCase() });
+      const response = (e as { response?: { status?: number; data?: { code?: string; phone?: string } } })?.response;
+      if (role === 'patient' && response?.status === 403 && response.data?.code === 'PHONE_NOT_VERIFIED') {
+        navigation.navigate('VerifyPhone', { phone: response.data.phone });
+      } else if (role === 'patient' && response?.status === 403 && response.data?.code === 'EMAIL_NOT_VERIFIED') {
+        navigation.navigate('VerifyEmail', { email: identifier.toLowerCase() });
       } else {
         setError(errorMessage(e));
       }
@@ -65,9 +69,9 @@ export default function LoginScreen({ navigation }: any) {
         {error ? <Notice tone="danger" message={error} /> : null}
 
         <Input
-          label="Adresse e-mail"
-          icon="mail-outline"
-          placeholder="exemple@email.com"
+          label="Téléphone ou adresse e-mail"
+          icon="person-circle-outline"
+          placeholder="081 234 5678 ou exemple@email.com"
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}

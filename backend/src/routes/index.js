@@ -50,6 +50,9 @@ router.post(
   auth.verifyEmail
 );
 
+router.post('/auth/verify-phone', ...limits.verifyPhone, validate(s.verifyPhone), auth.verifyPhone);
+router.post('/auth/resend-phone-otp', ...limits.resendPhone, validate(s.resendPhoneOtp), auth.resendPhoneOtp);
+
 const refreshLimiter = createUserLimiter('auth-refresh', 600);
 router.post('/auth/refresh', refreshLimiter, validate(s.refreshTokenBody), auth.refresh);
 router.post('/auth/logout', validate(s.refreshTokenBody), auth.logout);

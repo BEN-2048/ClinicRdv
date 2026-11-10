@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../api/client';
 import { Button, Checkbox, Input, Notice } from '../../components/ui';
+import { normalizeDrcPhone } from '../../utils/phone';
 import { AuthLayout, PasswordInput, auth } from './shared';
 
 export default function RegisterScreen({ navigation }: any) {
@@ -25,12 +26,12 @@ export default function RegisterScreen({ navigation }: any) {
       setError('Veuillez renseigner votre prénom et votre nom.');
       return;
     }
-    if (!/^\+[1-9]\d{7,14}$/.test(phone.trim())) {
-      setError('Veuillez saisir un numéro valide au format international (+243...).');
+    if (!normalizeDrcPhone(phone)) {
+      setError('Veuillez saisir un numéro congolais valide (ex. 081 234 5678 ou +243 81 234 5678).');
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError('Veuillez saisir une adresse e-mail valide.');
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('L’adresse e-mail saisie n’est pas valide. Vous pouvez aussi laisser ce champ vide.');
       return;
     }
     if (password.length < 8) {
@@ -48,14 +49,14 @@ export default function RegisterScreen({ navigation }: any) {
 
     setBusy(true);
     try {
-      await register({
+      const result = await register({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         phone: phone.trim(),
-        email: email.trim().toLowerCase(),
+        email: email.trim() ? email.trim().toLowerCase() : undefined,
         password,
       });
-      navigation.navigate('VerifyEmail', { email: email.trim().toLowerCase() });
+      navigation.navigate('VerifyPhone', { phone: result.phone });
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -78,12 +79,12 @@ export default function RegisterScreen({ navigation }: any) {
           icon="call-outline"
           value={phone}
           onChangeText={setPhone}
-          placeholder="+243..."
+          placeholder="081 234 5678"
           keyboardType="phone-pad"
           editable={!busy}
         />
         <Input
-          label="Adresse e-mail *"
+          label="Adresse e-mail (facultatif)"
           icon="mail-outline"
           value={email}
           onChangeText={setEmail}
