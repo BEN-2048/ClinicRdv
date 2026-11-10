@@ -30,8 +30,8 @@ export const DoctorsApi = {
   get: (id: number) =>
     api.get(`/doctors/${id}`),
 
-  slots: (id: number, date: string) =>
-    api.get(`/doctors/${id}/slots`, { params: { date } }),
+  slots: (id: number, date: string, facilityId?: number) =>
+    api.get(`/doctors/${id}/slots`, { params: { date, facilityId } }),
 
   dashboard: () =>
     api.get('/doctors/me/dashboard'),
@@ -124,8 +124,14 @@ export type ConsultationResponse = {
 // ============================================
 
 export const AppointmentsApi = {
-  book: (doctorId: number, startsAt: string, reason?: string, patientProfileId?: number) =>
-    api.post('/appointments', { doctorId, startsAt, reason, patientProfileId }),
+  book: (
+    doctorId: number,
+    startsAt: string,
+    reason?: string,
+    patientProfileId?: number,
+    facilityId?: number
+  ) =>
+    api.post('/appointments', { doctorId, startsAt, reason, patientProfileId, facilityId }),
 
   mine: (scope?: 'upcoming' | 'past') =>
     api.get('/appointments/mine', { params: { scope } }),
@@ -290,6 +296,79 @@ export type DoctorInput = {
 // ============================================
 // ADMINISTRATION / SECRÃ‰TARIAT
 // ============================================
+
+export type FacilityType = 'hospital' | 'clinic' | 'medical_center' | 'health_center';
+export type FacilityTimeZone = 'Africa/Kinshasa' | 'Africa/Lubumbashi';
+
+export type DoctorFacility = {
+  id: number;
+  name: string;
+  city: string | null;
+  timezone: FacilityTimeZone;
+  fee: string | number;
+};
+
+export type FacilitySummary = {
+  id: number;
+  code: string;
+  name: string;
+  type: FacilityType;
+  address: string | null;
+  city: string | null;
+  province: string | null;
+  phone: string | null;
+  emergency_phone: string | null;
+  latitude: string | null;
+  longitude: string | null;
+  timezone: FacilityTimeZone;
+  distance_km: string | null;
+  services: string[];
+  specialties: string[];
+  doctors_count: number;
+};
+
+export type FacilityDetail = Omit<FacilitySummary, 'services' | 'specialties' | 'doctors_count' | 'distance_km'> & {
+  description: string | null;
+  email: string | null;
+  opening_hours: { weekday: number; opensAt: string; closesAt: string }[];
+  services: { code: string; name: string; available_24h: boolean }[];
+  specialties: { id: number; name: string }[];
+  doctors: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    specialty: string;
+    fee: string | number;
+    consultation_minutes: number;
+  }[];
+};
+
+export type FacilitySearch = {
+  q?: string;
+  city?: string;
+  specialtyId?: number;
+  service?: string;
+  lat?: number;
+  lng?: number;
+};
+
+export const FACILITY_TYPE_LABEL: Record<FacilityType, string> = {
+  hospital: 'Hôpital',
+  clinic: 'Clinique',
+  medical_center: 'Centre médical',
+  health_center: 'Centre de santé',
+};
+
+export const FacilitiesApi = {
+  search: (params: FacilitySearch = {}) =>
+    api.get<FacilitySummary[]>('/facilities', { params }),
+
+  get: (id: number) =>
+    api.get<FacilityDetail>(`/facilities/${id}`),
+
+  meta: () =>
+    api.get<{ services: { code: string; name: string }[]; cities: string[] }>('/facilities/meta'),
+};
 
 export type PatientRelationship = 'parent' | 'legal_guardian';
 export type GuardianLinkStatus = 'pending' | 'verified' | 'rejected' | 'revoked';

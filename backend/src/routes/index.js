@@ -21,6 +21,7 @@ const users = require('../controllers/users.controller');
 const medicalRecord = require('../controllers/medicalRecord.controller');
 const waitingList = require('../controllers/waitingList.controller');
 const patients = require('../controllers/patients.controller');
+const facilities = require('../controllers/facilities.controller');
 
 
 // =========================================
@@ -80,7 +81,11 @@ router.post(
 // MÉDECINS
 // =========================================
 
-router.get('/doctors', authenticate, doctors.list);
+router.get('/facilities', authenticate, validate(s.facilitySearchQuery, 'query'), facilities.search);
+router.get('/facilities/meta', authenticate, facilities.meta);
+router.get('/facilities/:id', authenticate, validate(s.idParams, 'params'), facilities.get);
+
+router.get('/doctors', authenticate, validate(s.doctorsQuery, 'query'), doctors.list);
 
 router.get(
   '/doctors/me/dashboard',
@@ -160,7 +165,7 @@ router.delete(
 
 
 // Informations d'un médecin et ses créneaux
-router.get('/doctors/:id', authenticate, doctors.get);
+router.get('/doctors/:id', authenticate, validate(s.idParams, 'params'), doctors.get);
 
 router.get(
   '/doctors/:id/slots',

@@ -103,6 +103,25 @@ describe('Creneaux par etablissement', () => {
     expect(params).toEqual([2, 4, 1]);
   });
 
+  test('sans etablissement precise, regroupe les creneaux de tous les etablissements du medecin', async () => {
+    route([
+      ['SELECT consultation_minutes FROM doctors', { rows: [{ consultation_minutes: 60 }], rowCount: 1 }],
+      ['FROM doctor_affiliations a', {
+        rows: [facilityRow(1, 'Africa/Lubumbashi', 'A'), facilityRow(2, 'Africa/Kinshasa', 'B')],
+        rowCount: 2,
+      }],
+      ['FROM working_hours', { rows: [{ start_time: '08:00', end_time: '09:00' }], rowCount: 1 }],
+    ]);
+
+    const slots = await getAvailableSlots(2, '2030-01-07');
+
+    expect(slots.map((s) => [s.facilityId, s.startsAt])).toEqual([
+      [1, '2030-01-07T06:00:00.000Z'],
+      [2, '2030-01-07T07:00:00.000Z'],
+    ]);
+    expect(slots[1].facilityName).toBe('B');
+  });
+
   test('les rendez-vous d un autre etablissement bloquent aussi le creneau', async () => {
     setup('Africa/Lubumbashi');
     await getAvailableSlots(2, '2030-01-07');

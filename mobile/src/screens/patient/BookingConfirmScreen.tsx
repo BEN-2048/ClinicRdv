@@ -22,18 +22,18 @@ type DoctorInfo = {
   consultation_minutes: number;
 };
 
-const formatDate = (iso: string) =>
+const formatDate = (iso: string, timeZone: string) =>
   new Intl.DateTimeFormat('fr-FR', {
-    timeZone: CLINIC_TIME_ZONE,
+    timeZone,
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   }).format(new Date(iso));
 
-const formatTime = (iso: string) =>
+const formatTime = (iso: string, timeZone: string) =>
   new Intl.DateTimeFormat('fr-FR', {
-    timeZone: CLINIC_TIME_ZONE,
+    timeZone,
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',
@@ -53,6 +53,8 @@ export default function BookingConfirmScreen() {
   const appointment = route.params?.appointment as Appointment | undefined;
   const doctor = route.params?.doctor as DoctorInfo | undefined;
   const patientName = route.params?.patientName as string | undefined;
+  const facility = route.params?.facility as { name: string; city: string | null } | undefined;
+  const timeZone = (route.params?.timeZone as string | undefined) ?? CLINIC_TIME_ZONE;
 
   if (!appointment || !doctor || !appointment.id || !appointment.starts_at || !appointment.ends_at) {
     return (
@@ -96,11 +98,14 @@ export default function BookingConfirmScreen() {
         {patientName ? <InfoRow icon="people-outline" label="Patient" value={patientName} strong /> : null}
         <InfoRow icon="person-outline" label="Médecin" value={`Dr. ${doctor.name}`} strong />
         <InfoRow icon="medkit-outline" label="Spécialité" value={doctor.specialty} />
-        <InfoRow icon="calendar-outline" label="Date" value={formatDate(appointment.starts_at)} strong />
+        {facility ? (
+          <InfoRow icon="business-outline" label="Établissement" value={[facility.name, facility.city].filter(Boolean).join(' · ')} strong />
+        ) : null}
+        <InfoRow icon="calendar-outline" label="Date" value={formatDate(appointment.starts_at, timeZone)} strong />
         <InfoRow
           icon="time-outline"
           label="Horaire"
-          value={`${formatTime(appointment.starts_at)} – ${formatTime(appointment.ends_at)}`}
+          value={`${formatTime(appointment.starts_at, timeZone)} – ${formatTime(appointment.ends_at, timeZone)}`}
           strong
         />
         <InfoRow icon="cash-outline" label="Tarif de consultation" value={`${doctor.fee} USD`} />

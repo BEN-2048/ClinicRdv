@@ -20,6 +20,26 @@ exports.book = z.object({
   facilityId: z.number().int().positive().optional(),
 });
 
+exports.facilitySearchQuery = z.object({
+  q: z.string().trim().max(80).optional(),
+  city: z.string().trim().max(80).optional(),
+  specialtyId: z.coerce.number().int().positive().optional(),
+  service: z.string().regex(/^[a-z_]{2,30}$/).optional(),
+  lat: z.coerce.number().min(-90).max(90).optional(),
+  lng: z.coerce.number().min(-180).max(180).optional(),
+  limit: z.coerce.number().int().min(1).max(50).optional(),
+}).refine((o) => (o.lat === undefined) === (o.lng === undefined), {
+  message: 'lat et lng doivent etre fournis ensemble',
+});
+
+exports.idParams = z.object({ id: z.coerce.number().int().positive() });
+
+exports.doctorsQuery = z.object({
+  q: z.string().trim().max(80).optional(),
+  specialtyId: z.coerce.number().int().positive().optional(),
+  facilityId: z.coerce.number().int().positive().optional(),
+});
+
 exports.addDependent = z.object({
   firstName: z.string().trim().min(1).max(80),
   lastName: z.string().trim().min(1).max(80),

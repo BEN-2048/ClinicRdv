@@ -36,6 +36,9 @@ type Appointment = {
   specialty?: string;
   patient_profile_id?: number;
   patient_name?: string;
+  facility_id?: number;
+  facility_name?: string;
+  facility_timezone?: string;
 };
 
 type TabKey = 'upcoming' | 'past' | 'cancelled';
@@ -55,17 +58,17 @@ const STATUS: Record<AppointmentStatus, { label: string; bg: string; dot: string
 
 const capitalizeWords = (s: string) => s.replace(/(^|\s)([a-zà-ÿ])/g, (m, sp, c) => sp + c.toUpperCase());
 
-const formatDateTime = (iso: string) => {
+const formatDateTime = (iso: string, timeZone: string = CLINIC_TIME_ZONE) => {
   const d = new Date(iso);
   const date = new Intl.DateTimeFormat('fr-FR', {
-    timeZone: CLINIC_TIME_ZONE,
+    timeZone,
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   }).format(d);
   const time = new Intl.DateTimeFormat('fr-FR', {
-    timeZone: CLINIC_TIME_ZONE,
+    timeZone,
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',
@@ -248,7 +251,7 @@ export default function MyAppointmentsScreen() {
   };
 
   const reschedule = (a: Appointment) =>
-    navigation.navigate('SlotPicker', { doctorId: a.doctor_id, rescheduleId: a.id });
+    navigation.navigate('SlotPicker', { doctorId: a.doctor_id, rescheduleId: a.id, facilityId: a.facility_id });
 
   const firstAlert = alerts[0];
 
@@ -509,9 +512,12 @@ function AppointmentCard({
         <DetailRow
           icon="calendar-outline"
           label="Date & heure"
-          value={formatDateTime(a.starts_at)}
+          value={formatDateTime(a.starts_at, a.facility_timezone)}
           strong
         />
+        {a.facility_name ? (
+          <DetailRow icon="business-outline" label="Établissement" value={a.facility_name} />
+        ) : null}
         {a.reason ? (
           <DetailRow icon="document-text-outline"label="Motif" value={a.reason} />
         ) : null}

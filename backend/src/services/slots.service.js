@@ -34,7 +34,7 @@ function parseCalendarDate(dateStr) {
   return { year, month, day, weekday: calendarDate.getUTCDay() };
 }
 
-exports.resolveFacility = async (doctorId, facilityId = null, db = pool) => {
+const listFacilities = async (doctorId, facilityId = null, db = pool) => {
   const r = await db.query(
     `SELECT f.id, f.timezone, f.name
        FROM doctor_affiliations a
@@ -47,14 +47,19 @@ exports.resolveFacility = async (doctorId, facilityId = null, db = pool) => {
     [doctorId, facilityId]
   );
 
-  if (!r.rowCount) {
-    if (facilityId) throw httpError(404, 'Ce médecin ne consulte pas dans cet établissement');
-    return null;
+  if (!r.rowCount && facilityId) {
+    throw httpError(404, 'Ce médecin ne consulte pas dans cet établissement');
   }
-  if (r.rowCount > 1) {
+  return r.rows;
+};
+
+exports.resolveFacility = async (doctorId, facilityId = null, db = pool) => {
+  const rows = await listFacilities(doctorId, facilityId, db);
+  if (!rows.length) return null;
+  if (rows.length > 1) {
     throw httpError(400, 'Ce médecin consulte dans plusieurs établissements : précisez l’établissement');
   }
-  return r.rows[0];
+  return rows[0];
 };
 
 exports.getAvailableSlots = async (
@@ -73,12 +78,8 @@ exports.getAvailableSlots = async (
 
   if (!doc.rowCount) return null;
 
-  const facility = await exports.resolveFacility(doctorId, facilityId, db);
-  if (!facility) return [];
-
-  const duration = doc.rows[0].consultation_minutes;
-  const dayStart = localToUtc(year, month, day, 0, facility.timezone);
-  const dayEnd = localToUtc(year, month, day, 24 * 60, facility.timezone);
+  const facilities = await listFacilities(doctorId, facilityId, db);
+  if (!facilities.length) return [];
 
   const onLeave = await db.query(
     'SELECT 1 FROM leaves WHERE doctor_id=$1 AND $2::date BETWEEN start_date AND end_date',
@@ -86,6 +87,23 @@ exports.getAvailableSlots = async (
   );
 
   if (onLeave.rowCount) return [];
+
+  const slots = [];
+  for (const facility of facilities) {
+    slots.push(...await slotsForFacility({
+      db, doctorId, facility, excludeAppointmentId,
+      duration: doc.rows[0].consultation_minutes,
+      date: { year, month, day, weekday },
+    }));
+  }
+
+  return slots.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+};
+
+async function slotsForFacility({ db, doctorId, facility, excludeAppointmentId, duration, date }) {
+  const { year, month, day, weekday } = date;
+  const dayStart = localToUtc(year, month, day, 0, facility.timezone);
+  const dayEnd = localToUtc(year, month, day, 24 * 60, facility.timezone);
 
   const wh = await db.query(
     `SELECT start_time, end_time FROM working_hours
@@ -124,10 +142,11 @@ exports.getAvailableSlots = async (
         endsAt: endsAt.toISOString(),
         available: !taken && startsAt.getTime() > now,
         facilityId: facility.id,
+        facilityName: facility.name,
         timezone: facility.timezone,
       });
     }
   }
 
-  return slots.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-};
+  return slots;
+}

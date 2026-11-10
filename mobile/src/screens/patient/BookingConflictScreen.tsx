@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { DoctorsApi } from '../../api/services';
+import { DoctorFacility, DoctorsApi } from '../../api/services';
 import {
   Avatar,
   Button,
@@ -31,6 +31,8 @@ type Slot = {
   startsAt: string;
   endsAt: string;
   available: boolean;
+  facilityId?: number;
+  timezone?: string;
 };
 
 type DayAvailability = {
@@ -38,9 +40,9 @@ type DayAvailability = {
   slots: Slot[];
 };
 
-const clinicDate = (date: Date) => {
+const clinicDate = (date: Date, timeZone: string) => {
   const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: CLINIC_TIME_ZONE,
+    timeZone,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -55,9 +57,9 @@ const addDays = (date: string, amount: number) => {
   return d.toISOString().slice(0, 10);
 };
 
-const formatTime = (iso: string) =>
+const formatTime = (iso: string, timeZone: string) =>
   new Intl.DateTimeFormat('fr-FR', {
-    timeZone: CLINIC_TIME_ZONE,
+    timeZone,
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',
@@ -73,8 +75,8 @@ const formatDay = (date: string) =>
 
 const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
-const dayTitle = (date: string) => {
-  const today = clinicDate(new Date());
+const dayTitle = (date: string, timeZone: string) => {
+  const today = clinicDate(new Date(), timeZone);
   if (date === today) return `Aujourd'hui — ${formatDay(date)}`;
   if (date === addDays(today, 1)) return `Demain — ${formatDay(date)}`;
   return capitalize(formatDay(date));
@@ -88,6 +90,9 @@ export default function BookingConflictScreen() {
   const originalSlot = route.params?.slot as Slot | undefined;
   const reason = route.params?.reason || '';
   const profileId = route.params?.profileId as number | undefined;
+  const facility = route.params?.facility as DoctorFacility | undefined;
+  const facilityId = originalSlot?.facilityId ?? facility?.id;
+  const timeZone = originalSlot?.timezone ?? facility?.timezone ?? CLINIC_TIME_ZONE;
 
   const [days, setDays] = useState<DayAvailability[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
@@ -107,13 +112,13 @@ export default function BookingConflictScreen() {
     setSelectedSlot(null);
 
     try {
-      const startDate = clinicDate(new Date(originalSlot.startsAt));
+      const startDate = clinicDate(new Date(originalSlot.startsAt), timeZone);
       const dates = Array.from({ length: 7 }, (_, index) => addDays(startDate, index));
 
       const results = await Promise.all(
         dates.map(async (date) => {
           try {
-            const response = await DoctorsApi.slots(doctor.id, date);
+            const response = await DoctorsApi.slots(doctor.id, date, facilityId);
             const available = (response.data as Slot[])
               .filter((slot) => slot.available && slot.startsAt !== originalSlot.startsAt)
               .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
@@ -151,11 +156,11 @@ export default function BookingConflictScreen() {
   }
 
   const fullName = `${doctor.first_name} ${doctor.last_name}`.trim();
-  const originalDate = clinicDate(new Date(originalSlot.startsAt));
+  const originalDate = clinicDate(new Date(originalSlot.startsAt), timeZone);
 
   const selectAlternative = () => {
     if (!selectedSlot) return;
-    navigation.replace('BookingReview', { doctor, slot: selectedSlot, reason, profileId });
+    navigation.replace('BookingReview', { doctor, slot: selectedSlot, reason, profileId, facility });
   };
 
   const goToDoctors = () => navigation.navigate('Main', { screen: 'Médecins' });
@@ -165,7 +170,7 @@ export default function BookingConflictScreen() {
       footer={
         <View style={s.footer}>
           <Button
-            title={selectedSlot ? `Sélectionner ${formatTime(selectedSlot.startsAt)}` : 'Sélectionner un créneau'}
+            title={selectedSlot ? `Sélectionner ${formatTime(selectedSlot.startsAt, timeZone)}` : 'Sélectionner un créneau'}
             iconRight="arrow-forward"
             disabled={!selectedSlot}
             onPress={selectAlternative}
@@ -179,7 +184,8 @@ export default function BookingConflictScreen() {
         icon="sync-outline"
         title="Ce créneau vient d'être réservé"
         message={`Un autre patient a réservé le créneau du ${formatDay(originalDate)} à ${formatTime(
-          originalSlot.startsAt
+          originalSlot.startsAt,
+          timeZone
         )} pendant votre sélection.`}
       />
 
@@ -223,11 +229,11 @@ export default function BookingConflictScreen() {
             <View key={day.date} style={s.day}>
               <View style={s.dayHead}>
                 <Icon name="calendar-outline" size="sm" color={color.primary} />
-                <Text style={s.dayTitle}>{dayTitle(day.date)}</Text>
+                <Text style={s.dayTitle}>{dayTitle(day.date, timeZone)}</Text>
               </View>
               <SlotGrid
                 items={day.slots.map((slot, slotIndex) => {
-                  const time = formatTime(slot.startsAt);
+                  const time = formatTime(slot.startsAt, timeZone);
                   return {
                     key: slot.startsAt,
                     label: time,

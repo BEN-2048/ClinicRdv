@@ -3,15 +3,25 @@ const pool = require('../config/db');
 const { getAvailableSlots } = require('../services/slots.service');
 const adminService = require('../services/admin.service');
 
+const FACILITIES_JSON = `COALESCE((
+  SELECT json_agg(json_build_object(
+           'id', f.id, 'name', f.name, 'city', f.city, 'timezone', f.timezone,
+           'fee', COALESCE(da.fee, d.fee)) ORDER BY f.name)
+    FROM doctor_affiliations da
+    JOIN facilities f ON f.id = da.facility_id
+   WHERE da.doctor_id = d.id AND da.status = 'active' AND f.status = 'active'
+), '[]'::json)`;
+
 // Liste des médecins
 exports.list = async (req, res, next) => {
   try {
-    const { q, specialtyId } = req.query;
+    const { q, specialtyId, facilityId } = req.query;
 
     const r = await pool.query(
       `SELECT d.id, u.first_name, u.last_name,
               s.name AS specialty, d.fee,
-              d.consultation_minutes, d.languages
+              d.consultation_minutes, d.languages,
+              ${FACILITIES_JSON} AS facilities
          FROM doctors d
          JOIN users u ON u.id = d.user_id
          JOIN specialties s ON s.id = d.specialty_id
@@ -19,8 +29,13 @@ exports.list = async (req, res, next) => {
           AND ($1::text IS NULL OR u.last_name ILIKE '%'||$1||'%'
                OR s.name ILIKE '%'||$1||'%')
           AND ($2::int IS NULL OR d.specialty_id = $2)
+          AND EXISTS (
+            SELECT 1 FROM doctor_affiliations da
+              JOIN facilities f ON f.id = da.facility_id
+             WHERE da.doctor_id = d.id AND da.status = 'active' AND f.status = 'active'
+               AND ($3::int IS NULL OR f.id = $3))
         ORDER BY u.last_name`,
-      [q || null, specialtyId ? +specialtyId : null]
+      [q || null, specialtyId ?? null, facilityId ?? null]
     );
 
     res.json(r.rows);
@@ -34,7 +49,8 @@ exports.get = async (req, res, next) => {
   try {
     const r = await pool.query(
       `SELECT d.*, u.first_name, u.last_name,
-              s.name AS specialty
+              s.name AS specialty,
+              ${FACILITIES_JSON} AS facilities
          FROM doctors d
          JOIN users u ON u.id = d.user_id
          JOIN specialties s ON s.id = d.specialty_id

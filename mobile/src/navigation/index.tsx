@@ -25,6 +25,8 @@ import MedicalRecordScreen from '../screens/patient/MedicalRecordScreen';
 import NotificationsScreen from '../screens/patient/NotificationsScreen';
 import WaitingListScreen from '../screens/patient/WaitingListScreen';
 import FamilyScreen from '../screens/patient/FamilyScreen';
+import FacilityListScreen from '../screens/patient/FacilityListScreen';
+import FacilityDetailScreen from '../screens/patient/FacilityDetailScreen';
 
 import DoctorDashboardScreen from '../screens/doctor/DoctorDashboardScreen';
 import DoctorAgendaScreen from '../screens/doctor/DoctorAgendaScreen';
@@ -69,6 +71,7 @@ const tabsByRole: Record<Role, { headerShown: boolean; tabs: TabDef[] }> = {
     tabs: [
       { name: 'Accueil', component: HomeScreen, icon: 'home-outline', iconActive: 'home' },
       { name: 'Médecins', component: DoctorListScreen, icon: 'medkit-outline', iconActive: 'medkit' },
+      { name: 'Établissements', component: FacilityListScreen, icon: 'business-outline', iconActive: 'business' },
       { name: 'Mes RDV', component: MyAppointmentsScreen, icon: 'calendar-outline', iconActive: 'calendar' },
       profileTab,
     ],
@@ -247,6 +250,12 @@ export default function RootNavigator() {
                 options={{ title: 'Liens familiaux' }}
               />
             )}
+
+            <Stack.Screen
+              name="FacilityDetail"
+              component={FacilityDetailScreen}
+              options={{ title: 'Établissement' }}
+            />
 
             <Stack.Screen
               name="DoctorProfile"
