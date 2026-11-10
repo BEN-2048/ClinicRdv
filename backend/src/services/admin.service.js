@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const pool = require('../config/db');
 const { httpError } = require('./appointments.service');
+const { resolveFacility } = require('./slots.service');
 
 const TZ = 'Africa/Lubumbashi';
 const todayClinic = `(now() AT TIME ZONE '${TZ}')::date`;
@@ -115,6 +116,18 @@ exports.createDoctor = async (data) => {
        VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,
       [u.rows[0].id, data.specialtyId, data.bio || null, data.fee ?? 0,
         data.consultationMinutes ?? 30, data.languages || 'fr']);
+    const facility = await client.query(
+      `SELECT id FROM facilities
+        WHERE status = 'active' AND (($1::int IS NULL AND is_default) OR id = $1)`,
+      [data.facilityId ?? null]);
+    if (!facility.rowCount) throw httpError(400, 'Établissement inconnu ou inactif');
+    await client.query(
+      'INSERT INTO doctor_affiliations(doctor_id, facility_id) VALUES($1, $2)',
+      [d.rows[0].id, facility.rows[0].id]);
+    await client.query(
+      `INSERT INTO facility_specialties(facility_id, specialty_id) VALUES($1, $2)
+       ON CONFLICT DO NOTHING`,
+      [facility.rows[0].id, data.specialtyId]);
     await client.query('COMMIT');
     return exports.getDoctor(d.rows[0].id);
   } catch (e) {
@@ -185,27 +198,57 @@ const ensureDoctor = async (id) => {
   return r.rows[0];
 };
 
-exports.getWorkingHours = async (doctorId) => {
-  const doc = await ensureDoctor(doctorId);
-  const r = await pool.query(
-    `SELECT weekday, to_char(start_time,'HH24:MI') AS "startTime", to_char(end_time,'HH24:MI') AS "endTime"
-       FROM working_hours WHERE doctor_id=$1 ORDER BY weekday, start_time`, [doctorId]);
-  return { consultationMinutes: doc.consultation_minutes, hours: r.rows };
+const resolveHoursFacility = async (doctorId, facilityId) => {
+  const facility = await resolveFacility(doctorId, facilityId ?? null);
+  if (!facility) throw httpError(409, 'Ce médecin n’est rattaché à aucun établissement actif');
+  return facility;
 };
 
-exports.setWorkingHours = async (doctorId, { hours, consultationMinutes }) => {
+exports.getWorkingHours = async (doctorId, { facilityId } = {}) => {
+  const doc = await ensureDoctor(doctorId);
+  const facility = await resolveHoursFacility(doctorId, facilityId);
+  const r = await pool.query(
+    `SELECT weekday, to_char(start_time,'HH24:MI') AS "startTime", to_char(end_time,'HH24:MI') AS "endTime"
+       FROM working_hours WHERE doctor_id=$1 AND facility_id=$2
+      ORDER BY weekday, start_time`, [doctorId, facility.id]);
+  return {
+    consultationMinutes: doc.consultation_minutes,
+    facilityId: facility.id,
+    facilityName: facility.name,
+    hours: r.rows,
+  };
+};
+
+const overlaps = (a, b) => a.weekday === b.weekday && a.startTime < b.endTime && b.startTime < a.endTime;
+
+exports.setWorkingHours = async (doctorId, { hours, consultationMinutes, facilityId }) => {
   for (const h of hours)
     if (h.endTime <= h.startTime) throw httpError(400, 'L’heure de fin doit suivre l’heure de début');
+  for (let i = 0; i < hours.length; i += 1)
+    for (let j = i + 1; j < hours.length; j += 1)
+      if (overlaps(hours[i], hours[j])) throw httpError(400, 'Deux plages horaires se chevauchent');
   await ensureDoctor(doctorId);
+  const facility = await resolveHoursFacility(doctorId, facilityId);
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await client.query('SELECT id FROM doctors WHERE id=$1 FOR UPDATE', [doctorId]);
+    const elsewhere = await client.query(
+      `SELECT w.weekday, to_char(w.start_time,'HH24:MI') AS "startTime",
+              to_char(w.end_time,'HH24:MI') AS "endTime", f.name
+         FROM working_hours w JOIN facilities f ON f.id = w.facility_id
+        WHERE w.doctor_id=$1 AND w.facility_id <> $2`, [doctorId, facility.id]);
+    const clash = elsewhere.rows.find((o) => hours.some((h) => overlaps(h, o)));
+    if (clash) {
+      throw httpError(409, `Chevauchement avec les horaires de ${clash.name}`);
+    }
     await client.query('UPDATE doctors SET consultation_minutes=$2 WHERE id=$1', [doctorId, consultationMinutes]);
-    await client.query('DELETE FROM working_hours WHERE doctor_id=$1', [doctorId]);
+    await client.query('DELETE FROM working_hours WHERE doctor_id=$1 AND facility_id=$2', [doctorId, facility.id]);
     for (const h of hours)
       await client.query(
-        'INSERT INTO working_hours(doctor_id,weekday,start_time,end_time) VALUES($1,$2,$3,$4)',
-        [doctorId, h.weekday, h.startTime, h.endTime]);
+        `INSERT INTO working_hours(doctor_id,facility_id,weekday,start_time,end_time)
+         VALUES($1,$2,$3,$4,$5)`,
+        [doctorId, facility.id, h.weekday, h.startTime, h.endTime]);
     await client.query('COMMIT');
   } catch (e) {
     await client.query('ROLLBACK');
@@ -213,7 +256,7 @@ exports.setWorkingHours = async (doctorId, { hours, consultationMinutes }) => {
   } finally {
     client.release();
   }
-  return exports.getWorkingHours(doctorId);
+  return exports.getWorkingHours(doctorId, { facilityId: facility.id });
 };
 
 exports.listLeaves = async (doctorId) => {

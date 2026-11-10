@@ -59,7 +59,10 @@ exports.slots = async (req, res, next) => {
   try {
     const slots = await getAvailableSlots(
       +req.params.id,
-      req.query.date
+      req.query.date,
+      undefined,
+      null,
+      req.query.facilityId ?? null
     );
 
     if (!slots) {
@@ -151,7 +154,7 @@ const handleAgendaRequest = (action) => async (req, res, next) => {
 
 // HORAIRES DE TRAVAIL
 exports.myWorkingHours = handleAgendaRequest(
-  (doctorId) => adminService.getWorkingHours(doctorId)
+  (doctorId, req) => adminService.getWorkingHours(doctorId, req.query)
 );
 
 exports.updateMyWorkingHours = handleAgendaRequest(

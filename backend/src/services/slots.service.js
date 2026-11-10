@@ -1,58 +1,70 @@
 const pool = require('../config/db');
+const { localToUtc } = require('../utils/timezone');
 
-// Fuseau horaire de la clinique : Lubumbashi (UTC+2).
-const UTC_OFFSET_MINUTES = 120;
 const MINUTE_MS = 60000;
-const DAY_MS = 24 * 60 * MINUTE_MS;
+
+const httpError = (status, message) =>
+  Object.assign(new Error(message), { status });
 
 const toMin = (t) => {
   const [h, m] = t.split(':');
   return Number(h) * 60 + Number(m);
 };
 
-function getLocalDay(dateStr) {
+function parseCalendarDate(dateStr) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
 
   if (!match) {
     throw new Error('Date invalide. Format attendu : AAAA-MM-JJ');
   }
 
-  const [, y, mo, d] = match;
-  const year = Number(y);
-  const month = Number(mo);
-  const dayOfMonth = Number(d);
-
-  const calendarDate = new Date(Date.UTC(year, month - 1, dayOfMonth));
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const calendarDate = new Date(Date.UTC(year, month - 1, day));
 
   if (
     calendarDate.getUTCFullYear() !== year ||
     calendarDate.getUTCMonth() !== month - 1 ||
-    calendarDate.getUTCDate() !== dayOfMonth
+    calendarDate.getUTCDate() !== day
   ) {
     throw new Error('Date de calendrier invalide');
   }
 
-  const localMidnightUTC =
-    Date.UTC(year, month - 1, dayOfMonth) -
-    UTC_OFFSET_MINUTES * MINUTE_MS;
-
-  return {
-    start: new Date(localMidnightUTC),
-    end: new Date(localMidnightUTC + DAY_MS),
-    weekday: calendarDate.getUTCDay(),
-    year,
-    month,
-    dayOfMonth,
-  };
+  return { year, month, day, weekday: calendarDate.getUTCDay() };
 }
 
-/**
- * Calcule les créneaux selon les horaires locaux de Lubumbashi.
- * Les instants sont convertis en UTC pour PostgreSQL.
- */
-exports.getAvailableSlots = async (doctorId, dateStr, db = pool, excludeAppointmentId = null) => {
-  const localDay = getLocalDay(dateStr);
-  const { start, end, weekday, year, month, dayOfMonth } = localDay;
+exports.resolveFacility = async (doctorId, facilityId = null, db = pool) => {
+  const r = await db.query(
+    `SELECT f.id, f.timezone, f.name
+       FROM doctor_affiliations a
+       JOIN facilities f ON f.id = a.facility_id
+      WHERE a.doctor_id = $1
+        AND a.status = 'active'
+        AND f.status = 'active'
+        AND ($2::int IS NULL OR f.id = $2)
+      ORDER BY f.id`,
+    [doctorId, facilityId]
+  );
+
+  if (!r.rowCount) {
+    if (facilityId) throw httpError(404, 'Ce médecin ne consulte pas dans cet établissement');
+    return null;
+  }
+  if (r.rowCount > 1) {
+    throw httpError(400, 'Ce médecin consulte dans plusieurs établissements : précisez l’établissement');
+  }
+  return r.rows[0];
+};
+
+exports.getAvailableSlots = async (
+  doctorId,
+  dateStr,
+  db = pool,
+  excludeAppointmentId = null,
+  facilityId = null
+) => {
+  const { year, month, day, weekday } = parseCalendarDate(dateStr);
 
   const doc = await db.query(
     'SELECT consultation_minutes FROM doctors WHERE id=$1 AND active',
@@ -61,7 +73,12 @@ exports.getAvailableSlots = async (doctorId, dateStr, db = pool, excludeAppointm
 
   if (!doc.rowCount) return null;
 
+  const facility = await exports.resolveFacility(doctorId, facilityId, db);
+  if (!facility) return [];
+
   const duration = doc.rows[0].consultation_minutes;
+  const dayStart = localToUtc(year, month, day, 0, facility.timezone);
+  const dayEnd = localToUtc(year, month, day, 24 * 60, facility.timezone);
 
   const onLeave = await db.query(
     'SELECT 1 FROM leaves WHERE doctor_id=$1 AND $2::date BETWEEN start_date AND end_date',
@@ -71,8 +88,9 @@ exports.getAvailableSlots = async (doctorId, dateStr, db = pool, excludeAppointm
   if (onLeave.rowCount) return [];
 
   const wh = await db.query(
-    'SELECT start_time, end_time FROM working_hours WHERE doctor_id=$1 AND weekday=$2',
-    [doctorId, weekday]
+    `SELECT start_time, end_time FROM working_hours
+      WHERE doctor_id=$1 AND facility_id=$2 AND weekday=$3`,
+    [doctorId, facility.id, weekday]
   );
 
   const busy = await db.query(
@@ -82,37 +100,31 @@ exports.getAvailableSlots = async (doctorId, dateStr, db = pool, excludeAppointm
      UNION ALL
      SELECT starts_at, ends_at FROM blocked_slots
        WHERE doctor_id=$1 AND starts_at < $3 AND ends_at > $2`,
-    [doctorId, start, end, excludeAppointmentId]
+    [doctorId, dayStart, dayEnd, excludeAppointmentId]
   );
 
   const now = Date.now();
   const slots = [];
 
-  // Chaque horaire de travail est interprété en heure locale UTC+2.
   for (const row of wh.rows) {
     for (
       let minutes = toMin(row.start_time);
       minutes + duration <= toMin(row.end_time);
       minutes += duration
     ) {
-      const startsAt = new Date(
-        Date.UTC(year, month - 1, dayOfMonth, 0, minutes) -
-        UTC_OFFSET_MINUTES * MINUTE_MS
-      );
-
+      const startsAt = localToUtc(year, month, day, minutes, facility.timezone);
       const endsAt = new Date(startsAt.getTime() + duration * MINUTE_MS);
 
-      const taken = busy.rows.some((booking) => {
-        const busyStart = new Date(booking.starts_at);
-        const busyEnd = new Date(booking.ends_at);
-
-        return startsAt < busyEnd && endsAt > busyStart;
-      });
+      const taken = busy.rows.some((booking) =>
+        startsAt < new Date(booking.ends_at) && endsAt > new Date(booking.starts_at)
+      );
 
       slots.push({
         startsAt: startsAt.toISOString(),
         endsAt: endsAt.toISOString(),
         available: !taken && startsAt.getTime() > now,
+        facilityId: facility.id,
+        timezone: facility.timezone,
       });
     }
   }

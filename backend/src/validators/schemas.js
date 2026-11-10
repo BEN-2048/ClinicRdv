@@ -8,12 +8,16 @@ exports.register = z.object({
   phone: z.string().max(30).optional(),
 });
 exports.login = z.object({ email: z.string().email(), password: z.string().min(1) });
-exports.slotsQuery = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format AAAA-MM-JJ') });
+exports.slotsQuery = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format AAAA-MM-JJ'),
+  facilityId: z.coerce.number().int().positive().optional(),
+});
 exports.book = z.object({
   doctorId: z.number().int().positive(),
   startsAt: z.string().datetime(),
   reason: z.string().max(500).optional(),
   patientProfileId: z.number().int().positive().optional(),
+  facilityId: z.number().int().positive().optional(),
 });
 
 exports.addDependent = z.object({
@@ -44,6 +48,7 @@ exports.workingHours = z.object({
     endTime: z.string().regex(/^\d{2}:\d{2}$/),
   })),
   consultationMinutes: z.number().int().refine((n) => [15, 30, 45, 60].includes(n)),
+  facilityId: z.number().int().positive().optional(),
 });
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format AAAA-MM-JJ');
 const consultationMinutes = z.number().int().refine((n) => [15, 30, 45, 60].includes(n), 'Durée : 15, 30, 45 ou 60');
@@ -62,6 +67,7 @@ exports.createDoctor = z.object({
   fee: z.number().nonnegative().optional(),
   consultationMinutes: consultationMinutes.optional(),
   languages: z.string().max(100).optional(),
+  facilityId: z.number().int().positive().optional(),
 });
 exports.updateDoctor = z.object({
   firstName: z.string().min(1).max(80).optional(),

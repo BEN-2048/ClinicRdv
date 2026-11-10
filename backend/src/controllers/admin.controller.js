@@ -18,7 +18,7 @@ exports.getDoctor = wrap(async (req, res) => res.json(await svc.getDoctor(intPar
 exports.createDoctor = wrap(async (req, res) => res.status(201).json(await svc.createDoctor(req.body)));
 exports.updateDoctor = wrap(async (req, res) => res.json(await svc.updateDoctor(intParam(req, 'id'), req.body)));
 
-exports.getWorkingHours = wrap(async (req, res) => res.json(await svc.getWorkingHours(intParam(req, 'id'))));
+exports.getWorkingHours = wrap(async (req, res) => res.json(await svc.getWorkingHours(intParam(req, 'id'), req.query)));
 exports.setWorkingHours = wrap(async (req, res) => res.json(await svc.setWorkingHours(intParam(req, 'id'), req.body)));
 
 exports.listLeaves = wrap(async (req, res) => res.json(await svc.listLeaves(intParam(req, 'id'))));

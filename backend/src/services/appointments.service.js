@@ -1,8 +1,9 @@
 
 const pool = require('../config/db');
-const { getAvailableSlots } = require('./slots.service');
+const { getAvailableSlots, resolveFacility } = require('./slots.service');
 const { isStaff } = require('../middleware/auth');
 const { accessibleProfilesSql, resolveBookingProfile } = require('./patients.service');
+const { localDateString } = require('../utils/timezone');
 
 const httpError = (status, message) =>
   Object.assign(new Error(message), { status });
@@ -13,22 +14,6 @@ const parseStartsAt = (value) => {
     throw httpError(400, 'Date de rendez-vous invalide');
   }
   return date;
-};
-
-const clinicDateFormatter = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Africa/Lubumbashi',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-});
-
-const getClinicDate = (date) => {
-  const parts = clinicDateFormatter.formatToParts(date);
-  const values = Object.fromEntries(
-    parts.map((part) => [part.type, part.value])
-  );
-
-  return `${values.year}-${values.month}-${values.day}`;
 };
 
 // Création d'une notification pour un patient
@@ -48,13 +33,21 @@ const createPatientNotification = async ({
 };
 
 // Réserver un rendez-vous
-exports.book = async (patientId, { doctorId, startsAt, reason, patientProfileId }) => {
+exports.book = async (patientId, { doctorId, startsAt, reason, patientProfileId, facilityId }) => {
   const iso = new Date(startsAt).toISOString();
   const profileId = await resolveBookingProfile(patientId, patientProfileId);
 
+  const facility = await resolveFacility(doctorId, facilityId ?? null);
+  if (!facility) {
+    throw httpError(404, 'Médecin introuvable');
+  }
+
   const slots = await getAvailableSlots(
     doctorId,
-    getClinicDate(new Date(iso))
+    localDateString(new Date(iso), facility.timezone),
+    pool,
+    null,
+    facility.id
   );
 
   if (!slots) {
@@ -70,10 +63,10 @@ exports.book = async (patientId, { doctorId, startsAt, reason, patientProfileId 
   try {
     const r = await pool.query(
       `INSERT INTO appointments
-        (patient_id, patient_profile_id, doctor_id, starts_at, ends_at, status, reason)
-       VALUES ($1, $2, $3, $4, $5, 'confirmed', $6)
+        (patient_id, patient_profile_id, doctor_id, facility_id, starts_at, ends_at, status, reason)
+       VALUES ($1, $2, $3, $4, $5, $6, 'confirmed', $7)
        RETURNING *`,
-      [patientId, profileId, doctorId, slot.startsAt, slot.endsAt, reason || null]
+      [patientId, profileId, doctorId, facility.id, slot.startsAt, slot.endsAt, reason || null]
     );
 
     const appointment = r.rows[0];
@@ -158,11 +151,14 @@ exports.reschedule = async (id, user, startsAt) => {
 
     const appointment = cur.rows[0];
 
+    const facility = await resolveFacility(appointment.doctor_id, appointment.facility_id, client);
+
     const slots = await getAvailableSlots(
       appointment.doctor_id,
-      getClinicDate(date),
+      localDateString(date, facility.timezone),
       client,
-      id
+      id,
+      facility.id
     );
 
     if (!slots) {
@@ -215,12 +211,15 @@ exports.listForUser = async (user, { scope } = {}) => {
             u.first_name || ' ' || u.last_name AS doctor_name,
             s.name AS specialty,
             pp.patient_number,
-            pp.first_name || ' ' || pp.last_name AS patient_name
+            pp.first_name || ' ' || pp.last_name AS patient_name,
+            f.name AS facility_name,
+            f.timezone AS facility_timezone
        FROM appointments a
        JOIN doctors d ON d.id = a.doctor_id
        JOIN users u ON u.id = d.user_id
        JOIN specialties s ON s.id = d.specialty_id
        JOIN patients pp ON pp.id = a.patient_profile_id
+       JOIN facilities f ON f.id = a.facility_id
       WHERE ${base}
         AND ${time}
       ORDER BY a.starts_at`,
@@ -243,16 +242,19 @@ exports.listAll = async ({
             s.name AS specialty,
             pp.first_name || ' ' || pp.last_name AS patient_name,
             pp.patient_number,
-            pu.phone AS patient_phone
+            pu.phone AS patient_phone,
+            f.name AS facility_name,
+            f.timezone AS facility_timezone
        FROM appointments a
        JOIN doctors d ON d.id = a.doctor_id
        JOIN users du ON du.id = d.user_id
        JOIN specialties s ON s.id = d.specialty_id
        JOIN users pu ON pu.id = a.patient_id
        JOIN patients pp ON pp.id = a.patient_profile_id
+       JOIN facilities f ON f.id = a.facility_id
       WHERE (
         $1::date IS NULL
-        OR (a.starts_at AT TIME ZONE 'Africa/Lubumbashi')::date = $1::date
+        OR (a.starts_at AT TIME ZONE f.timezone)::date = $1::date
       )
         AND ($2::int IS NULL OR a.doctor_id = $2)
         AND ($3::appt_status IS NULL OR a.status = $3)

@@ -7,6 +7,7 @@ jest.mock('../src/config/db', () => ({
 
 jest.mock('../src/services/slots.service', () => ({
   getAvailableSlots: jest.fn(),
+  resolveFacility: jest.fn(async () => ({ id: 1, name: 'Etablissement principal', timezone: 'Africa/Lubumbashi' })),
 }));
 
 const request = require('supertest');

@@ -5,10 +5,11 @@ jest.mock('../src/config/db', () => ({
 
 jest.mock('../src/services/slots.service', () => ({
   getAvailableSlots: jest.fn(),
+  resolveFacility: jest.fn(async () => ({ id: 1, name: 'Etablissement principal', timezone: 'Africa/Lubumbashi' })),
 }));
 
 const pool = require('../src/config/db');
-const { getAvailableSlots } = require('../src/services/slots.service');
+const { getAvailableSlots, resolveFacility } = require('../src/services/slots.service');
 const appointments = require('../src/services/appointments.service');
 
 const startsAt = '2030-01-10T08:00:00.000Z';
@@ -25,7 +26,7 @@ beforeEach(() => {
       if (sql.includes('SELECT * FROM appointments')) {
         return {
           rowCount: 1,
-          rows: [{ id: 5, patient_id: 7, doctor_id: 2, status: 'confirmed' }],
+          rows: [{ id: 5, patient_id: 7, doctor_id: 2, facility_id: 3, status: 'confirmed' }],
         };
       }
 
@@ -61,8 +62,9 @@ test('report reussi : conserve identifiant et valide transaction', async () => {
 
   expect(update[1]).toEqual([startsAt, endsAt, 5]);
   expect(getAvailableSlots).toHaveBeenCalledWith(
-    2, expect.any(String), client, 5
+    2, expect.any(String), client, 5, 1
   );
+  expect(resolveFacility).toHaveBeenCalledWith(2, 3, client);
   expect(client.release).toHaveBeenCalledTimes(1);
 });
 
@@ -79,6 +81,7 @@ test('creneau indisponible : rollback sans modification', async () => {
   expect(sql).toContain('ROLLBACK');
   expect(sql).not.toContain('COMMIT');
   expect(sql.some((query) => query.includes('UPDATE appointments'))).toBe(false);
+  expect(resolveFacility).toHaveBeenCalledWith(2, 3, client);
   expect(client.release).toHaveBeenCalledTimes(1);
 });
 
@@ -91,7 +94,7 @@ test('conflit PostgreSQL : rollback et erreur 409', async () => {
     if (sql.includes('SELECT * FROM appointments')) {
       return {
         rowCount: 1,
-        rows: [{ id: 5, patient_id: 7, doctor_id: 2, status: 'confirmed' }],
+        rows: [{ id: 5, patient_id: 7, doctor_id: 2, facility_id: 3, status: 'confirmed' }],
       };
     }
 
@@ -111,5 +114,6 @@ test('conflit PostgreSQL : rollback et erreur 409', async () => {
 
   expect(sql).toContain('ROLLBACK');
   expect(sql).not.toContain('COMMIT');
+  expect(resolveFacility).toHaveBeenCalledWith(2, 3, client);
   expect(client.release).toHaveBeenCalledTimes(1);
 });
