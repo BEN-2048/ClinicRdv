@@ -20,5 +20,14 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
-export const errorMessage = (e: any): string =>
-  e?.response?.data?.error ?? 'Erreur réseau, réessayez';
+export const errorMessage = (e: any): string => {
+  if (e?.response?.data?.error) return e.response.data.error;
+  if (e?.response) return 'Le serveur a rencontré une erreur. Réessayez dans un instant.';
+  if (e?.code === 'ECONNABORTED') {
+    return 'Le serveur met trop de temps à répondre. L’opération n’a peut-être pas été enregistrée : vérifiez avant de recommencer.';
+  }
+  if (e?.request || e?.message === 'Network Error') {
+    return 'Pas de connexion Internet : rien n’a été enregistré. Réessayez une fois connecté.';
+  }
+  return 'Une erreur inattendue est survenue.';
+};

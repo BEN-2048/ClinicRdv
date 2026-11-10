@@ -20,7 +20,7 @@ exports.list = async (req, res, next) => {
     const r = await pool.query(
       `SELECT d.id, u.first_name, u.last_name,
               s.name AS specialty, d.fee,
-              d.consultation_minutes, d.languages,
+              d.consultation_minutes, d.languages, d.professional_phone,
               ${FACILITIES_JSON} AS facilities
          FROM doctors d
          JOIN users u ON u.id = d.user_id

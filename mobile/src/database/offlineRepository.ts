@@ -16,6 +16,22 @@ export type CachedAppointment = {
   ends_at: string;
   status: "confirmed" | "pending" | "done" | "cancelled";
   specialty?: string;
+  facility_id?: number | null;
+  facility_name?: string | null;
+  facility_timezone?: string | null;
+  facility_phone?: string | null;
+  facility_emergency_phone?: string | null;
+  doctor_phone?: string | null;
+};
+
+export type CachedFacility = {
+  id: number;
+  name: string;
+  city: string | null;
+  address: string | null;
+  phone: string | null;
+  emergency_phone: string | null;
+  timezone: string | null;
 };
 
 export type CachedDoctor = {
@@ -26,6 +42,7 @@ export type CachedDoctor = {
   fee: string | number;
   consultation_minutes: number;
   languages: string[] | null;
+  phone?: string | null;
 };
 
 import { getOfflineDatabase } from "./offlineDatabase";
@@ -114,7 +131,13 @@ export async function getCachedAppointments(
       starts_at,
       ends_at,
       status,
-      specialty
+      specialty,
+      facility_id,
+      facility_name,
+      facility_timezone,
+      facility_phone,
+      facility_emergency_phone,
+      doctor_phone
     FROM cached_appointments
     WHERE user_id = ?
     ORDER BY starts_at ASC`,
@@ -177,7 +200,8 @@ export async function getCachedDoctors(
       specialty,
       fee,
       consultation_minutes,
-      languages_json
+      languages_json,
+      phone
     FROM cached_doctors
     WHERE user_id = ?
     ORDER BY last_name ASC`,
@@ -249,6 +273,11 @@ export async function clearUserCache(userId: string): Promise<void> {
       "DELETE FROM sync_metadata WHERE user_id = ?",
       userId,
     );
+
+    await tx.runAsync(
+      "DELETE FROM cached_facilities WHERE user_id = ?",
+      userId,
+    );
   });
 
   await clearEmergencyCards(userId);
@@ -258,6 +287,7 @@ export async function saveOfflineSnapshot(
   userId: string,
   appointments: CachedAppointment[],
   doctors: CachedDoctor[],
+  facilities: CachedFacility[] = [],
 ): Promise<void> {
   const db = await getOfflineDatabase();
   const cachedAt = new Date().toISOString();
@@ -272,8 +302,10 @@ export async function saveOfflineSnapshot(
       await tx.runAsync(
         `INSERT INTO cached_appointments (
           user_id, appointment_id, doctor_id, doctor_name,
-          starts_at, ends_at, status, specialty, cached_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          starts_at, ends_at, status, specialty, cached_at,
+          facility_id, facility_name, facility_timezone,
+          facility_phone, facility_emergency_phone, doctor_phone
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         userId,
         appointment.id,
         appointment.doctor_id,
@@ -282,6 +314,35 @@ export async function saveOfflineSnapshot(
         appointment.ends_at,
         appointment.status,
         appointment.specialty ?? null,
+        cachedAt,
+        appointment.facility_id ?? null,
+        appointment.facility_name ?? null,
+        appointment.facility_timezone ?? null,
+        appointment.facility_phone ?? null,
+        appointment.facility_emergency_phone ?? null,
+        appointment.doctor_phone ?? null,
+      );
+    }
+
+    await tx.runAsync(
+      "DELETE FROM cached_facilities WHERE user_id = ?",
+      userId,
+    );
+
+    for (const facility of facilities) {
+      await tx.runAsync(
+        `INSERT INTO cached_facilities (
+          user_id, facility_id, name, city, address,
+          phone, emergency_phone, timezone, cached_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        userId,
+        facility.id,
+        facility.name,
+        facility.city ?? null,
+        facility.address ?? null,
+        facility.phone ?? null,
+        facility.emergency_phone ?? null,
+        facility.timezone ?? null,
         cachedAt,
       );
     }
@@ -296,8 +357,8 @@ export async function saveOfflineSnapshot(
         `INSERT INTO cached_doctors (
           user_id, doctor_id, first_name, last_name,
           specialty, fee, consultation_minutes,
-          languages_json, cached_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          languages_json, cached_at, phone
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         userId,
         doctor.id,
         doctor.first_name,
@@ -307,10 +368,11 @@ export async function saveOfflineSnapshot(
         doctor.consultation_minutes,
         doctor.languages ? JSON.stringify(doctor.languages) : null,
         cachedAt,
+        doctor.phone ?? null,
       );
     }
 
-    for (const resource of ["appointments", "doctors"]) {
+    for (const resource of ["appointments", "doctors", "facilities"]) {
       await tx.runAsync(
         `INSERT OR REPLACE INTO sync_metadata
         (user_id, resource, last_synced_at)
@@ -321,4 +383,24 @@ export async function saveOfflineSnapshot(
       );
     }
   });
+}
+export async function getCachedFacilities(
+  userId: string,
+): Promise<CachedFacility[]> {
+  const db = await getOfflineDatabase();
+
+  return db.getAllAsync<CachedFacility>(
+    `SELECT
+      facility_id AS id,
+      name,
+      city,
+      address,
+      phone,
+      emergency_phone,
+      timezone
+    FROM cached_facilities
+    WHERE user_id = ?
+    ORDER BY name ASC`,
+    userId,
+  );
 }

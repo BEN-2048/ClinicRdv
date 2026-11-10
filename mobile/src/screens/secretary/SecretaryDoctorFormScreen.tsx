@@ -21,6 +21,7 @@ export default function SecretaryDoctorFormScreen() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
+  const [professionalPhone, setProfessionalPhone] = useState('');
   const [specialtyId, setSpecialtyId] = useState<number | null>(null);
   const [fee, setFee] = useState('20');
   const [minutes, setMinutes] = useState(30);
@@ -45,6 +46,7 @@ export default function SecretaryDoctorFormScreen() {
           setFirstName(d.first_name);
           setLastName(d.last_name);
           setPhone(d.phone ?? '');
+          setProfessionalPhone(d.professional_phone ?? '');
           setSpecialtyId(d.specialty_id);
           setFee(String(d.fee));
           setMinutes(d.consultation_minutes);
@@ -84,6 +86,7 @@ export default function SecretaryDoctorFormScreen() {
       languages: languages.trim() || 'fr',
       bio: bio.trim() || (isEdit ? null : undefined),
       phone: phone.trim() || (isEdit ? null : undefined),
+      professionalPhone: professionalPhone.trim() || (isEdit ? null : undefined),
     };
 
     setSaving(true);
@@ -135,7 +138,15 @@ export default function SecretaryDoctorFormScreen() {
           <Text style={type.h2}>Identité</Text>
           <Input label="Prénom" value={firstName} onChangeText={setFirstName} />
           <Input label="Nom" value={lastName} onChangeText={setLastName} />
-          <Input label="Téléphone" icon="call-outline" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+          <Input label="Téléphone personnel (jamais montré aux patients)" icon="call-outline" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+          <Input
+            label="Téléphone professionnel (visible par les patients, même hors ligne)"
+            icon="business-outline"
+            value={professionalPhone}
+            onChangeText={setProfessionalPhone}
+            keyboardType="phone-pad"
+            placeholder="+243 ..."
+          />
         </Card>
 
         <Card style={shared.card}>

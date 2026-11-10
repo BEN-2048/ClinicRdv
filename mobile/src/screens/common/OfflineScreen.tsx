@@ -1,8 +1,40 @@
 import React, { useEffect, useState } from 'react';
+import NetInfo from '@react-native-community/netinfo';
 import {
   CachedAppointment,
+  CachedFacility,
   getCachedAppointments,
+  getCachedFacilities,
 } from '../../database/offlineRepository';
+import { callNumber, sendSms } from '../../utils/contact';
+
+const DEFAULT_TIME_ZONE = 'Africa/Lubumbashi';
+
+const formatLocal = (iso: string, timeZone: string | null | undefined, options: Intl.DateTimeFormatOptions) =>
+  new Intl.DateTimeFormat('fr-FR', { timeZone: timeZone || DEFAULT_TIME_ZONE, ...options }).format(new Date(iso));
+
+function ContactButtons({ phone, emergency }: { phone?: string | null; emergency?: string | null }) {
+  if (!phone && !emergency) return null;
+  return (
+    <View style={styles.contactRow}>
+      {phone ? (
+        <Pressable accessibilityRole="button" style={styles.contactButton} onPress={() => callNumber(phone)}>
+          <Text style={styles.contactButtonText}>Appeler</Text>
+        </Pressable>
+      ) : null}
+      {phone ? (
+        <Pressable accessibilityRole="button" style={styles.contactButton} onPress={() => sendSms(phone)}>
+          <Text style={styles.contactButtonText}>SMS</Text>
+        </Pressable>
+      ) : null}
+      {emergency ? (
+        <Pressable accessibilityRole="button" style={[styles.contactButton, styles.contactEmergency]} onPress={() => callNumber(emergency)}>
+          <Text style={[styles.contactButtonText, styles.contactEmergencyText]}>Urgences</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
 import {
   ActivityIndicator,
   Pressable,
@@ -22,6 +54,14 @@ export default function OfflineScreen() {
   const [appointmentsOwnerId, setAppointmentsOwnerId] = useState<string | null>(null);
   const [appointmentsLoading, setAppointmentsLoading] = useState(false);
   const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
+  const [facilities, setFacilities] = useState<CachedFacility[]>([]);
+  const [network, setNetwork] = useState<'none' | 'no-internet' | 'unknown'>('unknown');
+
+  useEffect(() => {
+    NetInfo.fetch()
+      .then((state) => setNetwork(state.isConnected === false ? 'none' : 'no-internet'))
+      .catch(() => setNetwork('unknown'));
+  }, []);
 
   const userId =
     user?.role === 'patient' && user.id != null
@@ -43,6 +83,14 @@ export default function OfflineScreen() {
     }
 
     setAppointmentsLoading(true);
+
+    void getCachedFacilities(userId)
+      .then((cached) => {
+        if (active) setFacilities(cached.filter((f) => f.phone || f.emergency_phone));
+      })
+      .catch(() => {
+        if (active) setFacilities([]);
+      });
 
     void getCachedAppointments(userId)
       .then((cached) => {
@@ -93,8 +141,17 @@ export default function OfflineScreen() {
       </Text>
 
       <Text style={styles.notice}>
-        Les fonctions nécessitant Internet restent indisponibles.
+        {network === 'none'
+          ? 'Aucun réseau Wi-Fi ni données mobiles détecté. '
+          : network === 'no-internet'
+            ? 'Vous êtes connecté à un réseau, mais Internet est inaccessible. '
+            : 'Internet est inaccessible pour le moment. '}
+        Aucune réservation ni modification ne peut être enregistrée sans Internet.
         Vous pouvez consulter vos rendez-vous précédemment enregistrés.
+      </Text>
+
+      <Text style={styles.callInfo}>
+        Les appels et les SMS passent par le réseau téléphonique classique : ils peuvent fonctionner même sans Internet, si votre téléphone capte le réseau.
       </Text>
 
       {userId ? (
@@ -139,14 +196,19 @@ export default function OfflineScreen() {
                     </Text>
                   ) : null}
 
+                  {appointment.facility_name ? (
+                    <Text style={styles.appointmentMeta}>{appointment.facility_name}</Text>
+                  ) : null}
+
                   <Text style={styles.appointmentMeta}>
-                    Date : {new Date(appointment.starts_at).toLocaleString('fr-FR')}
+                    Date : {formatLocal(appointment.starts_at, appointment.facility_timezone, {
+                      weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+                    })}
                   </Text>
 
                   <Text style={styles.appointmentMeta}>
-                    Fin : {new Date(appointment.ends_at).toLocaleTimeString('fr-FR', {
-                      hour: '2-digit',
-                      minute: '2-digit',
+                    Fin : {formatLocal(appointment.ends_at, appointment.facility_timezone, {
+                      hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
                     })}
                   </Text>
 
@@ -158,9 +220,37 @@ export default function OfflineScreen() {
                       cancelled: 'Annulé',
                     }[appointment.status]}
                   </Text>
+
+                  {appointment.doctor_phone ? (
+                    <>
+                      <Text style={styles.contactLabel}>Cabinet du médecin</Text>
+                      <ContactButtons phone={appointment.doctor_phone} />
+                    </>
+                  ) : null}
+                  {appointment.facility_phone || appointment.facility_emergency_phone ? (
+                    <>
+                      <Text style={styles.contactLabel}>Établissement</Text>
+                      <ContactButtons phone={appointment.facility_phone} emergency={appointment.facility_emergency_phone} />
+                    </>
+                  ) : null}
                 </View>
               ))
             : null}
+        </View>
+      ) : null}
+
+      {userId && facilities.length ? (
+        <View style={styles.appointmentSection}>
+          <Text style={styles.sectionTitle}>Contacts des établissements</Text>
+          {facilities.map((facility) => (
+            <View key={facility.id} style={styles.appointmentCard}>
+              <Text style={styles.appointmentDoctor}>{facility.name}</Text>
+              {facility.city || facility.address ? (
+                <Text style={styles.appointmentMeta}>{[facility.address, facility.city].filter(Boolean).join(', ')}</Text>
+              ) : null}
+              <ContactButtons phone={facility.phone} emergency={facility.emergency_phone} />
+            </View>
+          ))}
         </View>
       ) : null}
 
@@ -182,6 +272,43 @@ export default function OfflineScreen() {
 }
 
 const styles = StyleSheet.create({
+  callInfo: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#0F766E',
+    backgroundColor: '#F0FDFA',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 20,
+  },
+  contactLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#475569',
+    marginTop: 10,
+  },
+  contactRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 6,
+  },
+  contactButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: '#E0E7FF',
+  },
+  contactButtonText: {
+    color: '#172554',
+    fontWeight: '700',
+  },
+  contactEmergency: {
+    backgroundColor: '#FEE2E2',
+  },
+  contactEmergencyText: {
+    color: '#B91C1C',
+  },
   emergencyButton: {
     marginBottom: 20,
     paddingVertical: 14,
