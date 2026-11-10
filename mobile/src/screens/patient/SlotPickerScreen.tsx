@@ -246,6 +246,17 @@ export default function SlotPickerScreen() {
             title="Aucun créneau disponible"
             message="Essayez une autre date ou activez une alerte désistement."
           />
+          <Button
+            title="Voir d’autres médecins disponibles"
+            icon="swap-horizontal-outline"
+            variant="secondary"
+            onPress={() =>
+              navigation.navigate(
+                'Alternatives',
+                rescheduleId ? { appointmentId: rescheduleId } : { doctorId, facilityId }
+              )
+            }
+          />
         </Card>
       ) : null}
 

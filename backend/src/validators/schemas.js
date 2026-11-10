@@ -263,6 +263,20 @@ exports.cancelAppointment = z.object({
   note: z.string().trim().max(255).optional(),
 }).strict().default({});
 
+exports.alternativesQuery = z.object({
+  facilityId: z.coerce.number().int().positive().optional(),
+  lat: z.coerce.number().min(-90).max(90).optional(),
+  lng: z.coerce.number().min(-180).max(180).optional(),
+}).strict().refine((o) => (o.lat === undefined) === (o.lng === undefined), {
+  message: 'lat et lng doivent etre fournis ensemble',
+});
+
+exports.redirectAppointment = z.object({
+  doctorId: z.number().int().positive(),
+  startsAt: z.string().datetime({ offset: true }),
+  facilityId: z.number().int().positive().optional(),
+}).strict();
+
 exports.cancelConflicts = z.object({
   appointmentIds: z.array(z.number().int().positive()).min(1).max(100),
   note: z.string().trim().max(255).optional(),

@@ -44,6 +44,7 @@ import ClinicManagementScreen from '../screens/admin/ClinicManagementScreen';
 import ProfileScreen from '../screens/common/ProfileScreen';
 import OfflineScreen from '../screens/common/OfflineScreen';
 import DevicesScreen from '../screens/common/DevicesScreen';
+import AlternativesScreen from '../screens/patient/AlternativesScreen';
 import ChangePasswordScreen from '../screens/common/ChangePasswordScreen';
 import ChangePhoneScreen from '../screens/common/ChangePhoneScreen';
 import ChangeEmailScreen from '../screens/common/ChangeEmailScreen';
@@ -374,6 +375,12 @@ export default function RootNavigator() {
               name="Devices"
               component={DevicesScreen}
               options={{ title: 'Mes appareils' }}
+            />
+
+            <Stack.Screen
+              name="Alternatives"
+              component={AlternativesScreen}
+              options={{ title: 'Solutions proposées' }}
             />
 
             <Stack.Screen

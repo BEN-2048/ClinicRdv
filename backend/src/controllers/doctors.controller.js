@@ -3,6 +3,7 @@ const pool = require('../config/db');
 const { getAvailableSlots } = require('../services/slots.service');
 const adminService = require('../services/admin.service');
 const unavailability = require('../services/unavailability.service');
+const alternatives = require('../services/alternatives.service');
 
 const FACILITIES_JSON = `COALESCE((
   SELECT json_agg(json_build_object(
@@ -223,3 +224,11 @@ exports.deleteMyBlockedSlot = handleAgendaRequest(
     return undefined;
   }
 );
+
+exports.alternatives = async (req, res, next) => {
+  try {
+    res.json(await alternatives.forDoctor(Number(req.params.id), req.query));
+  } catch (error) {
+    next(error);
+  }
+};
