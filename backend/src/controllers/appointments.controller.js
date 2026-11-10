@@ -1,6 +1,7 @@
 
 const svc = require('../services/appointments.service');
 const prescriptions = require('../services/prescriptions.service');
+const alternatives = require('../services/alternatives.service');
 
 const wrap = (fn) => async (req, res, next) => {
   try {
@@ -89,4 +90,12 @@ exports.completeConsultation = wrap(async (req, res) => {
     message: 'Consultation terminée avec succès',
     consultation: result,
   });
+});
+
+exports.alternatives = wrap(async (req, res) => {
+  res.json(await alternatives.forAppointment(+req.params.id, req.user, { lat: req.query.lat, lng: req.query.lng }));
+});
+
+exports.redirect = wrap(async (req, res) => {
+  res.status(201).json(await alternatives.redirect(+req.params.id, req.user, req.body));
 });

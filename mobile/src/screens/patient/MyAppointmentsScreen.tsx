@@ -382,7 +382,7 @@ export default function MyAppointmentsScreen() {
                   busy={busyId === a.id}
                   onReschedule={() => reschedule(a)}
                   onCancel={() => cancel(a)}
-                  onRebook={() => navigation.navigate('DoctorProfile', { doctorId: a.doctor_id, facilityId: a.facility_id })}
+                  onRebook={() => navigation.navigate('Alternatives', { appointmentId: a.id })}
                 />
               ))
             : null}
@@ -554,10 +554,17 @@ function AppointmentCard({
               style={[styles.actionButton, { backgroundColor: palette.tint200, flex: 0, alignSelf: 'stretch' }]}
             >
               <Icon name="calendar-outline" size={16} color={palette.primary} />
-              <Text style={[type.bodyMedium, { color: palette.primary }]}>Choisir un autre créneau</Text>
+              <Text style={[type.bodyMedium, { color: palette.primary }]}>Voir les solutions proposées</Text>
             </Pressable>
           ) : null}
         </View>
+      ) : null}
+
+      {showActions ? (
+        <Pressable accessibilityRole="link" disabled={busy} onPress={onRebook} style={styles.otherLink}>
+          <Icon name="swap-horizontal-outline" size={16} color={palette.primary} />
+          <Text style={[type.bodyMedium, { color: palette.primary }]}>Changer de médecin ou d’établissement</Text>
+        </Pressable>
       ) : null}
 
       {showActions ? (
@@ -690,6 +697,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   actions: { flexDirection: 'row', gap: 8, paddingTop: 4 },
+  otherLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+  },
   cancelBox: {
     marginTop: 12,
     padding: 12,

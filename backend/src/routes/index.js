@@ -223,6 +223,33 @@ router.delete(
 // Informations d'un médecin et ses créneaux
 router.get('/doctors/:id', authenticate, validate(s.idParams, 'params'), doctors.get);
 
+const alternativesLimiter = createUserLimiter('alternatives', 60);
+router.get(
+  '/doctors/:id/alternatives',
+  authenticate,
+  alternativesLimiter,
+  validate(s.idParams, 'params'),
+  validate(s.alternativesQuery, 'query'),
+  doctors.alternatives
+);
+router.get(
+  '/appointments/:id/alternatives',
+  authenticate,
+  requireRole('patient'),
+  alternativesLimiter,
+  validate(s.idParams, 'params'),
+  validate(s.alternativesQuery, 'query'),
+  appts.alternatives
+);
+router.post(
+  '/appointments/:id/redirect',
+  authenticate,
+  requireRole('patient'),
+  validate(s.idParams, 'params'),
+  validate(s.redirectAppointment),
+  appts.redirect
+);
+
 router.get(
   '/doctors/:id/slots',
   authenticate,

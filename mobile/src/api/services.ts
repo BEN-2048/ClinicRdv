@@ -84,6 +84,9 @@ export const DoctorsApi = {
   conflicts: () =>
     api.get<UnavailabilityConflict[]>('/doctors/me/conflicts'),
 
+  alternatives: (doctorId: number, facilityId?: number) =>
+    api.get<AlternativesResult>(`/doctors/${doctorId}/alternatives`, { params: facilityId ? { facilityId } : {} }),
+
   cancelConflicts: (appointmentIds: number[], note?: string) =>
     api.post<{ cancelled: number; skipped: number }>('/doctors/me/conflicts/cancel', { appointmentIds, note }),
 
@@ -175,6 +178,12 @@ export const AppointmentsApi = {
 
   cancel: (id: number, data?: { reason?: StaffCancelReason; note?: string }) =>
     api.patch(`/appointments/${id}/cancel`, data ?? {}),
+
+  alternatives: (id: number) =>
+    api.get<AlternativesResult>(`/appointments/${id}/alternatives`),
+
+  redirect: (id: number, data: { doctorId: number; startsAt: string; facilityId?: number }) =>
+    api.post<RedirectResult>(`/appointments/${id}/redirect`, data),
 
   reschedule: (id: number, startsAt: string) =>
     api.patch(`/appointments/${id}/reschedule`, { startsAt }),
@@ -294,6 +303,46 @@ export const CANCEL_REASON_LABEL: Record<CancelReason, string> = {
   facility_closed: 'L’établissement est fermé',
   redirected: 'Remplacé par un autre rendez-vous',
   other: 'Annulé par l’établissement',
+};
+
+export type AlternativeOption = {
+  kind: 'same_doctor' | 'same_facility' | 'other_facility';
+  reason: string;
+  doctorId: number;
+  doctorName: string;
+  specialty: string;
+  fee: string | null;
+  facilityId: number;
+  facilityName: string;
+  city: string | null;
+  address: string | null;
+  distanceKm: number | null;
+  timezone: string;
+  slots: { startsAt: string; endsAt: string }[];
+};
+
+export type AlternativesResult = {
+  origin: {
+    doctorId: number;
+    doctorName: string;
+    specialty: string;
+    facilityId: number;
+    facilityName: string;
+    city: string | null;
+    timezone: string;
+    appointmentId?: number;
+    startsAt?: string;
+    status?: AppointmentStatus;
+    cancelReason?: CancelReason | null;
+  };
+  horizonDays: number;
+  options: AlternativeOption[];
+};
+
+export type RedirectResult = {
+  appointment: { id: number; starts_at: string };
+  replaced: number;
+  recordSharing: { facilityId: number; facilityName: string; sameFacility: boolean; consentScope: string | null };
 };
 
 export type UnavailabilityConflict = {
