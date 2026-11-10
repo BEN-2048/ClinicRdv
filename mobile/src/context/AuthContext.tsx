@@ -1,8 +1,16 @@
-﻿import React, { createContext, useContext, useEffect, useState } from 'react';
-import * as SecureStore from 'expo-secure-store';
-import { AuthApi, UsersApi } from '../api/services';
+import NetInfo from "@react-native-community/netinfo";
+import { AppState } from "react-native";
+import { jwtDecode } from "jwt-decode";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import * as SecureStore from "expo-secure-store";
+import { AuthApi, UsersApi } from "../api/services";
+import { clearUserCache, saveCachedProfile } from "../database/offlineRepository";
+import { invalidateOfflineSync, runOfflineSyncExclusive, getOfflineSyncGeneration, isOfflineSyncGenerationValid } from "../services/offlineSyncLock";
+import { syncOfflineData } from "../services/offlineSyncService";
 
-export type Role = 'patient' | 'doctor' | 'admin' | 'secretary';
+export type Role = "patient" | "doctor" | "admin" | "secretary";
+
+export type AuthStatus = "authenticated" | "offline" | "unauthenticated";
 
 export type User = {
   id: number;
@@ -29,11 +37,13 @@ type UpdateUserData = {
 
 type Ctx = {
   user: User | null;
+  authStatus: AuthStatus;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
-  refreshUser: () => Promise<void>;
+  refreshUser: () => Promise<boolean>;
+  retryConnection: () => Promise<boolean>;
   updateUser: (data: UpdateUserData) => Promise<void>;
 };
 
@@ -41,91 +51,608 @@ const AuthContext = createContext<Ctx>(null as unknown as Ctx);
 
 export const useAuth = () => useContext(AuthContext);
 
-export function AuthProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [authStatus, setAuthStatus] = useState<AuthStatus>("unauthenticated");
   const [loading, setLoading] = useState(true);
+  const [sessionRestored, setSessionRestored] = useState(false);
 
-  const refreshUser = async (): Promise<void> => {
+  type SessionSnapshot = {
+    token: string;
+    userId: string;
+    generation: number;
+  };
+
+  const captureSession = async (): Promise<SessionSnapshot | null> => {
+    const generation = getOfflineSyncGeneration();
+
+    const [token, savedUser] = await Promise.all([
+      SecureStore.getItemAsync("token"),
+      SecureStore.getItemAsync("user"),
+    ]);
+
+    if (!token || !savedUser) return null;
+
+    try {
+      const parsedUser = JSON.parse(savedUser) as User;
+
+      if (parsedUser.id == null) return null;
+
+      const userId = String(parsedUser.id);
+
+      if (!isOfflineSyncGenerationValid(generation)) return null;
+
+      return { token, userId, generation };
+    } catch {
+      return null;
+    }
+  };
+
+  const isSessionCurrent = async (
+    snapshot: SessionSnapshot,
+  ): Promise<boolean> => {
+    if (!isOfflineSyncGenerationValid(snapshot.generation)) {
+      return false;
+    }
+
+    const [currentToken, currentUser] = await Promise.all([
+      SecureStore.getItemAsync("token"),
+      SecureStore.getItemAsync("user"),
+    ]);
+
+    if (
+      !currentToken ||
+      currentToken !== snapshot.token ||
+      !currentUser ||
+      !isOfflineSyncGenerationValid(snapshot.generation)
+    ) {
+      return false;
+    }
+
+    try {
+      const parsedUser = JSON.parse(currentUser) as User;
+      return String(parsedUser.id) === snapshot.userId;
+    } catch {
+      return false;
+    }
+  };
+
+  const refreshUser = async (): Promise<boolean> => {
+    const snapshot = await captureSession();
+
+    if (!snapshot) return false;
+
     const { data } = await UsersApi.getMe();
     const updatedUser = data.user as User;
 
-    await SecureStore.setItemAsync('user', JSON.stringify(updatedUser));
-    setUser(updatedUser);
+    return runOfflineSyncExclusive(async () => {
+      if (!(await isSessionCurrent(snapshot))) return false;
+
+      if (String(updatedUser.id) !== snapshot.userId) {
+        throw new Error("Identifiant utilisateur incoherent.");
+      }
+
+      await SecureStore.setItemAsync("user", JSON.stringify(updatedUser));
+      setUser(updatedUser);
+
+      try {
+        await saveCachedProfile({
+          user_id: String(updatedUser.id),
+          email: updatedUser.email,
+          role: updatedUser.role,
+          first_name: updatedUser.first_name,
+          last_name: updatedUser.last_name,
+          phone: updatedUser.phone ?? null,
+          updated_at: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.warn("Impossible de mettre a jour le profil SQLite :", error);
+      }
+
+      setAuthStatus("authenticated");
+      return true;
+    });
   };
 
+  const retryConnection = async (): Promise<boolean> => {
+    const snapshot = await captureSession();
+
+    if (!snapshot) return false;
+
+    const clearSessionIfCurrent = async (): Promise<boolean> => {
+      return runOfflineSyncExclusive(async () => {
+        if (!(await isSessionCurrent(snapshot))) return false;
+
+        invalidateOfflineSync();
+
+        try {
+          await clearUserCache(snapshot.userId);
+        } catch (error) {
+          console.error("Nettoyage SQLite de la session impossible :", error);
+
+          setUser(null);
+          setAuthStatus("unauthenticated");
+        }
+
+        await SecureStore.deleteItemAsync("token");
+        await SecureStore.deleteItemAsync("user");
+
+        setUser(null);
+        setAuthStatus("unauthenticated");
+
+        return true;
+      });
+    };
+
+    let tokenValid = false;
+
+    try {
+      const payload = jwtDecode<{ exp?: number }>(snapshot.token);
+      tokenValid = !!payload.exp && payload.exp * 1000 > Date.now();
+    } catch {
+      tokenValid = false;
+    }
+
+    if (!tokenValid) {
+      await clearSessionIfCurrent();
+      return false;
+    }
+
+    try {
+      return await refreshUser();
+    } catch (error: any) {
+      if (!(await isSessionCurrent(snapshot))) {
+        return false;
+      }
+
+      if (error?.response?.status === 401) {
+        await clearSessionIfCurrent();
+      } else {
+        if (error?.response) {
+          console.warn("Verification de session impossible", error);
+        }
+
+        await runOfflineSyncExclusive(async () => {
+          if (!(await isSessionCurrent(snapshot))) return;
+          setAuthStatus("offline");
+        });
+      }
+
+      return false;
+    }
+  };
   const updateUser = async (data: UpdateUserData): Promise<void> => {
+    const snapshot = await captureSession();
+
+    if (!snapshot) {
+      throw new Error("Session utilisateur indisponible.");
+    }
+
     const { data: response } = await UsersApi.updateMe(data);
     const updatedUser = response.user as User;
 
-    await SecureStore.setItemAsync('user', JSON.stringify(updatedUser));
-    setUser(updatedUser);
+    await runOfflineSyncExclusive(async () => {
+      if (!(await isSessionCurrent(snapshot))) {
+        throw new Error("La session a change pendant la modification du profil.");
+      }
+
+      if (String(updatedUser.id) !== snapshot.userId) {
+        throw new Error("Identifiant utilisateur incoherent.");
+      }
+
+      await SecureStore.setItemAsync("user", JSON.stringify(updatedUser));
+      setUser(updatedUser);
+
+      try {
+        await saveCachedProfile({
+          user_id: String(updatedUser.id),
+          email: updatedUser.email,
+          role: updatedUser.role,
+          first_name: updatedUser.first_name,
+          last_name: updatedUser.last_name,
+          phone: updatedUser.phone ?? null,
+          updated_at: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.warn("Impossible de mettre a jour le profil SQLite :", error);
+      }
+    });
   };
 
   useEffect(() => {
+    let active = true;
+
     const restoreSession = async () => {
       try {
-        const [token, savedUser] = await Promise.all([
-          SecureStore.getItemAsync('token'),
-          SecureStore.getItemAsync('user'),
-        ]);
+        const snapshot = await captureSession();
 
-        if (token && savedUser) {
-          await refreshUser();
-        } else {
-          setUser(null);
+        if (!active) return;
+
+        if (!snapshot) {
+          await runOfflineSyncExclusive(async () => {
+            if (!active) return;
+
+            const currentSession = await captureSession();
+            if (currentSession) return;
+
+            setUser(null);
+            setAuthStatus("unauthenticated");
+          });
+          return;
+        }
+
+        let tokenValid = false;
+
+        try {
+          const payload = jwtDecode<{ exp?: number }>(snapshot.token);
+          tokenValid = !!payload.exp && payload.exp * 1000 > Date.now();
+        } catch {
+          tokenValid = false;
+        }
+
+        if (!tokenValid) {
+          await runOfflineSyncExclusive(async () => {
+            if (!(await isSessionCurrent(snapshot))) return;
+
+            invalidateOfflineSync();
+
+            try {
+              await clearUserCache(snapshot.userId);
+            } catch (error) {
+              console.warn("Nettoyage SQLite apres expiration impossible :", error);
+            }
+
+            await SecureStore.deleteItemAsync("token");
+            await SecureStore.deleteItemAsync("user");
+
+            if (active) {
+              setUser(null);
+              setAuthStatus("unauthenticated");
+            }
+          });
+
+          return;
+        }
+
+        try {
+          const refreshed = await refreshUser();
+
+          if (!active || !refreshed) return;
+
+          if (!(await isSessionCurrent(snapshot))) return;
+
+          void syncOfflineData().catch((syncError) => {
+            console.warn(
+              "Synchronisation apres restauration impossible :",
+              syncError,
+            );
+          });
+        } catch (error: any) {
+          if (!(await isSessionCurrent(snapshot))) return;
+
+          if (error?.response?.status === 401) {
+            await runOfflineSyncExclusive(async () => {
+              if (!(await isSessionCurrent(snapshot))) return;
+
+              invalidateOfflineSync();
+
+              try {
+                await clearUserCache(snapshot.userId);
+              } catch (cacheError) {
+                console.warn(
+                  "Nettoyage SQLite apres erreur 401 impossible :",
+                  cacheError,
+                );
+              }
+
+              await SecureStore.deleteItemAsync("token");
+              await SecureStore.deleteItemAsync("user");
+
+              if (active) {
+                setUser(null);
+                setAuthStatus("unauthenticated");
+              }
+            });
+          } else if (!error?.response || error?.response?.status >= 500) {
+            const savedUser = await SecureStore.getItemAsync("user");
+
+            if (!savedUser || !(await isSessionCurrent(snapshot))) return;
+
+            const cachedUser = JSON.parse(savedUser) as User;
+
+            if (String(cachedUser.id) !== snapshot.userId) return;
+
+            await runOfflineSyncExclusive(async () => {
+              if (!active || !(await isSessionCurrent(snapshot))) return;
+
+              console.warn(
+                "Serveur ou connexion indisponible : session locale conservee",
+              );
+              setUser(cachedUser);
+              setAuthStatus("offline");
+            });
+          } else {
+            await runOfflineSyncExclusive(async () => {
+              if (!active || !(await isSessionCurrent(snapshot))) return;
+
+              console.warn("Session non verifiable :", error);
+              setUser(null);
+              setAuthStatus("unauthenticated");
+            });
+          }
         }
       } catch (error) {
-        console.error('Erreur de restauration de session :', error);
-        await SecureStore.deleteItemAsync('token');
-        await SecureStore.deleteItemAsync('user');
-        setUser(null);
+        console.error("Erreur de restauration de session :", error);
+
+        await runOfflineSyncExclusive(async () => {
+          if (!active) return;
+
+          const currentSession = await captureSession();
+          if (currentSession) return;
+
+          setUser(null);
+          setAuthStatus("unauthenticated");
+        });
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+          setSessionRestored(true);
+        }
       }
     };
 
-    restoreSession();
+    void restoreSession();
+
+    return () => {
+      active = false;
+    };
   }, []);
+  useEffect(() => {
+    let wasOffline = false;
+    let checking = false;
+
+    const unsubscribe = NetInfo.addEventListener(async (state) => {
+      const networkAvailable =
+        state.isConnected === true &&
+        state.isInternetReachable === true;
+
+      if (!sessionRestored) {
+        return;
+      }
+
+      if (!networkAvailable) {
+        wasOffline = true;
+        setAuthStatus((current) =>
+          current === "authenticated" ? "offline" : current
+        );
+        return;
+      }
+
+      if (wasOffline && !checking) {
+        wasOffline = false;
+        checking = true;
+
+        try {
+          const connected = await retryConnection();
+
+          if (connected) {
+            try {
+              await syncOfflineData();
+            } catch (error) {
+              console.warn("Synchronisation hors ligne impossible :", error);
+            }
+          }
+        } finally {
+          checking = false;
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [sessionRestored]);
+  useEffect(() => {
+    if (!sessionRestored) return;
+
+    let checkingExpiration = false;
+
+    const checkTokenExpiration = async () => {
+      if (checkingExpiration || AppState.currentState !== "active") {
+        return;
+      }
+
+      checkingExpiration = true;
+
+      try {
+        const token = await SecureStore.getItemAsync("token");
+
+        if (!token) return;
+
+        let expired = false;
+
+        try {
+          const payload = jwtDecode<{ exp?: number }>(token);
+          expired = !payload.exp || payload.exp * 1000 <= Date.now();
+        } catch {
+          expired = true;
+        }
+
+        if (expired) {
+          await retryConnection();
+        }
+      } catch (error) {
+        console.warn("Verification periodique du JWT impossible :", error);
+      } finally {
+        checkingExpiration = false;
+      }
+    };
+
+    void checkTokenExpiration();
+
+    const interval = setInterval(() => {
+      void checkTokenExpiration();
+    }, 30000);
+
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        void checkTokenExpiration();
+      }
+    });
+
+    return () => {
+      clearInterval(interval);
+      subscription.remove();
+    };
+  }, [sessionRestored]);
 
   const login = async (email: string, password: string): Promise<void> => {
     const { data } = await AuthApi.login(email, password);
 
-    await SecureStore.setItemAsync('token', data.token);
-    await SecureStore.setItemAsync('user', JSON.stringify(data.user));
+    await runOfflineSyncExclusive(async () => {
+      invalidateOfflineSync();
 
-    setUser(data.user);
+      await SecureStore.setItemAsync("token", data.token);
+      await SecureStore.setItemAsync("user", JSON.stringify(data.user));
+
+      setUser(data.user);
+      setAuthStatus("authenticated");
+    });
+
+    try {
+      await saveCachedProfile({
+        user_id: String(data.user.id),
+        email: data.user.email,
+        role: data.user.role,
+        first_name: data.user.first_name,
+        last_name: data.user.last_name,
+        phone: data.user.phone ?? null,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.warn("Impossible de sauvegarder le profil local :", error);
+    }
+
+    try {
+      await syncOfflineData();
+    } catch (error) {
+      console.warn("Synchronisation apres connexion impossible :", error);
+    }
   };
 
   // Inscription sans verification OTP
   const register = async (data: RegisterData): Promise<void> => {
     const response = await AuthApi.register(data);
 
-    await SecureStore.setItemAsync('token', response.data.token);
-    await SecureStore.setItemAsync('user', JSON.stringify(response.data.user));
+    await runOfflineSyncExclusive(async () => {
+      invalidateOfflineSync();
 
-    setUser(response.data.user);
+      await SecureStore.setItemAsync("token", response.data.token);
+      await SecureStore.setItemAsync("user", JSON.stringify(response.data.user));
+
+      setUser(response.data.user);
+      setAuthStatus("authenticated");
+    });
+
+    try {
+      await saveCachedProfile({
+        user_id: String(response.data.user.id),
+        email: response.data.user.email,
+        role: response.data.user.role,
+        first_name: response.data.user.first_name,
+        last_name: response.data.user.last_name,
+        phone: response.data.user.phone ?? null,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.warn("Impossible de sauvegarder le profil local :", error);
+    }
+
+    try {
+      await syncOfflineData();
+    } catch (error) {
+      console.warn("Synchronisation apres inscription impossible :", error);
+    }
   };
 
   const logout = async (): Promise<void> => {
-    await SecureStore.deleteItemAsync('token');
-    await SecureStore.deleteItemAsync('user');
+    const snapshot = await captureSession();
 
-    setUser(null);
+    if (!snapshot) {
+      throw new Error("Impossible d'identifier la session a deconnecter.");
+    }
+
+    const loggedOut = await runOfflineSyncExclusive(async () => {
+      const [currentToken, currentUser] = await Promise.all([
+        SecureStore.getItemAsync("token"),
+        SecureStore.getItemAsync("user"),
+      ]);
+
+      if (!currentToken || currentToken !== snapshot.token || !currentUser) {
+        return false;
+      }
+
+      try {
+        const parsedUser = JSON.parse(currentUser) as User;
+
+        if (String(parsedUser.id) !== snapshot.userId) {
+          return false;
+        }
+      } catch {
+        return false;
+      }
+
+      invalidateOfflineSync();
+
+      try {
+        await clearUserCache(snapshot.userId);
+      } catch (cacheError) {
+        console.error("Nettoyage SQLite impossible lors de la deconnexion :", cacheError);
+        throw new Error(
+          "Deconnexion interrompue : impossible de supprimer les donnees locales."
+        );
+      }
+
+      const [finalToken, finalUser] = await Promise.all([
+        SecureStore.getItemAsync("token"),
+        SecureStore.getItemAsync("user"),
+      ]);
+
+      if (finalToken !== snapshot.token || !finalUser) {
+        return false;
+      }
+
+      try {
+        if (String((JSON.parse(finalUser) as User).id) !== snapshot.userId) {
+          return false;
+        }
+      } catch {
+        return false;
+      }
+
+      await SecureStore.deleteItemAsync("token");
+      await SecureStore.deleteItemAsync("user");
+
+      setUser(null);
+      setAuthStatus("unauthenticated");
+
+      return true;
+    });
+
+    if (!loggedOut) {
+      throw new Error("La session a change. Deconnexion annulee pour proteger le nouveau compte.");
+    }
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        authStatus,
         loading,
         login,
         register,
         logout,
         refreshUser,
+        retryConnection,
         updateUser,
       }}
     >

@@ -1,0 +1,321 @@
+export type CachedProfile = {
+  user_id: string;
+  email: string;
+  role: string;
+  first_name: string;
+  last_name: string;
+  phone: string | null;
+  updated_at: string;
+};
+
+export type CachedAppointment = {
+  id: number;
+  doctor_id: number;
+  doctor_name?: string;
+  starts_at: string;
+  ends_at: string;
+  status: "confirmed" | "pending" | "done" | "cancelled";
+  specialty?: string;
+};
+
+export type CachedDoctor = {
+  id: number;
+  first_name: string;
+  last_name: string;
+  specialty: string;
+  fee: string | number;
+  consultation_minutes: number;
+  languages: string[] | null;
+};
+
+import { getOfflineDatabase } from "./offlineDatabase";
+
+export async function saveCachedProfile(
+  profile: CachedProfile,
+): Promise<void> {
+  const db = await getOfflineDatabase();
+
+  await db.runAsync(
+    `INSERT OR REPLACE INTO cached_profile
+    (user_id, email, role, first_name, last_name, phone, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    profile.user_id,
+    profile.email,
+    profile.role,
+    profile.first_name,
+    profile.last_name,
+    profile.phone,
+    new Date().toISOString(),
+  );
+}
+
+export async function getCachedProfile(
+  userId: string,
+): Promise<CachedProfile | null> {
+  const db = await getOfflineDatabase();
+
+  return db.getFirstAsync<CachedProfile>(
+    "SELECT * FROM cached_profile WHERE user_id = ?",
+    userId,
+  );
+}
+
+export async function saveCachedAppointments(
+  userId: string,
+  appointments: CachedAppointment[],
+): Promise<void> {
+  const db = await getOfflineDatabase();
+  const cachedAt = new Date().toISOString();
+
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    await tx.runAsync(
+      "DELETE FROM cached_appointments WHERE user_id = ?",
+      userId,
+    );
+
+    for (const appointment of appointments) {
+      await tx.runAsync(
+        `INSERT INTO cached_appointments (
+          user_id,
+          appointment_id,
+          doctor_id,
+          doctor_name,
+          starts_at,
+          ends_at,
+          status,
+          specialty,
+          cached_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        userId,
+        appointment.id,
+        appointment.doctor_id,
+        appointment.doctor_name ?? null,
+        appointment.starts_at,
+        appointment.ends_at,
+        appointment.status,
+        appointment.specialty ?? null,
+        cachedAt,
+      );
+    }
+  });
+}
+
+export async function getCachedAppointments(
+  userId: string,
+): Promise<CachedAppointment[]> {
+  const db = await getOfflineDatabase();
+
+  const rows = await db.getAllAsync<any>(
+    `SELECT
+      appointment_id AS id,
+      doctor_id,
+      doctor_name,
+      starts_at,
+      ends_at,
+      status,
+      specialty
+    FROM cached_appointments
+    WHERE user_id = ?
+    ORDER BY starts_at ASC`,
+    userId,
+  );
+
+  return rows as CachedAppointment[];
+}
+
+export async function saveCachedDoctors(
+  userId: string,
+  doctors: CachedDoctor[],
+): Promise<void> {
+  const db = await getOfflineDatabase();
+  const cachedAt = new Date().toISOString();
+
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    await tx.runAsync(
+      "DELETE FROM cached_doctors WHERE user_id = ?",
+      userId,
+    );
+
+    for (const doctor of doctors) {
+      await tx.runAsync(
+        `INSERT INTO cached_doctors (
+          user_id,
+          doctor_id,
+          first_name,
+          last_name,
+          specialty,
+          fee,
+          consultation_minutes,
+          languages_json,
+          cached_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        userId,
+        doctor.id,
+        doctor.first_name,
+        doctor.last_name,
+        doctor.specialty,
+        String(doctor.fee),
+        doctor.consultation_minutes,
+        doctor.languages ? JSON.stringify(doctor.languages) : null,
+        cachedAt,
+      );
+    }
+  });
+}
+
+export async function getCachedDoctors(
+  userId: string,
+): Promise<CachedDoctor[]> {
+  const db = await getOfflineDatabase();
+
+  const rows = await db.getAllAsync<any>(
+    `SELECT
+      doctor_id AS id,
+      first_name,
+      last_name,
+      specialty,
+      fee,
+      consultation_minutes,
+      languages_json
+    FROM cached_doctors
+    WHERE user_id = ?
+    ORDER BY last_name ASC`,
+    userId,
+  );
+
+  return rows.map((row) => ({
+    ...row,
+    fee: Number(row.fee),
+    languages: row.languages_json
+      ? JSON.parse(row.languages_json)
+      : null,
+  }));
+}
+
+export async function saveSyncMetadata(
+  userId: string,
+  resource: string,
+): Promise<void> {
+  const db = await getOfflineDatabase();
+
+  await db.runAsync(
+    `INSERT OR REPLACE INTO sync_metadata
+    (user_id, resource, last_synced_at)
+    VALUES (?, ?, ?)`,
+    userId,
+    resource,
+    new Date().toISOString(),
+  );
+}
+
+export async function getSyncMetadata(
+  userId: string,
+  resource: string,
+): Promise<string | null> {
+  const db = await getOfflineDatabase();
+
+  const result = await db.getFirstAsync<{ last_synced_at: string }>(
+    `SELECT last_synced_at
+     FROM sync_metadata
+     WHERE user_id = ? AND resource = ?`,
+    userId,
+    resource,
+  );
+
+  return result?.last_synced_at ?? null;
+}
+
+export async function clearUserCache(userId: string): Promise<void> {
+  const db = await getOfflineDatabase();
+
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    await tx.runAsync(
+      "DELETE FROM cached_profile WHERE user_id = ?",
+      userId,
+    );
+
+    await tx.runAsync(
+      "DELETE FROM cached_appointments WHERE user_id = ?",
+      userId,
+    );
+
+    await tx.runAsync(
+      "DELETE FROM cached_doctors WHERE user_id = ?",
+      userId,
+    );
+
+    await tx.runAsync(
+      "DELETE FROM sync_metadata WHERE user_id = ?",
+      userId,
+    );
+  });
+}
+
+export async function saveOfflineSnapshot(
+  userId: string,
+  appointments: CachedAppointment[],
+  doctors: CachedDoctor[],
+): Promise<void> {
+  const db = await getOfflineDatabase();
+  const cachedAt = new Date().toISOString();
+
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    await tx.runAsync(
+      "DELETE FROM cached_appointments WHERE user_id = ?",
+      userId,
+    );
+
+    for (const appointment of appointments) {
+      await tx.runAsync(
+        `INSERT INTO cached_appointments (
+          user_id, appointment_id, doctor_id, doctor_name,
+          starts_at, ends_at, status, specialty, cached_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        userId,
+        appointment.id,
+        appointment.doctor_id,
+        appointment.doctor_name ?? null,
+        appointment.starts_at,
+        appointment.ends_at,
+        appointment.status,
+        appointment.specialty ?? null,
+        cachedAt,
+      );
+    }
+
+    await tx.runAsync(
+      "DELETE FROM cached_doctors WHERE user_id = ?",
+      userId,
+    );
+
+    for (const doctor of doctors) {
+      await tx.runAsync(
+        `INSERT INTO cached_doctors (
+          user_id, doctor_id, first_name, last_name,
+          specialty, fee, consultation_minutes,
+          languages_json, cached_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        userId,
+        doctor.id,
+        doctor.first_name,
+        doctor.last_name,
+        doctor.specialty,
+        String(doctor.fee),
+        doctor.consultation_minutes,
+        doctor.languages ? JSON.stringify(doctor.languages) : null,
+        cachedAt,
+      );
+    }
+
+    for (const resource of ["appointments", "doctors"]) {
+      await tx.runAsync(
+        `INSERT OR REPLACE INTO sync_metadata
+        (user_id, resource, last_synced_at)
+        VALUES (?, ?, ?)`,
+        userId,
+        resource,
+        cachedAt,
+      );
+    }
+  });
+}
