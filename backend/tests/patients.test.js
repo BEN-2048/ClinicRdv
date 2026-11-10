@@ -74,15 +74,16 @@ describe('Numero patient dans le profil', () => {
 
 describe('Recherche de patients par le personnel', () => {
   test('cherche le numero patient par correspondance exacte, insensible a la casse', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 1, name: 'Etablissement principal', city: 'Lubumbashi', status: 'active', role: 'secretary' }], rowCount: 1 });
     const res = await request(app)
       .get('/api/admin/patients')
       .query({ q: ' clrdv-p-000003 ' })
       .set('Authorization', auth('secretary'));
 
     expect(res.status).toBe(200);
-    const [sql, params] = pool.query.mock.calls[0];
+    const [sql, params] = pool.query.mock.calls[1];
     expect(sql).toContain('p.patient_number = upper($1)');
-    expect(params).toEqual(['clrdv-p-000003']);
+    expect(params).toEqual(['clrdv-p-000003', [1]]);
   });
 
   test('un patient ne peut pas rechercher d autres patients', async () => {

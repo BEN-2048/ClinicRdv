@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { AppointmentsApi, DoctorsApi } from '../../api/services';
+import { AppointmentsApi, DoctorFacility, DoctorsApi } from '../../api/services';
 import {
   Avatar,
   Button,
@@ -29,12 +29,15 @@ type Doctor = {
   consultation_minutes: number;
   languages: string | null;
   active: boolean;
+  facilities?: DoctorFacility[];
 };
 
 type Slot = {
   startsAt: string;
   endsAt: string;
   available: boolean;
+  facilityId?: number;
+  timezone?: string;
 };
 
 const formatDate = (date: Date) => {
@@ -44,9 +47,9 @@ const formatDate = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const formatLocalTime = (iso: string) =>
+const formatLocalTime = (iso: string, timeZone: string = CLINIC_TIME_ZONE) =>
   new Intl.DateTimeFormat('fr-FR', {
-    timeZone: CLINIC_TIME_ZONE,
+    timeZone,
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',
@@ -65,6 +68,7 @@ export default function SlotPickerScreen() {
   const navigation = useNavigation<any>();
   const doctorId = Number(route.params?.doctorId);
   const rescheduleId = route.params?.rescheduleId ? Number(route.params.rescheduleId) : null;
+  const facilityId = route.params?.facilityId ? Number(route.params.facilityId) : undefined;
 
   const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
@@ -107,6 +111,11 @@ export default function SlotPickerScreen() {
     };
   }, [doctorId]);
 
+  const facility =
+    doctor?.facilities?.find((f) => f.id === facilityId) ??
+    (doctor?.facilities?.length === 1 ? doctor.facilities[0] : undefined);
+  const timeZone = selectedSlot?.timezone ?? slots[0]?.timezone ?? facility?.timezone ?? CLINIC_TIME_ZONE;
+
   const loadSlots = useCallback(
     async (date: string) => {
       setLoadingSlots(true);
@@ -114,7 +123,7 @@ export default function SlotPickerScreen() {
       setSelectedSlot(null);
       setSlots([]);
       try {
-        const response = await DoctorsApi.slots(doctorId, date);
+        const response = await DoctorsApi.slots(doctorId, date, facilityId);
         setSlots(response.data as Slot[]);
       } catch (err: any) {
         setSlotError(err?.response?.data?.error || 'Impossible de récupérer les disponibilités.');
@@ -122,7 +131,7 @@ export default function SlotPickerScreen() {
         setLoadingSlots(false);
       }
     },
-    [doctorId]
+    [doctorId, facilityId]
   );
 
   useEffect(() => {
@@ -138,7 +147,14 @@ export default function SlotPickerScreen() {
     if (!selectedSlot || !doctor) return;
 
     if (!rescheduleId) {
-      navigation.navigate('BookingReview', { doctor, slot: selectedSlot, reason: reason.trim() });
+      const slotFacility =
+        doctor.facilities?.find((f) => f.id === selectedSlot.facilityId) ?? facility;
+      navigation.navigate('BookingReview', {
+        doctor,
+        slot: selectedSlot,
+        reason: reason.trim(),
+        facility: slotFacility,
+      });
       return;
     }
 
@@ -147,7 +163,7 @@ export default function SlotPickerScreen() {
       await AppointmentsApi.reschedule(rescheduleId, selectedSlot.startsAt);
       Alert.alert(
         'Rendez-vous reporté',
-        `Nouveau créneau : ${formatLongDate(selectedDate)} à ${formatLocalTime(selectedSlot.startsAt)}.`
+        `Nouveau créneau : ${formatLongDate(selectedDate)} à ${formatLocalTime(selectedSlot.startsAt, timeZone)}.`
       );
       navigation.goBack();
     } catch (err: any) {
@@ -196,8 +212,9 @@ export default function SlotPickerScreen() {
           </Text>
           <Text style={s.specialty}>{doctor.specialty}</Text>
           <Text style={s.muted}>
-            {doctor.consultation_minutes} min · {doctor.fee} USD
+            {doctor.consultation_minutes} min · {facility?.fee ?? doctor.fee} USD
           </Text>
+          {facility ? <Text style={s.muted}>{[facility.name, facility.city].filter(Boolean).join(' · ')}</Text> : null}
         </View>
       </Card>
 
@@ -234,7 +251,7 @@ export default function SlotPickerScreen() {
 
       {!loadingSlots && availableSlots.length > 0 ? (
         <SlotGrid
-          items={availableSlots.map((slot) => ({ key: slot.startsAt, label: formatLocalTime(slot.startsAt) }))}
+          items={availableSlots.map((slot) => ({ key: slot.startsAt, label: formatLocalTime(slot.startsAt, timeZone) }))}
           selectedKey={selectedSlot?.startsAt}
           onSelect={(key) => setSelectedSlot(availableSlots.find((slot) => slot.startsAt === key) ?? null)}
         />
@@ -266,7 +283,7 @@ export default function SlotPickerScreen() {
         <InfoRow
           icon="time-outline"
           label="Heure"
-          value={selectedSlot ? formatLocalTime(selectedSlot.startsAt) : 'Non sélectionnée'}
+          value={selectedSlot ? formatLocalTime(selectedSlot.startsAt, timeZone) : 'Non sélectionnée'}
           strong={!!selectedSlot}
         />
         <InfoRow icon="cash-outline" label="Tarif" value={`${doctor.fee} USD`} />

@@ -7,6 +7,7 @@ jest.mock('../src/config/db', () => ({
 
 jest.mock('../src/services/slots.service', () => ({
   getAvailableSlots: jest.fn(),
+  resolveFacility: jest.fn(async () => ({ id: 1, name: 'Etablissement principal', timezone: 'Africa/Lubumbashi' })),
 }));
 
 const request = require('supertest');
@@ -233,6 +234,7 @@ describe('Reservation pour un enfant', () => {
 
 describe('Validation des liens par le personnel', () => {
   test('la secretaire valide un lien en attente', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 1, name: 'Etablissement principal', city: 'Lubumbashi', status: 'active', role: 'secretary' }], rowCount: 1 });
     pool.query.mockResolvedValueOnce({ rows: [{ id: 4, status: 'verified' }], rowCount: 1 });
 
     const res = await request(app)
@@ -241,19 +243,20 @@ describe('Validation des liens par le personnel', () => {
       .send({ status: 'verified' });
 
     expect(res.status).toBe(200);
-    const [sql, params] = pool.query.mock.calls[0];
+    const [sql, params] = pool.query.mock.calls[1];
     expect(sql).toContain('AND status = ANY($5::text[])');
     expect(params).toEqual(['verified', null, 12, 4, ['pending']]);
   });
 
   test('un refus exige un motif', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 1, name: 'Etablissement principal', city: 'Lubumbashi', status: 'active', role: 'secretary' }], rowCount: 1 });
     const res = await request(app)
       .patch('/api/admin/guardian-links/4')
       .set('Authorization', auth('secretary', 12))
       .send({ status: 'rejected' });
 
     expect(res.status).toBe(400);
-    expect(pool.query).not.toHaveBeenCalled();
+    expect(pool.query.mock.calls.some(([q]) => q.includes('UPDATE patient_guardians'))).toBe(false);
   });
 
   test('un lien deja traite ne peut pas etre revalide', async () => {
@@ -278,12 +281,13 @@ describe('Validation des liens par le personnel', () => {
   });
 
   test('la liste signale les doublons potentiels au personnel', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [{ id: 1, name: 'Etablissement principal', city: 'Lubumbashi', status: 'active', role: 'secretary' }], rowCount: 1 });
     const res = await request(app)
       .get('/api/admin/guardian-links')
       .set('Authorization', auth('secretary', 12));
 
     expect(res.status).toBe(200);
-    const [sql, params] = pool.query.mock.calls[0];
+    const [sql, params] = pool.query.mock.calls[1];
     expect(sql).toContain('AS possible_duplicates');
     expect(params).toEqual(['pending']);
   });

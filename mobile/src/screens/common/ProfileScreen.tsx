@@ -182,6 +182,15 @@ export default function ProfileScreen() {
             onPress={() => navigation.navigate('GuardianLinks')}
           />
         ) : null}
+        {user?.role === 'secretary' || user?.role === 'admin' ? (
+          <ListItem
+            icon="business-outline"
+            title="Établissements"
+            subtitle={user?.role === 'admin' ? 'Créer, valider et suspendre les établissements' : 'Fiche, services et personnel de vos établissements'}
+            onPress={() => navigation.navigate('FacilitiesManage')}
+            style={s.divider}
+          />
+        ) : null}
         {isDoctor ? (
           <ListItem
             icon="time-outline"

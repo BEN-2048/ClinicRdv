@@ -25,6 +25,8 @@ import MedicalRecordScreen from '../screens/patient/MedicalRecordScreen';
 import NotificationsScreen from '../screens/patient/NotificationsScreen';
 import WaitingListScreen from '../screens/patient/WaitingListScreen';
 import FamilyScreen from '../screens/patient/FamilyScreen';
+import FacilityListScreen from '../screens/patient/FacilityListScreen';
+import FacilityDetailScreen from '../screens/patient/FacilityDetailScreen';
 
 import DoctorDashboardScreen from '../screens/doctor/DoctorDashboardScreen';
 import DoctorAgendaScreen from '../screens/doctor/DoctorAgendaScreen';
@@ -43,6 +45,8 @@ import SecretaryBookScreen from '../screens/secretary/SecretaryBookScreen';
 import SecretaryDoctorFormScreen from '../screens/secretary/SecretaryDoctorFormScreen';
 import SecretaryDoctorScheduleScreen from '../screens/secretary/SecretaryDoctorScheduleScreen';
 import GuardianLinksScreen from '../screens/secretary/GuardianLinksScreen';
+import FacilitiesManageScreen from '../screens/admin/FacilitiesManageScreen';
+import FacilityEditScreen from '../screens/admin/FacilityEditScreen';
 
 
 const Stack = createNativeStackNavigator();
@@ -69,6 +73,7 @@ const tabsByRole: Record<Role, { headerShown: boolean; tabs: TabDef[] }> = {
     tabs: [
       { name: 'Accueil', component: HomeScreen, icon: 'home-outline', iconActive: 'home' },
       { name: 'Médecins', component: DoctorListScreen, icon: 'medkit-outline', iconActive: 'medkit' },
+      { name: 'Établissements', component: FacilityListScreen, icon: 'business-outline', iconActive: 'business' },
       { name: 'Mes RDV', component: MyAppointmentsScreen, icon: 'calendar-outline', iconActive: 'calendar' },
       profileTab,
     ],
@@ -247,6 +252,28 @@ export default function RootNavigator() {
                 options={{ title: 'Liens familiaux' }}
               />
             )}
+
+            {(user.role === 'secretary' || user.role === 'admin') && (
+              <Stack.Screen
+                name="FacilitiesManage"
+                component={FacilitiesManageScreen}
+                options={{ title: 'Établissements' }}
+              />
+            )}
+
+            {(user.role === 'secretary' || user.role === 'admin') && (
+              <Stack.Screen
+                name="FacilityEdit"
+                component={FacilityEditScreen}
+                options={{ title: 'Établissement' }}
+              />
+            )}
+
+            <Stack.Screen
+              name="FacilityDetail"
+              component={FacilityDetailScreen}
+              options={{ title: 'Établissement' }}
+            />
 
             <Stack.Screen
               name="DoctorProfile"

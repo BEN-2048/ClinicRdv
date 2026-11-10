@@ -21,6 +21,13 @@ const users = require('../controllers/users.controller');
 const medicalRecord = require('../controllers/medicalRecord.controller');
 const waitingList = require('../controllers/waitingList.controller');
 const patients = require('../controllers/patients.controller');
+const facilities = require('../controllers/facilities.controller');
+const facilityAdmin = require('../controllers/facilityAdmin.controller');
+const {
+  staffScopeMiddleware,
+  doctorInScopeMiddleware,
+  appointmentInScopeMiddleware,
+} = require('../services/scope.service');
 
 
 // =========================================
@@ -80,7 +87,11 @@ router.post(
 // MÉDECINS
 // =========================================
 
-router.get('/doctors', authenticate, doctors.list);
+router.get('/facilities', authenticate, validate(s.facilitySearchQuery, 'query'), facilities.search);
+router.get('/facilities/meta', authenticate, facilities.meta);
+router.get('/facilities/:id', authenticate, validate(s.idParams, 'params'), facilities.get);
+
+router.get('/doctors', authenticate, validate(s.doctorsQuery, 'query'), doctors.list);
 
 router.get(
   '/doctors/me/dashboard',
@@ -160,7 +171,7 @@ router.delete(
 
 
 // Informations d'un médecin et ses créneaux
-router.get('/doctors/:id', authenticate, doctors.get);
+router.get('/doctors/:id', authenticate, validate(s.idParams, 'params'), doctors.get);
 
 router.get(
   '/doctors/:id/slots',
@@ -295,8 +306,19 @@ const staff = require('express').Router();
 
 staff.use(
   authenticate,
-  requireRole(...STAFF_ROLES)
+  requireRole(...STAFF_ROLES),
+  staffScopeMiddleware
 );
+
+staff.use('/doctors/:id', doctorInScopeMiddleware('id'));
+staff.use('/appointments/:id', appointmentInScopeMiddleware('id'));
+
+const platformOnly = requireRole('admin');
+const facilityParams = validate(s.facilityParams, 'params');
+
+
+// Périmètre du compte connecté
+staff.get('/me/scope', admin.scope);
 
 
 // Tableau de bord et statistiques
@@ -329,6 +351,20 @@ staff.patch(
 );
 
 
+// Gestion des établissements
+staff.get('/facilities', facilityAdmin.list);
+staff.post('/facilities', platformOnly, validate(s.createFacility), facilityAdmin.create);
+staff.get('/facilities/:facilityId', facilityParams, facilityAdmin.get);
+staff.patch('/facilities/:facilityId', facilityParams, validate(s.updateFacility), facilityAdmin.update);
+staff.put('/facilities/:facilityId/services', facilityParams, validate(s.facilityServices), facilityAdmin.setServices);
+staff.put('/facilities/:facilityId/opening-hours', facilityParams, validate(s.facilityOpeningHours), facilityAdmin.setOpeningHours);
+staff.put('/facilities/:facilityId/specialties', facilityParams, validate(s.facilitySpecialties), facilityAdmin.setSpecialties);
+staff.post('/facilities/:facilityId/members', facilityParams, validate(s.addFacilityMember), facilityAdmin.addMember);
+staff.delete('/facilities/:facilityId/members/:memberId', facilityAdmin.revokeMember);
+staff.post('/facilities/:facilityId/doctors', facilityParams, validate(s.attachDoctor), facilityAdmin.attachDoctor);
+staff.patch('/facilities/:facilityId/doctors/:doctorId', validate(s.updateAffiliation), facilityAdmin.updateAffiliation);
+
+
 // Gestion des médecins
 staff.get('/doctors', admin.listDoctors);
 
@@ -350,6 +386,7 @@ staff.patch(
 // Gestion des horaires
 staff.get(
   '/doctors/:id/working-hours',
+  validate(s.workingHoursQuery, 'query'),
   admin.getWorkingHours
 );
 

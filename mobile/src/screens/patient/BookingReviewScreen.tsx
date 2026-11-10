@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Switch, Text, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { AppointmentsApi, PatientProfile, PatientsApi } from '../../api/services';
+import { AppointmentsApi, DoctorFacility, PatientProfile, PatientsApi } from '../../api/services';
 import {
   Avatar,
   Button,
@@ -31,19 +31,21 @@ type Slot = {
   startsAt: string;
   endsAt: string;
   available: boolean;
+  facilityId?: number;
+  timezone?: string;
 };
 
-const formatTime = (iso: string) =>
+const formatTime = (iso: string, timeZone: string) =>
   new Intl.DateTimeFormat('fr-FR', {
-    timeZone: CLINIC_TIME_ZONE,
+    timeZone,
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',
   }).format(new Date(iso));
 
-const formatDate = (iso: string) =>
+const formatDate = (iso: string, timeZone: string) =>
   new Intl.DateTimeFormat('fr-FR', {
-    timeZone: CLINIC_TIME_ZONE,
+    timeZone,
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -57,6 +59,10 @@ export default function BookingReviewScreen() {
   const doctor = route.params?.doctor as Doctor | undefined;
   const slot = route.params?.slot as Slot | undefined;
   const initialReason = route.params?.reason || '';
+  const facility = route.params?.facility as DoctorFacility | undefined;
+  const timeZone = slot?.timezone ?? facility?.timezone ?? CLINIC_TIME_ZONE;
+  const facilityId = slot?.facilityId ?? facility?.id;
+  const fee = facility?.fee ?? doctor?.fee;
 
   const [reason, setReason] = useState(initialReason);
   const [additionalInfo, setAdditionalInfo] = useState('');
@@ -94,7 +100,7 @@ export default function BookingReviewScreen() {
   }
 
   const fullName = `${doctor.first_name} ${doctor.last_name}`.trim();
-  const dateLabel = formatDate(slot.startsAt);
+  const dateLabel = formatDate(slot.startsAt, timeZone);
 
   const handleConfirm = async () => {
     if (booking) return;
@@ -110,10 +116,13 @@ export default function BookingReviewScreen() {
         doctor.id,
         slot.startsAt,
         reason.trim(),
-        selectedProfile && selectedProfile.link_status !== 'self' ? selectedProfile.id : undefined
+        selectedProfile && selectedProfile.link_status !== 'self' ? selectedProfile.id : undefined,
+        facilityId
       );
       navigation.replace('BookingConfirm', {
         appointment: response.data,
+        facility: facility ? { name: facility.name, city: facility.city } : undefined,
+        timeZone,
         patientName: selectedProfile && selectedProfile.link_status !== 'self'
           ? `${selectedProfile.first_name} ${selectedProfile.last_name}`
           : undefined,
@@ -121,13 +130,13 @@ export default function BookingReviewScreen() {
           id: doctor.id,
           name: fullName,
           specialty: doctor.specialty,
-          fee: doctor.fee,
+          fee,
           consultation_minutes: doctor.consultation_minutes,
         },
       });
     } catch (err: any) {
       if (err?.response?.status === 409) {
-        navigation.navigate('BookingConflict', { doctor, slot, reason: reason.trim(), profileId });
+        navigation.navigate('BookingConflict', { doctor, slot, reason: reason.trim(), profileId, facility });
         return;
       }
       Alert.alert(
@@ -183,7 +192,7 @@ export default function BookingReviewScreen() {
               <Icon name="checkmark-circle" size="sm" color={color.primaryBright} />
             </View>
             <Text style={s.specialty}>{doctor.specialty}</Text>
-            <Text style={s.muted}>Cabinet médical · Présentiel</Text>
+            <Text style={s.muted}>{facility ? [facility.name, facility.city].filter(Boolean).join(' · ') : 'Cabinet médical'} · Présentiel</Text>
           </View>
           <StatusBadge status="pending" label="À confirmer" />
         </View>
@@ -195,11 +204,11 @@ export default function BookingReviewScreen() {
           <View style={s.flex}>
             <Text style={s.slotDate}>{dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)}</Text>
             <View style={s.timeRow}>
-              <Text style={s.time}>{formatTime(slot.startsAt)}</Text>
+              <Text style={s.time}>{formatTime(slot.startsAt, timeZone)}</Text>
               <View style={s.duration}>
                 <Text style={s.durationText}>{doctor.consultation_minutes} min</Text>
               </View>
-              <Text style={s.muted}>Fin prévue : {formatTime(slot.endsAt)}</Text>
+              <Text style={s.muted}>Fin prévue : {formatTime(slot.endsAt, timeZone)}</Text>
             </View>
           </View>
         </View>
@@ -227,8 +236,8 @@ export default function BookingReviewScreen() {
 
       <Notice
         icon="location-outline"
-        title="Adresse du cabinet à confirmer"
-        message="Les informations précises du cabinet seront communiquées par la clinique."
+        title={facility ? `Lieu : ${facility.name}` : 'Adresse du cabinet à confirmer'}
+        message={facility ? 'Retrouvez l’adresse et le téléphone dans la fiche de l’établissement.' : 'Les informations précises du cabinet seront communiquées par la clinique.'}
       />
 
       <Card style={s.price}>
@@ -237,7 +246,7 @@ export default function BookingReviewScreen() {
             <Icon name="cash-outline" size="md" color={color.primary} />
             <Text style={type.bodyMedium}>Tarif de consultation</Text>
           </View>
-          <Text style={type.h2}>{doctor.fee} USD</Text>
+          <Text style={type.h2}>{fee} USD</Text>
         </View>
         <Text style={s.muted}>Informations de paiement à confirmer auprès de la clinique</Text>
       </Card>

@@ -1,8 +1,16 @@
 
 const pool = require('../config/db');
-const { getAvailableSlots } = require('./slots.service');
+const { getAvailableSlots, resolveFacility } = require('./slots.service');
 const { isStaff } = require('../middleware/auth');
+const scopes = require('./scope.service');
+
+const staffFacilities = async (user) => {
+  if (!isStaff(user.role)) return { staff: false, facilities: null };
+  const scope = await scopes.loadStaffScope(user);
+  return { staff: true, facilities: scopes.scopeParam(scope) };
+};
 const { accessibleProfilesSql, resolveBookingProfile } = require('./patients.service');
+const { localDateString } = require('../utils/timezone');
 
 const httpError = (status, message) =>
   Object.assign(new Error(message), { status });
@@ -13,22 +21,6 @@ const parseStartsAt = (value) => {
     throw httpError(400, 'Date de rendez-vous invalide');
   }
   return date;
-};
-
-const clinicDateFormatter = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Africa/Lubumbashi',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-});
-
-const getClinicDate = (date) => {
-  const parts = clinicDateFormatter.formatToParts(date);
-  const values = Object.fromEntries(
-    parts.map((part) => [part.type, part.value])
-  );
-
-  return `${values.year}-${values.month}-${values.day}`;
 };
 
 // Création d'une notification pour un patient
@@ -48,13 +40,21 @@ const createPatientNotification = async ({
 };
 
 // Réserver un rendez-vous
-exports.book = async (patientId, { doctorId, startsAt, reason, patientProfileId }) => {
+exports.book = async (patientId, { doctorId, startsAt, reason, patientProfileId, facilityId }) => {
   const iso = new Date(startsAt).toISOString();
   const profileId = await resolveBookingProfile(patientId, patientProfileId);
 
+  const facility = await resolveFacility(doctorId, facilityId ?? null);
+  if (!facility) {
+    throw httpError(404, 'Médecin introuvable');
+  }
+
   const slots = await getAvailableSlots(
     doctorId,
-    getClinicDate(new Date(iso))
+    localDateString(new Date(iso), facility.timezone),
+    pool,
+    null,
+    facility.id
   );
 
   if (!slots) {
@@ -70,10 +70,10 @@ exports.book = async (patientId, { doctorId, startsAt, reason, patientProfileId 
   try {
     const r = await pool.query(
       `INSERT INTO appointments
-        (patient_id, patient_profile_id, doctor_id, starts_at, ends_at, status, reason)
-       VALUES ($1, $2, $3, $4, $5, 'confirmed', $6)
+        (patient_id, patient_profile_id, doctor_id, facility_id, starts_at, ends_at, status, reason)
+       VALUES ($1, $2, $3, $4, $5, $6, 'confirmed', $7)
        RETURNING *`,
-      [patientId, profileId, doctorId, slot.startsAt, slot.endsAt, reason || null]
+      [patientId, profileId, doctorId, facility.id, slot.startsAt, slot.endsAt, reason || null]
     );
 
     const appointment = r.rows[0];
@@ -100,20 +100,21 @@ exports.book = async (patientId, { doctorId, startsAt, reason, patientProfileId 
 
 // Annuler un rendez-vous
 exports.cancel = async (id, user) => {
+  const staff = await staffFacilities(user);
   const r = await pool.query(
     `UPDATE appointments
         SET status = 'cancelled'
       WHERE id = $1
         AND status IN ('pending', 'confirmed')
         AND (
-          $2::boolean
+          ($2::boolean AND ($4::int[] IS NULL OR facility_id = ANY($4::int[])))
           OR patient_profile_id IN ${accessibleProfilesSql('$3')}
           OR doctor_id = (
             SELECT id FROM doctors WHERE user_id = $3
           )
         )
       RETURNING *`,
-    [id, isStaff(user.role), user.id]
+    [id, staff.staff, user.id, staff.facilities]
   );
 
   if (!r.rowCount) {
@@ -139,6 +140,7 @@ exports.cancel = async (id, user) => {
 exports.reschedule = async (id, user, startsAt) => {
   const date = parseStartsAt(startsAt);
   const iso = date.toISOString();
+  const staff = await staffFacilities(user);
   const client = await pool.connect();
 
   try {
@@ -146,10 +148,12 @@ exports.reschedule = async (id, user, startsAt) => {
 
     const cur = await client.query(
       `SELECT * FROM appointments
-        WHERE id=$1 AND ($3::boolean OR patient_profile_id IN ${accessibleProfilesSql('$2')})
+        WHERE id=$1
+          AND (($3::boolean AND ($4::int[] IS NULL OR facility_id = ANY($4::int[])))
+               OR patient_profile_id IN ${accessibleProfilesSql('$2')})
           AND status IN ('pending','confirmed')
         FOR UPDATE`,
-      [id, user.id, isStaff(user.role)]
+      [id, user.id, staff.staff, staff.facilities]
     );
 
     if (!cur.rowCount) {
@@ -158,11 +162,14 @@ exports.reschedule = async (id, user, startsAt) => {
 
     const appointment = cur.rows[0];
 
+    const facility = await resolveFacility(appointment.doctor_id, appointment.facility_id, client);
+
     const slots = await getAvailableSlots(
       appointment.doctor_id,
-      getClinicDate(date),
+      localDateString(date, facility.timezone),
       client,
-      id
+      id,
+      facility.id
     );
 
     if (!slots) {
@@ -215,12 +222,15 @@ exports.listForUser = async (user, { scope } = {}) => {
             u.first_name || ' ' || u.last_name AS doctor_name,
             s.name AS specialty,
             pp.patient_number,
-            pp.first_name || ' ' || pp.last_name AS patient_name
+            pp.first_name || ' ' || pp.last_name AS patient_name,
+            f.name AS facility_name,
+            f.timezone AS facility_timezone
        FROM appointments a
        JOIN doctors d ON d.id = a.doctor_id
        JOIN users u ON u.id = d.user_id
        JOIN specialties s ON s.id = d.specialty_id
        JOIN patients pp ON pp.id = a.patient_profile_id
+       JOIN facilities f ON f.id = a.facility_id
       WHERE ${base}
         AND ${time}
       ORDER BY a.starts_at`,
@@ -236,36 +246,47 @@ exports.listAll = async ({
   doctorId,
   status,
   patientId,
-} = {}) => {
+  facilityId,
+} = {}, scope) => {
+  if (!scope) throw new Error('Périmètre du personnel requis');
+  if (facilityId) scopes.assertFacilityInScope(scope, facilityId);
   const r = await pool.query(
     `SELECT a.*,
             du.first_name || ' ' || du.last_name AS doctor_name,
             s.name AS specialty,
             pp.first_name || ' ' || pp.last_name AS patient_name,
             pp.patient_number,
-            pu.phone AS patient_phone
+            pu.phone AS patient_phone,
+            f.name AS facility_name,
+            f.timezone AS facility_timezone
        FROM appointments a
        JOIN doctors d ON d.id = a.doctor_id
        JOIN users du ON du.id = d.user_id
        JOIN specialties s ON s.id = d.specialty_id
        JOIN users pu ON pu.id = a.patient_id
        JOIN patients pp ON pp.id = a.patient_profile_id
+       JOIN facilities f ON f.id = a.facility_id
       WHERE (
         $1::date IS NULL
-        OR (a.starts_at AT TIME ZONE 'Africa/Lubumbashi')::date = $1::date
+        OR (a.starts_at AT TIME ZONE f.timezone)::date = $1::date
       )
         AND ($2::int IS NULL OR a.doctor_id = $2)
         AND ($3::appt_status IS NULL OR a.status = $3)
         AND ($4::int IS NULL OR a.patient_id = $4)
+        AND ($5::int[] IS NULL OR a.facility_id = ANY($5::int[]))
+        AND ($6::int IS NULL OR a.facility_id = $6)
       ORDER BY a.starts_at`,
-    [date || null, doctorId || null, status || null, patientId || null]
+    [date || null, doctorId || null, status || null, patientId || null,
+      scopes.scopeParam(scope), facilityId || null]
   );
 
   return r.rows;
 };
 
 // Réservation effectuée par un membre du personnel
-exports.bookFor = async ({ patientId, ...data }) => {
+exports.bookFor = async ({ patientId, ...data }, scope) => {
+  if (!scope) throw new Error('Périmètre du personnel requis');
+  const facilityId = await scopes.pickFacilityInScope(scope, data.doctorId, data.facilityId ?? null);
   const p = await pool.query(
     `SELECT 1
        FROM users
@@ -277,7 +298,7 @@ exports.bookFor = async ({ patientId, ...data }) => {
     throw httpError(404, 'Patient introuvable');
   }
 
-  return exports.book(patientId, data);
+  return exports.book(patientId, { ...data, facilityId: facilityId ?? undefined });
 };
 
 exports.httpError = httpError;
