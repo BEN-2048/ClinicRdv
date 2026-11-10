@@ -27,6 +27,17 @@ const waitingList = require('../controllers/waitingList.controller');
 
 router.post('/auth/register', validate(s.register), auth.register);
 router.post('/auth/login', validate(s.login), auth.login);
+router.post(
+  '/auth/verify-email',
+  validate(s.verifyEmail),
+  auth.verifyEmail
+);
+
+router.post(
+  '/auth/resend-otp',
+  validate(s.resendOtp),
+  auth.resendOtp
+);
 
 
 // =========================================

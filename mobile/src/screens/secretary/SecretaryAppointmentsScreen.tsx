@@ -1,12 +1,31 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-
 import { AppointmentStatus, StaffApi, StaffAppointment } from '../../api/services';
-import { Button, Chip, Header, ui } from '../../components/ClinicUI';
-import { colors } from '../../theme/colors';
 import {
-  ErrorCard, Loading, STATUS_LABELS, StatusBadge, clinicToday, errorText, formatDateTime, formatLongDate, formatTime, shared, shiftDate,
+  AppHeader,
+  Button,
+  Card,
+  Chip,
+  EmptyState,
+  IconButton,
+  InfoRow,
+  Screen,
+} from '../../components/ui';
+import { color, space, type } from '../../theme';
+import {
+  ErrorCard,
+  Loading,
+  STATUS_LABELS,
+  StatusBadge,
+  Wrap,
+  clinicToday,
+  errorText,
+  formatDateTime,
+  formatLongDate,
+  formatTime,
+  shared,
+  shiftDate,
 } from './shared';
 
 const STATUSES: AppointmentStatus[] = ['confirmed', 'pending', 'cancelled', 'done'];
@@ -20,22 +39,29 @@ export default function SecretaryAppointmentsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (refresh = false) => {
-    if (refresh) setRefreshing(true);
-    else setLoading(true);
-    setError(null);
-    try {
-      const res = await StaffApi.appointments({ date: date ?? undefined, status: status ?? undefined });
-      setItems(res.data);
-    } catch (err) {
-      setError(errorText(err, 'Impossible de charger les rendez-vous.'));
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [date, status]);
+  const load = useCallback(
+    async (refresh = false) => {
+      if (refresh) setRefreshing(true);
+      else setLoading(true);
+      setError(null);
+      try {
+        const res = await StaffApi.appointments({ date: date ?? undefined, status: status ?? undefined });
+        setItems(res.data);
+      } catch (err) {
+        setError(errorText(err, 'Impossible de charger les rendez-vous.'));
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [date, status]
+  );
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
   const cancel = (a: StaffAppointment) =>
     Alert.alert('Annuler le rendez-vous', `Annuler le RDV de ${a.patient_name} avec Dr. ${a.doctor_name} ?`, [
@@ -55,65 +81,105 @@ export default function SecretaryAppointmentsScreen() {
     ]);
 
   const active = (a: StaffAppointment) => a.status === 'pending' || a.status === 'confirmed';
+  const today = clinicToday();
 
   return (
-    <View style={ui.page}>
-      <Header title="Rendez-vous du cabinet" subtitle="Tous les médecins" right="📅" />
-      <ScrollView
-        contentContainerStyle={ui.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} colors={[colors.primary]} />}
-      >
-        <Button title="+ Nouveau rendez-vous" onPress={() => navigation.navigate('SecretaryBook')} />
+    <Screen
+      refreshing={refreshing}
+      onRefresh={() => load(true)}
+      header={
+        <AppHeader title="Rendez-vous du cabinet" subtitle="Tous les médecins" />
+      }
+    >
+      <Button title="Nouveau rendez-vous" icon="add" onPress={() => navigation.navigate('SecretaryBook')} />
 
-        <View style={[shared.row, ui.section]}>
-          <Button title="◀" secondary disabled={!date} onPress={() => date && setDate(shiftDate(date, -1))} />
-          <Text style={[ui.label, { flex: 1, textAlign: 'center', textTransform: 'capitalize' }]}>
-            {date ? formatLongDate(date) : 'Toutes les dates'}
-          </Text>
-          <Button title="▶" secondary disabled={!date} onPress={() => date && setDate(shiftDate(date, 1))} />
-        </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-          <Chip title="Aujourd'hui" active={date === clinicToday()} onPress={() => setDate(clinicToday())} />
-          <Chip title="Toutes les dates" active={date === null} onPress={() => setDate(null)} />
-        </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 }}>
-          <Chip title="Tous statuts" active={status === null} onPress={() => setStatus(null)} />
-          {STATUSES.map((st) => (
-            <Chip key={st} title={STATUS_LABELS[st]} active={status === st} onPress={() => setStatus(st)} />
-          ))}
-        </View>
+      <Card padded={false} style={s.dateNav}>
+        <IconButton
+          icon="chevron-back"
+          variant="plain"
+          accessibilityLabel="Jour précédent"
+          disabled={!date}
+          onPress={() => date && setDate(shiftDate(date, -1))}
+        />
+        <Pressable accessibilityRole="button" onPress={() => setDate(today)} style={shared.flex}>
+          <Text style={s.dateTitle}>{date ? formatLongDate(date) : 'Toutes les dates'}</Text>
+        </Pressable>
+        <IconButton
+          icon="chevron-forward"
+          variant="plain"
+          accessibilityLabel="Jour suivant"
+          disabled={!date}
+          onPress={() => date && setDate(shiftDate(date, 1))}
+        />
+      </Card>
 
-        {loading && <Loading label="Chargement des rendez-vous..." />}
-        {error && <ErrorCard message={error} onRetry={() => load()} />}
-        {!loading && !error && items.length === 0 && (
-          <View style={ui.card}><Text style={shared.empty}>Aucun rendez-vous pour ces critères.</Text></View>
-        )}
-
-        {!loading && !error && items.map((a) => (
-          <View key={a.id} style={ui.card}>
-            <View style={shared.row}>
-              <Text style={shared.title}>{a.patient_name}</Text>
-              <StatusBadge status={a.status} />
-            </View>
-            {a.patient_phone ? <Text style={ui.muted}>{a.patient_phone}</Text> : null}
-            <Text style={shared.detail}>Dr. {a.doctor_name} · {a.specialty}</Text>
-            <Text style={shared.detail}>
-              {date ? formatTime(a.starts_at) : formatDateTime(a.starts_at)} - {formatTime(a.ends_at)}
-            </Text>
-            {a.reason ? <Text style={shared.detail}>Motif : {a.reason}</Text> : null}
-            {active(a) && (
-              <View style={shared.actions}>
-                <View style={shared.action}>
-                  <Button title="Reporter" secondary onPress={() => navigation.navigate('SecretaryBook', { appointment: a })} />
-                </View>
-                <View style={shared.action}>
-                  <Button title="Annuler" onPress={() => cancel(a)} />
-                </View>
-              </View>
-            )}
-          </View>
+      <Wrap>
+        <Chip label="Aujourd'hui" icon="today-outline" selected={date === today} onPress={() => setDate(today)} />
+        <Chip label="Toutes les dates" selected={date === null} onPress={() => setDate(null)} />
+      </Wrap>
+      <Wrap>
+        <Chip label="Tous statuts" selected={status === null} onPress={() => setStatus(null)} />
+        {STATUSES.map((st) => (
+          <Chip key={st} label={STATUS_LABELS[st]} selected={status === st} onPress={() => setStatus(st)} />
         ))}
-      </ScrollView>
-    </View>
+      </Wrap>
+
+      {loading ? <Loading label="Chargement des rendez-vous..." /> : null}
+      {error ? <ErrorCard message={error} onRetry={() => load()} /> : null}
+      {!loading && !error && items.length === 0 ? (
+        <Card>
+          <EmptyState icon="calendar-clear-outline" title="Aucun rendez-vous" message="Aucun rendez-vous pour ces critères." />
+        </Card>
+      ) : null}
+
+      {!loading && !error
+        ? items.map((a) => (
+            <Card key={a.id} style={shared.card}>
+              <View style={shared.row}>
+                <View style={shared.flex}>
+                  <Text style={shared.title} numberOfLines={1}>
+                    {a.patient_name}
+                  </Text>
+                  {a.patient_phone ? <Text style={shared.muted}>{a.patient_phone}</Text> : null}
+                </View>
+                <StatusBadge status={a.status} />
+              </View>
+              <InfoRow icon="person-outline" label="Médecin" value={`Dr. ${a.doctor_name} · ${a.specialty}`} />
+              <InfoRow
+                icon="time-outline"
+                label="Horaire"
+                value={`${date ? formatTime(a.starts_at) : formatDateTime(a.starts_at)} – ${formatTime(a.ends_at)}`}
+                strong
+              />
+              {a.reason ? <InfoRow icon="document-text-outline" label="Motif" value={a.reason} /> : null}
+              {active(a) ? (
+                <View style={shared.actions}>
+                  <Button
+                    title="Reporter"
+                    icon="repeat"
+                    size="sm"
+                    variant="secondary"
+                    style={shared.action}
+                    onPress={() => navigation.navigate('SecretaryBook', { appointment: a })}
+                  />
+                  <Button
+                    title="Annuler"
+                    icon="close-circle-outline"
+                    size="sm"
+                    variant="danger"
+                    style={shared.action}
+                    onPress={() => cancel(a)}
+                  />
+                </View>
+              ) : null}
+            </Card>
+          ))
+        : null}
+    </Screen>
   );
 }
+
+const s = StyleSheet.create({
+  dateNav: { flexDirection: 'row', alignItems: 'center', padding: space.xxs },
+  dateTitle: { ...type.bodyMedium, textAlign: 'center', textTransform: 'capitalize', color: color.text },
+});

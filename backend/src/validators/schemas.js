@@ -113,3 +113,12 @@ exports.waitingListAlert = z.object({
   notifyPush: z.boolean(),
   notifySms: z.boolean(),
 }).refine((o) => o.notifyPush || o.notifySms, 'Activez au moins un canal de notification');
+
+exports.verifyEmail = z.object({
+  email: z.string().email(),
+  code: z.string().regex(/^\d{6}$/, 'Le code doit contenir 6 chiffres'),
+}).strict();
+
+exports.resendOtp = z.object({
+  email: z.string().email(),
+}).strict();

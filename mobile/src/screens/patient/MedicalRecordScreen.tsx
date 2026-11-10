@@ -1,18 +1,18 @@
 import React, { useCallback, useState } from 'react';
-import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  Pressable,
-} from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-
 import { MedicalRecordApi, UsersApi } from '../../api/services';
-import { Header, ui } from '../../components/ClinicUI';
-import { colors } from '../../theme/colors';
+import {
+  Card,
+  EmptyState,
+  ErrorState,
+  Icon,
+  Loader,
+  Screen,
+  SegmentedTabs,
+} from '../../components/ui';
+import { CLINIC_TIME_ZONE } from '../../components/PatientFigmaUI';
+import { color, radius, space, type } from '../../theme';
 
 type Consultation = {
   appointment_id: number;
@@ -32,7 +32,7 @@ type Tab = 'consultations' | 'documents' | 'traitements';
 
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat('fr-FR', {
-    timeZone: 'Africa/Lubumbashi',
+    timeZone: CLINIC_TIME_ZONE,
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -49,31 +49,18 @@ export default function MedicalRecordScreen() {
   const load = useCallback(async (refresh = false) => {
     if (refresh) setRefreshing(true);
     else setLoading(true);
-
     setError(null);
 
     try {
-      const [records, profile] = await Promise.all([
-        MedicalRecordApi.mine(),
-        UsersApi.getMe(),
-      ]);
-
+      const [records, profile] = await Promise.all([MedicalRecordApi.mine(), UsersApi.getMe()]);
       if (!Array.isArray(records.data)) {
-        throw new Error('Format du dossier m?dical invalide.');
+        throw new Error('Format du dossier médical invalide.');
       }
-
       setConsultations(records.data as Consultation[]);
-
-      const user = profile.data;
-      setPatientName(
-        [user?.first_name, user?.last_name].filter(Boolean).join(' ')
-      );
+      const user = profile.data?.user ?? profile.data;
+      setPatientName([user?.first_name, user?.last_name].filter(Boolean).join(' '));
     } catch (err: any) {
-      setError(
-        err?.response?.data?.error ||
-        err?.message ||
-        'Impossible de charger le dossier m?dical.'
-      );
+      setError(err?.response?.data?.error || err?.message || 'Impossible de charger le dossier médical.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -86,282 +73,167 @@ export default function MedicalRecordScreen() {
     }, [load])
   );
 
-  const prescriptions = consultations.filter(
-    (item) => item.prescription?.trim()
-  );
+  const prescriptions = consultations.filter((item) => item.prescription?.trim());
 
   return (
-    <View style={ui.page}>
-      <Header
-        title="Mon dossier m?dical"
-        subtitle="Retrouvez votre historique de sant?"
+    <Screen refreshing={refreshing} onRefresh={() => load(true)}>
+      <View style={s.profile}>
+        <View style={s.profileIcon}>
+          <Icon name="folder-open-outline" size="lg" color={color.onPrimary} />
+        </View>
+        <View style={s.flex}>
+          <Text style={s.profileLabel}>DOSSIER PATIENT</Text>
+          <Text style={s.profileName} numberOfLines={1}>
+            {patientName || 'Mon dossier médical'}
+          </Text>
+          <Text style={s.profileDescription}>Informations médicales associées à votre compte</Text>
+        </View>
+      </View>
+
+      <View style={s.stats}>
+        <Card style={s.stat}>
+          <Icon name="pulse-outline" size="md" color={color.primary} />
+          <Text style={s.statValue}>{consultations.length}</Text>
+          <Text style={s.statLabel}>Consultations</Text>
+        </Card>
+        <Card style={s.stat}>
+          <Icon name="medical-outline" size="md" color={color.success} />
+          <Text style={s.statValue}>{prescriptions.length}</Text>
+          <Text style={s.statLabel}>Prescriptions</Text>
+        </Card>
+      </View>
+
+      <SegmentedTabs<Tab>
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { key: 'consultations', label: 'Consultations' },
+          { key: 'documents', label: 'Documents' },
+          { key: 'traitements', label: 'Traitements' },
+        ]}
       />
 
-      <ScrollView
-        contentContainerStyle={ui.content}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => load(true)}
-            colors={[colors.primary]}
-          />
-        }
-      >
-        <View style={styles.profile}>
-          <Text style={styles.profileLabel}>DOSSIER PATIENT</Text>
-          <Text style={styles.profileName}>
-            {patientName || 'Mon dossier m?dical'}
-          </Text>
-          <Text style={styles.profileDescription}>
-            Informations m?dicales associ?es ? votre compte
-          </Text>
-        </View>
-
-        <View style={styles.stats}>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{consultations.length}</Text>
-            <Text style={styles.statLabel}>Consultations</Text>
-          </View>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{prescriptions.length}</Text>
-            <Text style={styles.statLabel}>Prescriptions</Text>
-          </View>
-        </View>
-
-        <View style={styles.tabs}>
-          {([
-            ['consultations', 'Consultations'],
-            ['documents', 'Documents'],
-            ['traitements', 'Traitements'],
-          ] as const).map(([key, label]) => (
-            <Pressable
-              key={key}
-              onPress={() => setTab(key)}
-              style={[styles.tab, tab === key && styles.activeTab]}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: tab === key }}
-            >
-              <Text style={[
-                styles.tabLabel,
-                tab === key && styles.activeTabLabel,
-              ]}>
-                {label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {loading ? (
-          <ActivityIndicator size="large" color={colors.primary} />
-        ) : error ? (
-          <View style={styles.card}>
-            <Text style={styles.error}>{error}</Text>
-            <Pressable onPress={() => load()}>
-              <Text style={styles.retry}>R?essayer</Text>
-            </Pressable>
-          </View>
-        ) : tab === 'consultations' ? (
-          consultations.length === 0 ? (
-            <View style={styles.card}>
-              <Text style={styles.emptyTitle}>Aucune consultation</Text>
-              <Text style={styles.muted}>
-                Votre historique appara?tra ici apr?s une consultation enregistr?e.
-              </Text>
-            </View>
-          ) : (
-            consultations.map((item) => (
-              <View key={item.appointment_id} style={styles.card}>
-                <Text style={styles.date}>{formatDate(item.starts_at)}</Text>
-                <Text style={styles.doctor}>
+      {loading ? (
+        <Loader label="Chargement du dossier..." />
+      ) : error ? (
+        <Card>
+          <ErrorState message={error} onRetry={() => load()} />
+        </Card>
+      ) : tab === 'consultations' ? (
+        consultations.length === 0 ? (
+          <Card>
+            <EmptyState
+              icon="pulse-outline"
+              title="Aucune consultation"
+              message="Votre historique apparaîtra ici après une consultation enregistrée."
+            />
+          </Card>
+        ) : (
+          consultations.map((item) => (
+            <Card key={item.appointment_id} style={s.consultation}>
+              <View style={s.dateRow}>
+                <Icon name="calendar-outline" size="sm" color={color.primary} />
+                <Text style={s.date}>{formatDate(item.starts_at)}</Text>
+              </View>
+              <View>
+                <Text style={type.h3}>
                   Dr. {item.doctor_first_name} {item.doctor_last_name}
                 </Text>
-                <Text style={styles.specialty}>{item.specialty}</Text>
-
-                {item.reason ? (
-                  <Text style={styles.detail}>Motif : {item.reason}</Text>
-                ) : null}
-
-                {item.notes ? (
-                  <View style={styles.note}>
-                    <Text style={styles.noteTitle}>Observations m?dicales</Text>
-                    <Text style={styles.detail}>{item.notes}</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.muted}>
-                    Aucune observation m?dicale enregistr?e.
-                  </Text>
-                )}
-
-                {item.prescription ? (
-                  <View style={styles.note}>
-                    <Text style={styles.noteTitle}>Prescription</Text>
-                    <Text style={styles.detail}>{item.prescription}</Text>
-                  </View>
-                ) : null}
+                <Text style={s.muted}>{item.specialty}</Text>
               </View>
-            ))
-          )
-        ) : tab === 'documents' ? (
-          <View style={styles.card}>
-            <Text style={styles.emptyTitle}>Documents m?dicaux</Text>
-            <Text style={styles.muted}>
-              Aucun document t?l?chargeable n'est actuellement disponible.
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.card}>
-            <Text style={styles.emptyTitle}>Prescriptions enregistr?es</Text>
-            {prescriptions.length === 0 ? (
-              <Text style={styles.muted}>
-                Aucune prescription enregistr?e dans votre dossier.
-              </Text>
-            ) : (
-              prescriptions.map((item) => (
-                <View key={item.appointment_id} style={styles.prescription}>
-                  <Text style={styles.date}>{formatDate(item.starts_at)}</Text>
-                  <Text style={styles.doctor}>
-                    Dr. {item.doctor_first_name} {item.doctor_last_name}
-                  </Text>
-                  <Text style={styles.detail}>{item.prescription}</Text>
+
+              {item.reason ? <Text style={s.detail}>Motif : {item.reason}</Text> : null}
+
+              {item.notes ? (
+                <View style={s.note}>
+                  <Text style={s.noteTitle}>Observations médicales</Text>
+                  <Text style={s.detail}>{item.notes}</Text>
                 </View>
-              ))
-            )}
-          </View>
-        )}
-      </ScrollView>
-    </View>
+              ) : (
+                <Text style={s.muted}>Aucune observation médicale enregistrée.</Text>
+              )}
+
+              {item.prescription ? (
+                <View style={[s.note, s.prescriptionNote]}>
+                  <Text style={s.noteTitle}>Prescription</Text>
+                  <Text style={s.detail}>{item.prescription}</Text>
+                </View>
+              ) : null}
+            </Card>
+          ))
+        )
+      ) : tab === 'documents' ? (
+        <Card>
+          <EmptyState
+            icon="document-attach-outline"
+            title="Documents médicaux"
+            message="Aucun document téléchargeable n'est actuellement disponible."
+          />
+        </Card>
+      ) : prescriptions.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon="medical-outline"
+            title="Aucune prescription"
+            message="Aucune prescription enregistrée dans votre dossier."
+          />
+        </Card>
+      ) : (
+        prescriptions.map((item) => (
+          <Card key={item.appointment_id} style={s.consultation}>
+            <View style={s.dateRow}>
+              <Icon name="calendar-outline" size="sm" color={color.primary} />
+              <Text style={s.date}>{formatDate(item.starts_at)}</Text>
+            </View>
+            <Text style={type.h3}>
+              Dr. {item.doctor_first_name} {item.doctor_last_name}
+            </Text>
+            <View style={[s.note, s.prescriptionNote]}>
+              <Text style={s.detail}>{item.prescription}</Text>
+            </View>
+          </Card>
+        ))
+      )}
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
+  flex: { flex: 1, minWidth: 0 },
   profile: {
-    backgroundColor: colors.primary,
-    borderRadius: 18,
-    padding: 22,
-    gap: 8,
-  },
-  profileLabel: {
-    color: '#D9EBFF',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  profileName: {
-    color: '#FFFFFF',
-    fontSize: 23,
-    fontWeight: '800',
-  },
-  profileDescription: {
-    color: '#E3F0FF',
-    fontSize: 12,
-    lineHeight: 19,
-  },
-  stats: {
     flexDirection: 'row',
-    gap: 12,
-  },
-  stat: {
-    flex: 1,
-    padding: 18,
-    borderRadius: 14,
-    backgroundColor: '#EFF6FF',
     alignItems: 'center',
+    gap: space.sm,
+    backgroundColor: color.primary,
+    borderRadius: radius.lg,
+    padding: space.md,
   },
-  statValue: {
-    color: colors.primary,
-    fontSize: 25,
-    fontWeight: '800',
-  },
-  statLabel: {
-    color: colors.muted,
-    fontSize: 12,
-    marginTop: 5,
-  },
-  tabs: {
-    flexDirection: 'row',
-    backgroundColor: '#F1F4F8',
-    borderRadius: 12,
-    padding: 4,
-    gap: 3,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
+  profileIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
-    borderRadius: 9,
+    justifyContent: 'center',
   },
-  activeTab: {
-    backgroundColor: '#FFFFFF',
-  },
-  tabLabel: {
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  activeTabLabel: {
-    color: colors.primary,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 18,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: '#E7ECF3',
-  },
-  date: {
-    color: colors.primary,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  doctor: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  specialty: {
-    color: colors.muted,
-    fontSize: 12,
-  },
+  profileLabel: { ...type.caption, color: color.primarySoft, letterSpacing: 1 },
+  profileName: { ...type.h2, color: color.onPrimary, marginTop: 2 },
+  profileDescription: { ...type.caption, color: color.primarySoft, marginTop: 2 },
+  stats: { flexDirection: 'row', gap: space.sm },
+  stat: { flex: 1, alignItems: 'center', gap: space.xxs },
+  statValue: { ...type.h1, color: color.primary },
+  statLabel: { ...type.caption, color: color.textMuted },
+  consultation: { gap: space.sm },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: space.xxs },
+  date: { ...type.label, color: color.primary },
+  muted: { ...type.body, color: color.textMuted },
+  detail: { ...type.body },
   note: {
-    backgroundColor: '#F7F9FC',
-    borderRadius: 12,
-    padding: 12,
-    gap: 6,
+    backgroundColor: color.primarySubtle,
+    borderRadius: radius.md,
+    padding: space.sm,
+    gap: space.xxs,
   },
-  noteTitle: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  detail: {
-    color: colors.text,
-    fontSize: 13,
-    lineHeight: 21,
-  },
-  muted: {
-    color: colors.muted,
-    fontSize: 13,
-    lineHeight: 21,
-  },
-  emptyTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  prescription: {
-    borderTopWidth: 1,
-    borderTopColor: '#E7ECF3',
-    paddingTop: 12,
-    gap: 8,
-  },
-  error: {
-    color: colors.error,
-    fontSize: 13,
-  },
-  retry: {
-    color: colors.primary,
-    fontWeight: '800',
-    marginTop: 8,
-  },
+  prescriptionNote: { backgroundColor: color.successSoft + '40' },
+  noteTitle: { ...type.label, color: color.text },
 });

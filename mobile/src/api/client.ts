@@ -7,7 +7,7 @@ export const api = axios.create({
   timeout: 10000,
 });
 
-// Vérifier l'adresse du backend
+
 console.log('API URL =', api.defaults.baseURL);
 
 api.interceptors.request.use(async (config) => {

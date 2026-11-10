@@ -1,22 +1,25 @@
-﻿
-import React, { useCallback, useState } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-} from 'react-native';
+﻿import React, { useCallback, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
-import { Header, Button, Avatar, ui } from '../../components/ClinicUI';
+import { AppointmentsApi, DoctorsApi, NotificationsApi } from '../../api/services';
 import {
-  DoctorsApi,
-  AppointmentsApi,
-  NotificationsApi,
-} from '../../api/services';
-import { colors } from '../../theme/colors';
+  AppHeader,
+  Avatar,
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  Icon,
+  IconName,
+  ListItem,
+  Loader,
+  Screen,
+  SectionTitle,
+  StatusBadge,
+} from '../../components/ui';
+import { CLINIC_TIME_ZONE, doctorDisplayName } from '../../components/PatientFigmaUI';
+import { color, radius, shadow, space, type } from '../../theme';
 
 type Doctor = {
   id: number;
@@ -24,7 +27,6 @@ type Doctor = {
   last_name: string;
   specialty: string;
   name: string;
-  initials: string;
 };
 
 type Appointment = {
@@ -36,16 +38,39 @@ type Appointment = {
   status: string;
 };
 
+const SPECIALTIES: { label: string; icon: IconName }[] = [
+  { label: 'Généraliste', icon: 'medkit-outline' },
+  { label: 'Pédiatre', icon: 'happy-outline' },
+  { label: 'Dentiste', icon: 'sparkles-outline' },
+  { label: 'Cardiologie', icon: 'heart-outline' },
+];
+
+const formatDate = (iso: string) =>
+  new Intl.DateTimeFormat('fr-FR', {
+    timeZone: CLINIC_TIME_ZONE,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(new Date(iso));
+
+const formatTime = (iso: string) =>
+  new Intl.DateTimeFormat('fr-FR', {
+    timeZone: CLINIC_TIME_ZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(new Date(iso));
+
 export default function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
 
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
-
   const [loading, setLoading] = useState(true);
   const [doctorsError, setDoctorsError] = useState(false);
   const [appointmentsError, setAppointmentsError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -54,11 +79,7 @@ export default function HomeScreen({ navigation }: any) {
       async function loadHome() {
         setLoading(true);
 
-        const [
-          doctorsResult,
-          appointmentsResult,
-          notificationsResult,
-        ] = await Promise.allSettled([
+        const [doctorsResult, appointmentsResult, notificationsResult] = await Promise.allSettled([
           DoctorsApi.list(),
           AppointmentsApi.mine('upcoming'),
           NotificationsApi.list('all'),
@@ -66,38 +87,28 @@ export default function HomeScreen({ navigation }: any) {
 
         if (!active) return;
 
-        // Chargement des médecins
         if (doctorsResult.status === 'fulfilled') {
           const data = doctorsResult.value.data;
           const items = Array.isArray(data) ? data : [];
-
           setDoctors(
-            items.slice(0, 2).map((d: any) => ({
+            items.slice(0, 3).map((d: any) => ({
               ...d,
               name: `${d.first_name} ${d.last_name}`.trim(),
-              initials: `${d.first_name?.[0] || ''}${d.last_name?.[0] || ''}`.toUpperCase(),
             }))
           );
-
           setDoctorsError(false);
         } else {
           setDoctors([]);
           setDoctorsError(true);
         }
 
-        // Chargement du prochain rendez-vous
         if (appointmentsResult.status === 'fulfilled') {
           const data = appointmentsResult.value.data;
           const items: Appointment[] = Array.isArray(data) ? data : [];
-
-          const next = items
-            .filter(a => ['pending', 'confirmed'].includes(a.status))
-            .sort(
-              (a, b) =>
-                new Date(a.starts_at).getTime() -
-                new Date(b.starts_at).getTime()
-            )[0] || null;
-
+          const next =
+            items
+              .filter((a) => ['pending', 'confirmed'].includes(a.status))
+              .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())[0] || null;
           setAppointment(next);
           setAppointmentsError(false);
         } else {
@@ -105,14 +116,9 @@ export default function HomeScreen({ navigation }: any) {
           setAppointmentsError(true);
         }
 
-        // Chargement du nombre de notifications non lues
-        if (notificationsResult.status === 'fulfilled') {
-          setUnreadCount(
-            notificationsResult.value.data.unreadCount || 0
-          );
-        } else {
-          setUnreadCount(0);
-        }
+        setUnreadCount(
+          notificationsResult.status === 'fulfilled' ? notificationsResult.value.data.unreadCount || 0 : 0
+        );
 
         setLoading(false);
       }
@@ -122,246 +128,167 @@ export default function HomeScreen({ navigation }: any) {
       return () => {
         active = false;
       };
-    }, [])
+    }, [reloadKey])
   );
 
+  const reload = () => setReloadKey((k) => k + 1);
   const openDoctors = () => navigation.navigate('Médecins');
 
-  const openNotifications = () => {
-    navigation.navigate('Notifications');
-  };
-
   return (
-    <View style={ui.page}>
-      {/* En-tête avec la cloche de notifications */}
-      <Header
-        title="ClinicRDV"
-        subtitle="Accueil"
-        unreadCount={unreadCount}
-        onRightPress={openNotifications}
+    <Screen
+      refreshing={loading}
+      onRefresh={reload}
+      header={
+        <AppHeader
+          title={`Bonjour ${user?.first_name || 'Patient'}`}
+          subtitle="Prenez soin de votre santé aujourd'hui"
+          actions={[
+            {
+              icon: 'notifications-outline',
+              onPress: () => navigation.navigate('Notifications'),
+              accessibilityLabel: 'Ouvrir les notifications',
+              badge: unreadCount > 0,
+            },
+          ]}
+        />
+      }
+    >
+      <Button title="Prendre un nouveau rendez-vous" icon="add" onPress={openDoctors} />
+
+      <SectionTitle
+        title="Prochain rendez-vous"
+        actionLabel="Voir mes RDV"
+        onAction={() => navigation.navigate('Mes RDV')}
       />
 
-      <ScrollView contentContainerStyle={ui.content}>
-        {/* Message de bienvenue */}
-        <Text style={s.greet}>
-          Bonjour {user?.first_name || 'Patient'}
-        </Text>
-
-        <Text style={ui.muted}>
-          Prenez soin de votre santé aujourd'hui.
-        </Text>
-
-        {/* Bouton de prise de rendez-vous */}
-        <View style={{ marginTop: 16 }}>
-          <Button
-            title="Prendre un nouveau rendez-vous"
-            onPress={openDoctors}
+      {loading && !appointment ? (
+        <Card>
+          <Loader />
+        </Card>
+      ) : appointmentsError ? (
+        <Card>
+          <ErrorState message="Impossible de charger vos rendez-vous." onRetry={reload} />
+        </Card>
+      ) : appointment ? (
+        <Card onPress={() => navigation.navigate('Mes RDV')} accessibilityLabel="Voir le rendez-vous">
+          <View style={s.apptHead}>
+            <Avatar name={appointment.doctor_name} size={48} />
+            <View style={s.flex}>
+              <Text style={type.h3} numberOfLines={1}>
+                {doctorDisplayName(appointment.doctor_name)}
+              </Text>
+              <Text style={s.muted} numberOfLines={1}>
+                {appointment.specialty}
+              </Text>
+            </View>
+            <StatusBadge status={appointment.status} />
+          </View>
+          <View style={s.apptInfo}>
+            <View style={s.infoItem}>
+              <Icon name="calendar-outline" size="sm" color={color.primary} />
+              <Text style={s.infoText}>{formatDate(appointment.starts_at)}</Text>
+            </View>
+            <View style={s.infoItem}>
+              <Icon name="time-outline" size="sm" color={color.primary} />
+              <Text style={s.infoText}>{formatTime(appointment.starts_at)}</Text>
+            </View>
+          </View>
+        </Card>
+      ) : (
+        <Card>
+          <EmptyState
+            icon="calendar-outline"
+            title="Aucun rendez-vous à venir"
+            message="Réservez une consultation en quelques secondes."
           />
-        </View>
+        </Card>
+      )}
 
-        {/* Prochain rendez-vous */}
-        <View style={s.heading}>
-          <Text style={ui.h2}>Prochain rendez-vous</Text>
+      <SectionTitle title="Spécialités médicales" actionLabel="Toutes" onAction={openDoctors} />
 
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Mes RDV')}
+      <View style={s.specialties}>
+        {SPECIALTIES.map((sp) => (
+          <Pressable
+            key={sp.label}
+            accessibilityRole="button"
+            onPress={openDoctors}
+            style={({ pressed }) => [s.specialty, pressed && s.pressed]}
           >
-            <Text style={s.link}>Voir mes RDV</Text>
-          </TouchableOpacity>
-        </View>
-
-        {loading ? (
-          <ActivityIndicator color={colors.primary} />
-        ) : appointmentsError ? (
-          <View style={ui.card}>
-            <Text style={ui.muted}>
-              Impossible de charger vos rendez-vous.
-            </Text>
-          </View>
-        ) : appointment ? (
-          <View style={ui.card}>
-            <Text style={ui.label}>
-              {appointment.doctor_name}
-            </Text>
-
-            <Text style={ui.muted}>
-              {appointment.specialty}
-            </Text>
-
-            <View style={s.info}>
-              <Text style={s.infoText}>
-                {new Date(appointment.starts_at).toLocaleDateString(
-                  'fr-FR',
-                  {
-                    weekday: 'long',
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                  }
-                )}
-              </Text>
-
-              <Text style={s.infoText}>
-                {new Date(appointment.starts_at).toLocaleTimeString(
-                  'fr-FR',
-                  {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  }
-                )}
-              </Text>
+            <View style={s.specialtyIcon}>
+              <Icon name={sp.icon} size="lg" color={color.primary} />
             </View>
-
-            <Text style={ui.muted}>
-              Statut : {
-                appointment.status === 'confirmed'
-                  ? 'Confirmé'
-                  : 'En attente'
-              }
+            <Text style={s.specialtyText} numberOfLines={1}>
+              {sp.label}
             </Text>
-          </View>
-        ) : (
-          <View style={ui.card}>
-            <Text style={ui.muted}>
-              Vous n'avez aucun rendez-vous à venir.
-            </Text>
-          </View>
-        )}
+          </Pressable>
+        ))}
+      </View>
 
-        {/* Spécialités médicales */}
-        <View style={s.heading}>
-          <Text style={ui.h2}>Spécialités médicales</Text>
+      <SectionTitle title="Médecins recommandés" />
 
-          <TouchableOpacity onPress={openDoctors}>
-            <Text style={s.link}>Toutes</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={s.specialties}>
-          {[
-            ['✚', 'Généraliste'],
-            ['♡', 'Pédiatre'],
-            ['♧', 'Dentiste'],
-            ['♥', 'Cardiologie'],
-          ].map(([symbol, label]) => (
-            <TouchableOpacity
-              key={label}
-              style={s.specialty}
-              onPress={openDoctors}
-            >
-              <Text style={s.specialIcon}>{symbol}</Text>
-
-              <Text style={s.specialText}>
-                {label}
-              </Text>
-            </TouchableOpacity>
+      {loading && doctors.length === 0 ? (
+        <Card>
+          <Loader />
+        </Card>
+      ) : doctorsError ? (
+        <Card>
+          <ErrorState message="Impossible de charger les médecins." onRetry={reload} />
+        </Card>
+      ) : doctors.length === 0 ? (
+        <Card>
+          <EmptyState icon="medkit-outline" title="Aucun médecin disponible" />
+        </Card>
+      ) : (
+        <Card style={s.listCard}>
+          {doctors.map((doctor, i) => (
+            <ListItem
+              key={doctor.id}
+              title={doctorDisplayName(doctor.name)}
+              subtitle={doctor.specialty}
+              left={<Avatar name={doctor.name} size={44} />}
+              onPress={() => navigation.navigate('DoctorProfile', { doctorId: doctor.id })}
+              style={i > 0 ? s.divider : undefined}
+            />
           ))}
-        </View>
-
-        {/* Médecins recommandés */}
-        <Text style={[ui.h2, ui.section]}>
-          Médecins recommandés
-        </Text>
-
-        {loading ? (
-          <ActivityIndicator color={colors.primary} />
-        ) : doctorsError ? (
-          <Text style={ui.muted}>
-            Impossible de charger les médecins.
-          </Text>
-        ) : doctors.length === 0 ? (
-          <Text style={ui.muted}>
-            Aucun médecin disponible.
-          </Text>
-        ) : (
-          doctors.map(doctor => (
-            <View style={ui.card} key={doctor.id}>
-              <View style={ui.line}>
-                <Avatar
-                  initials={doctor.initials}
-                  tint={colors.primary}
-                />
-
-                <View style={{ flex: 1 }}>
-                  <Text style={ui.label}>
-                    {doctor.name}
-                  </Text>
-
-                  <Text style={ui.muted}>
-                    {doctor.specialty}
-                  </Text>
-                </View>
-
-                <TouchableOpacity onPress={openDoctors}>
-                  <Text style={s.link}>Voir →</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))
-        )}
-      </ScrollView>
-    </View>
+        </Card>
+      )}
+    </Screen>
   );
 }
 
 const s = StyleSheet.create({
-  greet: {
-    fontSize: 23,
-    fontWeight: '900',
-    color: colors.text,
+  flex: { flex: 1, minWidth: 0 },
+  muted: { ...type.caption, color: color.textMuted, marginTop: 2 },
+  apptHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  apptInfo: {
+    marginTop: space.sm,
+    backgroundColor: color.primarySubtle,
+    borderRadius: radius.md,
+    padding: space.sm,
+    gap: space.xs,
   },
-
-  heading: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 25,
-    marginBottom: 8,
-  },
-
-  link: {
-    color: colors.primary,
-    fontWeight: '700',
-    fontSize: 12,
-  },
-
-  info: {
-    backgroundColor: '#F0F5FF',
-    padding: 12,
-    borderRadius: 10,
-    marginVertical: 12,
-  },
-
-  infoText: {
-    color: '#334B70',
-    fontSize: 12,
-    marginVertical: 3,
-  },
-
-  specialties: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-
+  infoItem: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  infoText: { ...type.bodyMedium, color: color.text, textTransform: 'capitalize' },
+  specialties: { flexDirection: 'row', gap: space.xs },
   specialty: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
+    flex: 1,
     alignItems: 'center',
-    paddingVertical: 14,
-    width: '23%',
-    borderWidth: 1,
-    borderColor: '#EEF1F7',
+    gap: space.xs,
+    paddingVertical: space.sm,
+    backgroundColor: color.surface,
+    borderRadius: radius.lg,
+    ...shadow.soft,
   },
-
-  specialIcon: {
-    fontSize: 24,
-    color: colors.primary,
+  specialtyIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.full,
+    backgroundColor: color.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-
-  specialText: {
-    fontSize: 10,
-    color: colors.text,
-    marginTop: 7,
-    fontWeight: '700',
-  },
+  specialtyText: { ...type.caption, color: color.text },
+  pressed: { opacity: 0.85 },
+  listCard: { paddingVertical: space.xxs },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: color.border },
 });

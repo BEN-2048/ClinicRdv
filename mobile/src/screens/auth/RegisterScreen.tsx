@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator,
-} from 'react-native';
+import { Text, View } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { errorMessage } from '../../api/client';
-import { colors } from '../../theme/colors';
+import { Button, Checkbox, Input, Notice } from '../../components/ui';
+import { AuthLayout, PasswordInput, auth } from './shared';
 
 export default function RegisterScreen({ navigation }: any) {
   const { register } = useAuth();
@@ -16,7 +14,6 @@ export default function RegisterScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -58,6 +55,7 @@ export default function RegisterScreen({ navigation }: any) {
         email: email.trim().toLowerCase(),
         password,
       });
+      navigation.navigate('VerifyEmail', { email: email.trim().toLowerCase() });
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -66,209 +64,70 @@ export default function RegisterScreen({ navigation }: any) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.logo}>
-          <Text style={styles.logoText}>+</Text>
+    <AuthLayout title="Créer un compte" subtitle="Rejoignez ClinicRDV et prenez soin de votre santé.">
+      <View style={auth.form}>
+        <Text style={auth.cardTitle}>Inscription</Text>
+        <Text style={auth.cardSubtitle}>Espace patient</Text>
+
+        {error ? <Notice tone="danger" message={error} /> : null}
+
+        <Input label="Prénom *" icon="person-outline" value={firstName} onChangeText={setFirstName} placeholder="Votre prénom" editable={!busy} />
+        <Input label="Nom *" icon="person-outline" value={lastName} onChangeText={setLastName} placeholder="Votre nom" editable={!busy} />
+        <Input
+          label="Téléphone *"
+          icon="call-outline"
+          value={phone}
+          onChangeText={setPhone}
+          placeholder="+243..."
+          keyboardType="phone-pad"
+          editable={!busy}
+        />
+        <Input
+          label="Adresse e-mail *"
+          icon="mail-outline"
+          value={email}
+          onChangeText={setEmail}
+          placeholder="exemple@email.com"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          editable={!busy}
+        />
+        <PasswordInput
+          label="Mot de passe *"
+          value={password}
+          onChangeText={setPassword}
+          placeholder="8 caractères minimum"
+          editable={!busy}
+        />
+        <PasswordInput
+          label="Confirmer le mot de passe *"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          placeholder="Confirmez votre mot de passe"
+          editable={!busy}
+        />
+
+        <Checkbox
+          checked={accepted}
+          onChange={setAccepted}
+          disabled={busy}
+          label="J'accepte les conditions d'utilisation et la politique de confidentialité."
+        />
+
+        <Button title="Créer mon compte" icon="person-add-outline" loading={busy} onPress={submit} />
+
+        <View style={auth.linkRow}>
+          <Text style={auth.muted}>Déjà un compte ?</Text>
+          <Button
+            title="Se connecter"
+            variant="ghost"
+            size="sm"
+            fullWidth={false}
+            onPress={() => navigation.navigate('Login')}
+          />
         </View>
-
-        <Text style={styles.brand}>ClinicRDV</Text>
-        <Text style={styles.title}>Créer un compte</Text>
-        <Text style={styles.subtitle}>
-          Rejoignez ClinicRDV et prenez soin de votre santé.
-        </Text>
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Inscription</Text>
-          <Text style={styles.sectionSubtitle}>Espace patient</Text>
-
-          <View style={styles.roleBox}>
-            <Text style={styles.roleText}>Patient</Text>
-          </View>
-
-          {!!error && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
-
-          <Text style={styles.label}>Prénom *</Text>
-          <TextInput style={styles.input} value={firstName}
-            onChangeText={setFirstName} placeholder="Votre prénom"
-            editable={!busy} />
-
-          <Text style={styles.label}>Nom *</Text>
-          <TextInput style={styles.input} value={lastName}
-            onChangeText={setLastName} placeholder="Votre nom"
-            editable={!busy} />
-
-          <Text style={styles.label}>Téléphone *</Text>
-          <TextInput style={styles.input} value={phone}
-            onChangeText={setPhone} placeholder="+243..."
-            keyboardType="phone-pad" editable={!busy} />
-
-          <Text style={styles.label}>Adresse e-mail *</Text>
-          <TextInput style={styles.input} value={email}
-            onChangeText={setEmail} placeholder="exemple@email.com"
-            keyboardType="email-address" autoCapitalize="none"
-            autoCorrect={false} editable={!busy} />
-
-          <Text style={styles.label}>Mot de passe *</Text>
-          <View style={styles.passwordBox}>
-            <TextInput style={styles.passwordInput} value={password}
-              onChangeText={setPassword} placeholder="8 caractères minimum"
-              secureTextEntry={!showPassword} editable={!busy} />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-              <Text style={styles.showText}>
-                {showPassword ? 'Masquer' : 'Afficher'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.label}>Confirmer le mot de passe *</Text>
-          <TextInput style={styles.input} value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            placeholder="Confirmez votre mot de passe"
-            secureTextEntry={!showPassword} editable={!busy} />
-
-          <TouchableOpacity
-            style={styles.termsRow}
-            onPress={() => setAccepted(!accepted)}
-            disabled={busy}
-          >
-            <View style={[styles.checkbox, accepted && styles.checked]}>
-              {accepted && <Text style={styles.checkText}>✓</Text>}
-            </View>
-            <Text style={styles.termsText}>
-              J'accepte les conditions d'utilisation et la politique de confidentialité.
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.button, busy && styles.disabled]}
-            onPress={submit} disabled={busy}
-          >
-            {busy
-              ? <ActivityIndicator color="#FFFFFF" />
-              : <Text style={styles.buttonText}>Créer mon compte</Text>}
-          </TouchableOpacity>
-
-          <View style={styles.loginRow}>
-            <Text style={styles.muted}>Déjà  un compte ? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.link}>Se connecter</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <Text style={styles.footer}>ClinicRDV — Votre santé, notre priorité</Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </View>
+    </AuthLayout>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
-  content: {
-    flexGrow: 1, paddingHorizontal: 22, paddingTop: 45,
-    paddingBottom: 35, alignItems: 'center',
-  },
-  logo: {
-    width: 64, height: 64, borderRadius: 20,
-    backgroundColor: colors.primary, justifyContent: 'center',
-    alignItems: 'center', marginBottom: 12,
-  },
-  logoText: { color: '#FFFFFF', fontSize: 44, fontWeight: '700' },
-  brand: {
-    fontSize: 27, fontWeight: '800', color: colors.primary,
-    marginBottom: 14,
-  },
-  title: {
-    fontSize: 24, fontWeight: '800', color: colors.text,
-    textAlign: 'center', marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14, color: colors.muted, textAlign: 'center',
-    lineHeight: 21, marginBottom: 25,
-  },
-  card: {
-    width: '100%', maxWidth: 440, backgroundColor: colors.card,
-    borderRadius: 20, padding: 22, borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  sectionTitle: {
-    fontSize: 22, fontWeight: '800', color: colors.text,
-    textAlign: 'center', marginBottom: 6,
-  },
-  sectionSubtitle: {
-    fontSize: 13, color: colors.muted, textAlign: 'center',
-    marginBottom: 20,
-  },
-  roleBox: {
-    backgroundColor: colors.primary, padding: 13,
-    borderRadius: 10, alignItems: 'center', marginBottom: 22,
-  },
-  roleText: { color: '#FFFFFF', fontWeight: '700' },
-  label: {
-    fontSize: 14, fontWeight: '700', color: colors.text,
-    marginBottom: 8,
-  },
-  input: {
-    height: 52, borderWidth: 1, borderColor: '#CBD5E1',
-    borderRadius: 10, paddingHorizontal: 14, fontSize: 15,
-    color: colors.text, backgroundColor: '#FFFFFF', marginBottom: 18,
-  },
-  passwordBox: {
-    height: 52, flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 10,
-    paddingHorizontal: 14, marginBottom: 18,
-  },
-  passwordInput: { flex: 1, fontSize: 15, color: colors.text },
-  showText: {
-    color: colors.primary, fontSize: 12, fontWeight: '700',
-    marginLeft: 8,
-  },
-  termsRow: {
-    flexDirection: 'row', alignItems: 'center', marginBottom: 22,
-  },
-  checkbox: {
-    width: 20, height: 20, borderWidth: 1.5,
-    borderColor: '#94A3B8', borderRadius: 5,
-    marginRight: 10, alignItems: 'center', justifyContent: 'center',
-  },
-  checked: {
-    backgroundColor: colors.primary, borderColor: colors.primary,
-  },
-  checkText: { color: '#FFFFFF', fontWeight: '800' },
-  termsText: {
-    flex: 1, color: colors.text, fontSize: 12, lineHeight: 19,
-  },
-  button: {
-    backgroundColor: colors.primary, height: 52,
-    borderRadius: 11, alignItems: 'center', justifyContent: 'center',
-  },
-  buttonText: {
-    color: '#FFFFFF', fontSize: 16, fontWeight: '800',
-  },
-  disabled: { opacity: 0.65 },
-  loginRow: {
-    flexDirection: 'row', justifyContent: 'center',
-    marginTop: 22, flexWrap: 'wrap',
-  },
-  muted: { color: colors.muted, fontSize: 13 },
-  link: { color: colors.primary, fontSize: 13, fontWeight: '700' },
-  errorBox: {
-    backgroundColor: '#FEF2F2', borderColor: '#FECACA',
-    borderWidth: 1, borderRadius: 10, padding: 12, marginBottom: 18,
-  },
-  errorText: { color: '#B91C1C', fontSize: 13 },
-  footer: {
-    fontSize: 11, color: colors.muted,
-    textAlign: 'center', marginTop: 28,
-  },
-});
-
-

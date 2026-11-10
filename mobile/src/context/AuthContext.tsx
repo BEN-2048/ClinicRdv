@@ -41,6 +41,7 @@ type Ctx = {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
+  verifyEmail: (email: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<boolean>;
   retryConnection: () => Promise<boolean>;
@@ -538,28 +539,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Inscription sans verification OTP
+  // L'inscription ne cree pas de session avant verification OTP.
   const register = async (data: RegisterData): Promise<void> => {
-    const response = await AuthApi.register(data);
+    await AuthApi.register(data);
+  };
+
+  const verifyEmail = async (email: string, code: string): Promise<void> => {
+    const { data } = await AuthApi.verifyEmail(email, code);
+
+    if (!data.token || !data.user) {
+      throw new Error("Reponse de verification incomplete.");
+    }
 
     await runOfflineSyncExclusive(async () => {
       invalidateOfflineSync();
 
-      await SecureStore.setItemAsync("token", response.data.token);
-      await SecureStore.setItemAsync("user", JSON.stringify(response.data.user));
+      await SecureStore.setItemAsync("token", data.token);
+      await SecureStore.setItemAsync("user", JSON.stringify(data.user));
 
-      setUser(response.data.user);
+      setUser(data.user);
       setAuthStatus("authenticated");
     });
 
     try {
       await saveCachedProfile({
-        user_id: String(response.data.user.id),
-        email: response.data.user.email,
-        role: response.data.user.role,
-        first_name: response.data.user.first_name,
-        last_name: response.data.user.last_name,
-        phone: response.data.user.phone ?? null,
+        user_id: String(data.user.id),
+        email: data.user.email,
+        role: data.user.role,
+        first_name: data.user.first_name,
+        last_name: data.user.last_name,
+        phone: data.user.phone ?? null,
         updated_at: new Date().toISOString(),
       });
     } catch (error) {
@@ -569,10 +578,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await syncOfflineData();
     } catch (error) {
-      console.warn("Synchronisation apres inscription impossible :", error);
+      console.warn("Synchronisation apres verification impossible :", error);
     }
   };
-
   const logout = async (): Promise<void> => {
     const snapshot = await captureSession();
 
@@ -650,6 +658,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         login,
         register,
+        verifyEmail,
         logout,
         refreshUser,
         retryConnection,

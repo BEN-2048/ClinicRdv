@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Text, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-
 import { DoctorInput, StaffApi } from '../../api/services';
-import { Button, Chip, Header, ui } from '../../components/ClinicUI';
-import { colors } from '../../theme/colors';
-import { Loading, errorText, shared } from './shared';
+import { Button, Card, Chip, InfoRow, Input, Loader, Notice, Screen } from '../../components/ui';
+import { type } from '../../theme';
+import { FieldGroupLabel, Wrap, errorText, shared } from './shared';
 
 type Specialty = { id: number; name: string };
 const DURATIONS = [15, 30, 45, 60];
@@ -99,61 +98,71 @@ export default function SecretaryDoctorFormScreen() {
     }
   };
 
-  if (loading) return <View style={ui.page}><Loading label="Chargement..." /></View>;
-
-  const field = (label: string, value: string, onChange: (v: string) => void, extra: object = {}) => (
-    <>
-      <Text style={ui.label}>{label}</Text>
-      <TextInput
-        style={[ui.field, { marginTop: 6 }]}
-        value={value}
-        onChangeText={onChange}
-        placeholderTextColor={colors.muted}
-        {...extra}
-      />
-    </>
-  );
+  if (loading) return <Loader fullscreen label="Chargement..." />;
 
   return (
-    <View style={ui.page}>
-      <Header title={isEdit ? `Dr. ${lastName}` : 'Nouveau médecin'} subtitle="Fiche médecin" />
-      <ScrollView contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
-        {error && <Text style={shared.error}>{error}</Text>}
+    <KeyboardAvoidingView style={shared.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <Screen footer={<Button title="Enregistrer" icon="save-outline" loading={saving} onPress={submit} />}>
+        {error ? <Notice tone="danger" message={error} /> : null}
 
-        <Text style={ui.h2}>Compte</Text>
-        {isEdit ? (
-          <View style={ui.card}><Text style={ui.muted}>E-mail de connexion : {email}</Text></View>
-        ) : (
-          <>
-            {field('E-mail', email, setEmail, { autoCapitalize: 'none', keyboardType: 'email-address' })}
-            {field('Mot de passe initial', password, setPassword, { secureTextEntry: true, placeholder: '8 caractères minimum' })}
-          </>
-        )}
+        <Card style={shared.card}>
+          <Text style={type.h2}>Compte</Text>
+          {isEdit ? (
+            <InfoRow icon="mail-outline" label="E-mail de connexion" value={email} />
+          ) : (
+            <>
+              <Input
+                label="E-mail"
+                icon="mail-outline"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+              <Input
+                label="Mot de passe initial"
+                icon="lock-closed-outline"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                placeholder="8 caractères minimum"
+              />
+            </>
+          )}
+        </Card>
 
-        <Text style={[ui.h2, ui.section]}>Identité</Text>
-        {field('Prénom', firstName, setFirstName)}
-        {field('Nom', lastName, setLastName)}
-        {field('Téléphone', phone, setPhone, { keyboardType: 'phone-pad' })}
+        <Card style={shared.card}>
+          <Text style={type.h2}>Identité</Text>
+          <Input label="Prénom" value={firstName} onChangeText={setFirstName} />
+          <Input label="Nom" value={lastName} onChangeText={setLastName} />
+          <Input label="Téléphone" icon="call-outline" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+        </Card>
 
-        <Text style={[ui.h2, ui.section]}>Exercice</Text>
-        <Text style={ui.label}>Spécialité</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 6, marginBottom: 8 }}>
-          {specialties.map((sp) => (
-            <Chip key={sp.id} title={sp.name} active={specialtyId === sp.id} onPress={() => setSpecialtyId(sp.id)} />
-          ))}
-        </View>
-        <Text style={ui.label}>Durée de consultation</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 6, marginBottom: 8 }}>
-          {DURATIONS.map((m) => (
-            <Chip key={m} title={`${m} min`} active={minutes === m} onPress={() => setMinutes(m)} />
-          ))}
-        </View>
-        {field('Tarif (USD)', fee, setFee, { keyboardType: 'decimal-pad' })}
-        {field('Langues', languages, setLanguages, { placeholder: 'fr, sw, en' })}
-        {field('Présentation', bio, setBio, { multiline: true, textAlignVertical: 'top', style: [ui.field, { marginTop: 6, minHeight: 80 }] })}
-
-        <Button title={saving ? 'Enregistrement...' : 'Enregistrer'} disabled={saving} onPress={submit} />
-      </ScrollView>
-    </View>
+        <Card style={shared.card}>
+          <Text style={type.h2}>Exercice</Text>
+          <FieldGroupLabel>Spécialité</FieldGroupLabel>
+          <Wrap>
+            {specialties.map((sp) => (
+              <Chip key={sp.id} label={sp.name} selected={specialtyId === sp.id} onPress={() => setSpecialtyId(sp.id)} />
+            ))}
+          </Wrap>
+          <FieldGroupLabel>Durée de consultation</FieldGroupLabel>
+          <Wrap>
+            {DURATIONS.map((m) => (
+              <Chip key={m} label={`${m} min`} selected={minutes === m} onPress={() => setMinutes(m)} />
+            ))}
+          </Wrap>
+          <View style={shared.actions}>
+            <View style={shared.action}>
+              <Input label="Tarif (USD)" icon="cash-outline" value={fee} onChangeText={setFee} keyboardType="decimal-pad" />
+            </View>
+            <View style={shared.action}>
+              <Input label="Langues" icon="language-outline" value={languages} onChangeText={setLanguages} placeholder="fr, sw, en" />
+            </View>
+          </View>
+          <Input label="Présentation" value={bio} onChangeText={setBio} multiline />
+        </Card>
+      </Screen>
+    </KeyboardAvoidingView>
   );
 }
