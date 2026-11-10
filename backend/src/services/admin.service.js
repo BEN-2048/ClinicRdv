@@ -76,11 +76,15 @@ exports.stats = async ({ from, to }) => {
 
 exports.searchPatients = async ({ q }) => {
   const r = await pool.query(
-    `SELECT id, email, first_name, last_name, phone FROM users
-      WHERE role='patient'
-        AND ($1::text IS NULL OR last_name ILIKE '%'||$1||'%' OR first_name ILIKE '%'||$1||'%'
-             OR email ILIKE '%'||$1||'%' OR phone ILIKE '%'||$1||'%')
-      ORDER BY last_name, first_name LIMIT 50`, [q || null]);
+    `SELECT u.id, u.email, u.first_name, u.last_name, u.phone,
+            p.id AS patient_id, p.patient_number
+       FROM users u
+       LEFT JOIN patients p ON p.user_id = u.id
+      WHERE u.role='patient'
+        AND ($1::text IS NULL OR u.last_name ILIKE '%'||$1||'%' OR u.first_name ILIKE '%'||$1||'%'
+             OR u.email ILIKE '%'||$1||'%' OR u.phone ILIKE '%'||$1||'%'
+             OR p.patient_number = upper($1))
+      ORDER BY u.last_name, u.first_name LIMIT 50`, [q?.trim() || null]);
   return r.rows;
 };
 

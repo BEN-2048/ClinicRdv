@@ -138,6 +138,14 @@ export default function ProfileScreen() {
           </>
         ) : (
           <>
+            {user?.role === 'patient' ? (
+              <InfoRow
+                icon="id-card-outline"
+                label="N° patient"
+                value={user.patient_number || 'En cours d’attribution'}
+                strong
+              />
+            ) : null}
             <InfoRow icon="person-outline" label="Prénom" value={user?.first_name || 'Non renseigné'} strong />
             <InfoRow icon="person-outline" label="Nom" value={user?.last_name || 'Non renseigné'} strong />
             <InfoRow icon="mail-outline" label="E-mail" value={user?.email || 'Non renseigné'} />
