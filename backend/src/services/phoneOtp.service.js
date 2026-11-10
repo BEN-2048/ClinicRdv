@@ -150,3 +150,27 @@ exports.resendSignup = async (phone) => {
     client.release();
   }
 };
+
+exports.notify = async (phone, text) => {
+  let driverName = env.smsDriver;
+  try {
+    await assertCaps(pool, phone);
+    const driver = getSmsDriver();
+    driverName = driver.name;
+    await driver.send(phone, toGsm7(text));
+    await pool.query(
+      `INSERT INTO sms_outbox (destination, purpose, driver, status) VALUES ($1, 'notice', $2, 'sent')`,
+      [phone, driverName]
+    );
+    return true;
+  } catch (error) {
+    await pool.query(
+      `INSERT INTO sms_outbox (destination, purpose, driver, status, error) VALUES ($1, 'notice', $2, 'failed', $3)`,
+      [phone, String(driverName).slice(0, 20), String(error.message).slice(0, 255)]
+    ).catch(() => {});
+    return false;
+  }
+};
+
+exports.httpError = httpError;
+exports.sameHash = sameHash;

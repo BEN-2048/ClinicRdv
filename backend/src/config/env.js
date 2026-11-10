@@ -15,6 +15,7 @@ module.exports = {
 
   brevoApiKey: process.env.BREVO_API_KEY,
   brevoSenderEmail: process.env.BREVO_SENDER_EMAIL,
+  emailDriver: process.env.EMAIL_DRIVER,
 
   otpSecret: process.env.OTP_SECRET,
   otpExpiresMinutes: positiveInteger(process.env.OTP_EXPIRES_MINUTES, 10),

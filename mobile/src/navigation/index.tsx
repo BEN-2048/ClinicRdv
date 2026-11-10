@@ -13,6 +13,8 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import VerifyEmailScreen from '../screens/auth/VerifyEmailScreen';
 import VerifyPhoneScreen from '../screens/auth/VerifyPhoneScreen';
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 
 import HomeScreen from '../screens/patient/HomeScreen';
 import DoctorListScreen from '../screens/patient/DoctorListScreen';
@@ -42,6 +44,9 @@ import ClinicManagementScreen from '../screens/admin/ClinicManagementScreen';
 import ProfileScreen from '../screens/common/ProfileScreen';
 import OfflineScreen from '../screens/common/OfflineScreen';
 import DevicesScreen from '../screens/common/DevicesScreen';
+import ChangePasswordScreen from '../screens/common/ChangePasswordScreen';
+import ChangePhoneScreen from '../screens/common/ChangePhoneScreen';
+import ChangeEmailScreen from '../screens/common/ChangeEmailScreen';
 
 import SecretaryDashboardScreen from '../screens/secretary/SecretaryDashboardScreen';
 import SecretaryAppointmentsScreen from '../screens/secretary/SecretaryAppointmentsScreen';
@@ -240,6 +245,16 @@ export default function RootNavigator() {
               component={VerifyPhoneScreen}
               options={{ headerShown: false }}
             />
+            <Stack.Screen
+              name="ForgotPassword"
+              component={ForgotPasswordScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ResetPassword"
+              component={ResetPasswordScreen}
+              options={{ headerShown: false }}
+            />
           </>
         ) : (
           <>
@@ -359,6 +374,24 @@ export default function RootNavigator() {
               name="Devices"
               component={DevicesScreen}
               options={{ title: 'Mes appareils' }}
+            />
+
+            <Stack.Screen
+              name="ChangePassword"
+              component={ChangePasswordScreen}
+              options={{ title: 'Changer le mot de passe' }}
+            />
+
+            <Stack.Screen
+              name="ChangePhone"
+              component={ChangePhoneScreen}
+              options={{ title: 'Changer de numéro' }}
+            />
+
+            <Stack.Screen
+              name="ChangeEmail"
+              component={ChangeEmailScreen}
+              options={{ title: 'Adresse e-mail' }}
             />
 
             <Stack.Screen

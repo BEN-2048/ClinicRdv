@@ -37,4 +37,4 @@ exports.getSmsDriver = () => {
 };
 
 exports.toGsm7 = (text) =>
-  text.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[’‘]/g, "'").replace(/[^\x20-\x7E\n]/g, '');
+  text.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[’‘]/g, "'").replace(/•/g, '*').replace(/[^\x20-\x7E\n]/g, '');

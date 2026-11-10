@@ -96,7 +96,17 @@ export default function LoginScreen({ navigation }: any) {
           onSubmitEditing={submit}
         />
 
-        <Checkbox checked={rememberMe} onChange={setRememberMe} label="Se souvenir de moi" />
+        <View style={auth.linkRow}>
+          <Checkbox checked={rememberMe} onChange={setRememberMe} label="Se souvenir de moi" />
+          <View style={{ flex: 1 }} />
+          <Button
+            title="Mot de passe oublié ?"
+            variant="ghost"
+            size="sm"
+            fullWidth={false}
+            onPress={() => navigation.navigate('ForgotPassword', { identifier: email.trim() })}
+          />
+        </View>
 
         <Button title="Se connecter" icon="log-in-outline" loading={busy} onPress={submit} />
 

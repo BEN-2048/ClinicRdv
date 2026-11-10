@@ -26,6 +26,8 @@ export type User = {
   id: number;
   email: string | null;
   phone_e164?: string | null;
+  phone_verified_at?: string | null;
+  pending_email?: string | null;
   role: Role;
   first_name: string;
   last_name: string;

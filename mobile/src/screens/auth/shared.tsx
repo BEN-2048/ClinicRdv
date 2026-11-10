@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInputProps, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, IconButton, Input } from '../../components/ui';
@@ -66,6 +66,7 @@ export const auth = StyleSheet.create({
 });
 
 const s = StyleSheet.create({
+  code: { ...type.h2, letterSpacing: 8, textAlign: 'center' },
   page: { flex: 1, backgroundColor: color.page },
   content: { flexGrow: 1, alignItems: 'center', paddingHorizontal: space.lg },
   logo: {
@@ -91,3 +92,31 @@ const s = StyleSheet.create({
   },
   footer: { ...type.caption, color: color.textMuted, textAlign: 'center', marginTop: space.lg },
 });
+
+export function useCountdown(initial = 0) {
+  const [seconds, setSeconds] = useState(initial);
+
+  useEffect(() => {
+    if (seconds <= 0) return;
+    const timer = setTimeout(() => setSeconds((value) => value - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [seconds]);
+
+  return [seconds, setSeconds] as const;
+}
+
+export function CodeInput(props: TextInputProps & { label?: string }) {
+  return (
+    <Input
+      icon="key-outline"
+      keyboardType="number-pad"
+      maxLength={6}
+      placeholder="000000"
+      autoComplete="sms-otp"
+      textContentType="oneTimeCode"
+      style={s.code}
+      {...props}
+      onChangeText={(value) => props.onChangeText?.(value.replace(/\D/g, '').slice(0, 6))}
+    />
+  );
+}

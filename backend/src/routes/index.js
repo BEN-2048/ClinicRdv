@@ -52,6 +52,8 @@ router.post(
 
 router.post('/auth/verify-phone', ...limits.verifyPhone, validate(s.verifyPhone), auth.verifyPhone);
 router.post('/auth/resend-phone-otp', ...limits.resendPhone, validate(s.resendPhoneOtp), auth.resendPhoneOtp);
+router.post('/auth/forgot-password', ...limits.forgotPassword, validate(s.forgotPassword), auth.forgotPassword);
+router.post('/auth/reset-password', ...limits.resetPassword, validate(s.resetPassword), auth.resetPassword);
 
 const refreshLimiter = createUserLimiter('auth-refresh', 600);
 router.post('/auth/refresh', refreshLimiter, validate(s.refreshTokenBody), auth.refresh);
@@ -88,6 +90,17 @@ router.patch(
   validate(s.updateProfile),
   users.updateMe
 );
+
+const passwordLimiter = createUserLimiter('account-password', 10);
+const contactLimiter = createUserLimiter('account-contact', 20);
+const confirmLimiter = createUserLimiter('account-confirm', 30);
+router.post('/users/me/password', authenticate, passwordLimiter, validate(s.changePassword), users.changePassword);
+router.post('/users/me/phone', authenticate, contactLimiter, validate(s.phoneChange), users.requestPhoneChange);
+router.post('/users/me/phone/resend', authenticate, contactLimiter, users.resendPhoneChange);
+router.post('/users/me/phone/confirm', authenticate, confirmLimiter, validate(s.confirmCode), users.confirmPhoneChange);
+router.post('/users/me/email', authenticate, contactLimiter, validate(s.emailChange), users.requestEmailChange);
+router.post('/users/me/email/resend', authenticate, contactLimiter, users.resendEmailChange);
+router.post('/users/me/email/confirm', authenticate, confirmLimiter, validate(s.confirmCode), users.confirmEmailChange);
 
 router.get('/patients/mine', authenticate, requireRole('patient'), patients.mine);
 

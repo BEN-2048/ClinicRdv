@@ -50,6 +50,7 @@ export default function ProfileScreen() {
   const role = user?.role ? roleLabels[user.role] : 'Utilisateur';
   const isPatient = user?.role === 'patient';
   const isDoctor = user?.role === 'doctor';
+  const phoneLocked = Boolean(user?.phone_verified_at);
 
   const saveProfile = async () => {
     if (!firstName.trim() || !lastName.trim()) {
@@ -58,7 +59,11 @@ export default function ProfileScreen() {
     }
     try {
       setSaving(true);
-      await updateUser({ firstName: firstName.trim(), lastName: lastName.trim(), phone: phone.trim() || null });
+      await updateUser(
+        phoneLocked
+          ? { firstName: firstName.trim(), lastName: lastName.trim() }
+          : { firstName: firstName.trim(), lastName: lastName.trim(), phone: phone.trim() || null }
+      );
       setEditing(false);
       Alert.alert('Succès', 'Votre profil a été mis à jour.');
     } catch {
@@ -117,14 +122,16 @@ export default function ProfileScreen() {
           <>
             <Input label="Prénom" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
             <Input label="Nom" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
-            <Input
-              label="Téléphone"
-              icon="call-outline"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              placeholder="Numéro de téléphone"
-            />
+            {phoneLocked ? null : (
+              <Input
+                label="Téléphone"
+                icon="call-outline"
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+                placeholder="Numéro de téléphone"
+              />
+            )}
             <View style={s.actions}>
               <Button
                 title="Annuler"
@@ -148,11 +155,43 @@ export default function ProfileScreen() {
             ) : null}
             <InfoRow icon="person-outline" label="Prénom" value={user?.first_name || 'Non renseigné'} strong />
             <InfoRow icon="person-outline" label="Nom" value={user?.last_name || 'Non renseigné'} strong />
-            <InfoRow icon="mail-outline" label="E-mail" value={user?.email || 'Non renseigné'} />
+            <InfoRow
+              icon="mail-outline"
+              label="E-mail"
+              value={user?.email || (user?.pending_email ? `${user.pending_email} (à confirmer)` : 'Non renseigné')}
+            />
             <InfoRow icon="call-outline" label="Téléphone" value={user?.phone || 'Non renseigné'} />
             <InfoRow icon="shield-outline" label="Type de compte" value={role} />
           </>
         )}
+      </Card>
+
+      <SectionTitle title="Sécurité du compte" />
+      <Card style={s.list}>
+        <ListItem
+          icon="key-outline"
+          title="Changer le mot de passe"
+          subtitle="Vos autres appareils seront déconnectés"
+          onPress={() => navigation.navigate('ChangePassword')}
+        />
+        <ListItem
+          icon="call-outline"
+          title="Changer de numéro"
+          subtitle="Le nouveau numéro est confirmé par SMS"
+          onPress={() => navigation.navigate('ChangePhone')}
+          style={s.divider}
+        />
+        <ListItem
+          icon="mail-outline"
+          title={user?.email ? 'Changer d’adresse e-mail' : 'Ajouter une adresse e-mail'}
+          subtitle={
+            user?.pending_email
+              ? 'Adresse en attente de confirmation'
+              : 'Pour se connecter et récupérer le compte sans SMS'
+          }
+          onPress={() => navigation.navigate('ChangeEmail')}
+          style={s.divider}
+        />
       </Card>
 
       <SectionTitle title="Paramètres" />
