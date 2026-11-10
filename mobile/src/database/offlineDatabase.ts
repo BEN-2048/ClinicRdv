@@ -2,6 +2,45 @@
 
 let databasePromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
+const SCHEMA_VERSION = 2;
+
+async function migrateOfflineDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
+  const row = await db.getFirstAsync<{ user_version: number }>("PRAGMA user_version");
+  const version = row?.user_version ?? 0;
+  if (version >= SCHEMA_VERSION) return;
+
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    if (version < 2) {
+      for (const column of [
+        "facility_id INTEGER",
+        "facility_name TEXT",
+        "facility_timezone TEXT",
+        "facility_phone TEXT",
+        "facility_emergency_phone TEXT",
+        "doctor_phone TEXT",
+      ]) {
+        await tx.execAsync(`ALTER TABLE cached_appointments ADD COLUMN ${column}`);
+      }
+      await tx.execAsync("ALTER TABLE cached_doctors ADD COLUMN phone TEXT");
+      await tx.execAsync(`
+        CREATE TABLE IF NOT EXISTS cached_facilities (
+          user_id TEXT NOT NULL,
+          facility_id INTEGER NOT NULL,
+          name TEXT NOT NULL,
+          city TEXT,
+          address TEXT,
+          phone TEXT,
+          emergency_phone TEXT,
+          timezone TEXT,
+          cached_at TEXT NOT NULL,
+          PRIMARY KEY (user_id, facility_id)
+        )
+      `);
+    }
+    await tx.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
+  });
+}
+
 export async function getOfflineDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (!databasePromise) {
     databasePromise = SQLite.openDatabaseAsync("clinicrdv-offline.db")
@@ -58,6 +97,8 @@ export async function getOfflineDatabase(): Promise<SQLite.SQLiteDatabase> {
           CREATE INDEX IF NOT EXISTS idx_cached_doctors_specialty
           ON cached_doctors(user_id, specialty);
         `);
+
+        await migrateOfflineDatabase(db);
 
         return db;
       })

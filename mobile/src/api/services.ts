@@ -258,6 +258,7 @@ export type StaffDoctor = {
   first_name: string;
   last_name: string;
   phone: string | null;
+  professional_phone?: string | null;
   specialty_id: number;
   specialty: string;
   bio: string | null;
@@ -287,6 +288,7 @@ export type DoctorInput = {
   firstName?: string;
   lastName?: string;
   phone?: string | null;
+  professionalPhone?: string | null;
   specialtyId?: number;
   bio?: string | null;
   fee?: number;
@@ -346,6 +348,7 @@ export type FacilityDetail = Omit<FacilitySummary, 'services' | 'specialties' | 
 };
 
 export type FacilitySearch = {
+  limit?: number;
   q?: string;
   city?: string;
   specialtyId?: number;

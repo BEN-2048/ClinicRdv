@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Switch, Text, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { errorMessage } from '../../api/client';
 import { AppointmentsApi, DoctorFacility, PatientProfile, PatientsApi } from '../../api/services';
 import {
   Avatar,
@@ -140,10 +141,8 @@ export default function BookingReviewScreen() {
         return;
       }
       Alert.alert(
-        'Réservation impossible',
-        err?.response?.data?.error ||
-          err?.response?.data?.message ||
-          'Une erreur est survenue lors de la réservation.'
+        'Réservation non enregistrée',
+        errorMessage(err)
       );
     } finally {
       setBooking(false);

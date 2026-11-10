@@ -7,11 +7,26 @@ import {
   isOfflineSyncGenerationValid,
   runOfflineSyncExclusive,
 } from "./offlineSyncLock";
-import { AppointmentsApi, DoctorsApi } from "../api/services";
+import { AppointmentsApi, DoctorsApi, FacilitiesApi } from "../api/services";
 import type {
   CachedAppointment,
   CachedDoctor,
+  CachedFacility,
 } from "../database/offlineRepository";
+
+const optionalText = (value: unknown) => value == null || typeof value === "string";
+
+function isValidFacility(value: unknown): value is CachedFacility {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Record<string, unknown>;
+  return (
+    Number.isSafeInteger(item.id) &&
+    Number(item.id) > 0 &&
+    typeof item.name === "string" &&
+    item.name.trim().length > 0 &&
+    ["city", "address", "phone", "emergency_phone", "timezone"].every((k) => optionalText(item[k]))
+  );
+}
 
 function isValidAppointment(value: unknown): value is CachedAppointment {
   if (!value || typeof value !== "object") return false;
@@ -32,7 +47,10 @@ function isValidAppointment(value: unknown): value is CachedAppointment {
       String(item.status)
     ) &&
     (item.doctor_name == null || typeof item.doctor_name === "string") &&
-    (item.specialty == null || typeof item.specialty === "string")
+    (item.specialty == null || typeof item.specialty === "string") &&
+    (item.facility_id == null || Number.isSafeInteger(item.facility_id)) &&
+    ["facility_name", "facility_timezone", "facility_phone", "facility_emergency_phone", "doctor_phone"]
+      .every((k) => optionalText(item[k]))
   );
 }
 function isValidDoctor(value: unknown): value is CachedDoctor {
@@ -67,6 +85,7 @@ function isValidDoctor(value: unknown): value is CachedDoctor {
 export async function fetchOfflineSyncData(): Promise<{
   appointments: CachedAppointment[];
   doctors: CachedDoctor[];
+  facilities: CachedFacility[];
 } | null> {
   const generation = getOfflineSyncGeneration();
   const initialToken = await SecureStore.getItemAsync("token");
@@ -78,10 +97,23 @@ export async function fetchOfflineSyncData(): Promise<{
     return null;
   }
 
-  const [appointmentsResponse, doctorsResponse] = await Promise.all([
+  const [appointmentsResponse, doctorsResponse, facilitiesResponse] = await Promise.all([
     AppointmentsApi.mine(),
     DoctorsApi.list(),
+    FacilitiesApi.search({ limit: 50 }).catch(() => ({ data: [] as unknown[] })),
   ]);
+
+  const facilities = (Array.isArray(facilitiesResponse.data) ? facilitiesResponse.data : [])
+    .filter(isValidFacility)
+    .map((f) => ({
+      id: f.id,
+      name: f.name,
+      city: f.city ?? null,
+      address: f.address ?? null,
+      phone: f.phone ?? null,
+      emergency_phone: f.emergency_phone ?? null,
+      timezone: f.timezone ?? null,
+    }));
 
   const appointments = appointmentsResponse.data;
   const doctors = Array.isArray(doctorsResponse.data)
@@ -90,7 +122,11 @@ export async function fetchOfflineSyncData(): Promise<{
           return doctor;
         }
 
-        const item = doctor as Record<string, unknown>;
+        const raw = doctor as Record<string, unknown>;
+        const item: Record<string, unknown> = {
+          ...raw,
+          phone: typeof raw.professional_phone === "string" ? raw.professional_phone : null,
+        };
 
         if (typeof item.languages !== "string") {
           return item;
@@ -131,6 +167,7 @@ export async function fetchOfflineSyncData(): Promise<{
   return {
     appointments: appointments as CachedAppointment[],
     doctors: doctors as CachedDoctor[],
+    facilities,
   };
 }
 
@@ -187,6 +224,7 @@ export async function syncOfflineData(): Promise<boolean> {
       userId,
       data.appointments,
       data.doctors,
+      data.facilities,
     );
 
     return true;

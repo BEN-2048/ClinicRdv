@@ -147,7 +147,7 @@ exports.listDoctors = async (scope) => {
   const r = await pool.query(
     `SELECT d.id, d.user_id, u.email, u.first_name, u.last_name, u.phone,
             d.specialty_id, s.name AS specialty, d.bio, d.fee, d.consultation_minutes,
-            d.languages, d.active, ${DOCTOR_FACILITIES} AS facilities
+            d.languages, d.active, d.professional_phone, ${DOCTOR_FACILITIES} AS facilities
        FROM doctors d JOIN users u ON u.id=d.user_id JOIN specialties s ON s.id=d.specialty_id
       WHERE $1::int[] IS NULL OR EXISTS (
         SELECT 1 FROM doctor_affiliations da WHERE da.doctor_id = d.id AND da.facility_id = ANY($1::int[]))
@@ -178,10 +178,10 @@ exports.createDoctor = async (scope, data) => {
        VALUES($1,$2,'doctor',$3,$4,$5) RETURNING id`,
       [data.email.toLowerCase(), hash, data.firstName, data.lastName, data.phone || null]);
     const d = await client.query(
-      `INSERT INTO doctors(user_id,specialty_id,bio,fee,consultation_minutes,languages)
-       VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,
+      `INSERT INTO doctors(user_id,specialty_id,bio,fee,consultation_minutes,languages,professional_phone)
+       VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
       [u.rows[0].id, data.specialtyId, data.bio || null, data.fee ?? 0,
-        data.consultationMinutes ?? 30, data.languages || 'fr']);
+        data.consultationMinutes ?? 30, data.languages || 'fr', data.professionalPhone || null]);
     await client.query(
       'INSERT INTO doctor_affiliations(doctor_id, facility_id) VALUES($1, $2)',
       [d.rows[0].id, facility.rows[0].id]);
@@ -205,7 +205,7 @@ exports.getDoctor = async (id) => {
   const r = await pool.query(
     `SELECT d.id, d.user_id, u.email, u.first_name, u.last_name, u.phone,
             d.specialty_id, s.name AS specialty, d.bio, d.fee, d.consultation_minutes,
-            d.languages, d.active, ${DOCTOR_FACILITIES} AS facilities
+            d.languages, d.active, d.professional_phone, ${DOCTOR_FACILITIES} AS facilities
        FROM doctors d JOIN users u ON u.id=d.user_id JOIN specialties s ON s.id=d.specialty_id
       WHERE d.id=$1`, [id]);
   if (!r.rowCount) throw httpError(404, 'Médecin introuvable');
@@ -222,6 +222,7 @@ const DOCTOR_FIELDS = {
   firstName: ['users', 'first_name'],
   lastName: ['users', 'last_name'],
   phone: ['users', 'phone'],
+  professionalPhone: ['doctors', 'professional_phone'],
 };
 
 exports.updateDoctor = async (id, data, scope = null) => {

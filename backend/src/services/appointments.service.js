@@ -224,7 +224,12 @@ exports.listForUser = async (user, { scope } = {}) => {
             pp.patient_number,
             pp.first_name || ' ' || pp.last_name AS patient_name,
             f.name AS facility_name,
-            f.timezone AS facility_timezone
+            f.timezone AS facility_timezone,
+            f.phone AS facility_phone,
+            f.emergency_phone AS facility_emergency_phone,
+            f.address AS facility_address,
+            f.city AS facility_city,
+            d.professional_phone AS doctor_phone
        FROM appointments a
        JOIN doctors d ON d.id = a.doctor_id
        JOIN users u ON u.id = d.user_id

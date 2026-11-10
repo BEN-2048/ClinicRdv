@@ -88,8 +88,10 @@ exports.createDoctor = z.object({
   consultationMinutes: consultationMinutes.optional(),
   languages: z.string().max(100).optional(),
   facilityId: z.number().int().positive().optional(),
+  professionalPhone: z.string().trim().regex(/^\+?[0-9 ]{6,20}$/, 'Numéro invalide').optional(),
 });
 exports.updateDoctor = z.object({
+  professionalPhone: z.string().trim().regex(/^\+?[0-9 ]{6,20}$/, 'Numéro invalide').nullable().optional(),
   firstName: z.string().min(1).max(80).optional(),
   lastName: z.string().min(1).max(80).optional(),
   phone: z.string().max(30).nullable().optional(),
