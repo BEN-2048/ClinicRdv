@@ -246,3 +246,112 @@ exports.updateAffiliation = z.object({
 exports.workingHoursQuery = z.object({
   facilityId: z.coerce.number().int().positive().optional(),
 });
+
+const pastDate = z.string().date('Format AAAA-MM-JJ').refine(
+  (d) => d <= new Date().toISOString().slice(0, 10),
+  'La date ne peut pas être dans le futur'
+);
+const optionalNote = z.string().trim().max(2000).nullable().optional();
+
+const recordShapes = {
+  allergies: {
+    substance: z.string().trim().min(1).max(150),
+    reaction: z.string().trim().max(500).nullable().optional(),
+    severity: z.enum(['mild', 'moderate', 'severe', 'unknown']).optional(),
+    status: z.enum(['active', 'resolved']).optional(),
+    notedOn: pastDate.nullable().optional(),
+    notes: optionalNote,
+  },
+  conditions: {
+    label: z.string().trim().min(1).max(200),
+    icd10Code: z.string().trim().toUpperCase().regex(/^[A-Z][0-9]{2}(\.[0-9A-Z]{1,4})?$/, 'Code CIM-10 invalide').nullable().optional(),
+    onsetDate: pastDate.nullable().optional(),
+    status: z.enum(['active', 'resolved']).optional(),
+    notes: optionalNote,
+  },
+  medications: {
+    name: z.string().trim().min(1).max(200),
+    dosage: z.string().trim().max(100).nullable().optional(),
+    frequency: z.string().trim().max(100).nullable().optional(),
+    startDate: z.string().date().nullable().optional(),
+    endDate: z.string().date().nullable().optional(),
+    status: z.enum(['active', 'stopped']).optional(),
+    notes: optionalNote,
+  },
+  immunizations: {
+    vaccine: z.string().trim().min(1).max(150),
+    doseLabel: z.string().trim().max(50).nullable().optional(),
+    administeredOn: pastDate,
+    lotNumber: z.string().trim().max(50).nullable().optional(),
+    notes: optionalNote,
+  },
+};
+
+const datesInOrder = (o) => !o.startDate || !o.endDate || o.endDate >= o.startDate;
+
+exports.recordEntry = Object.fromEntries(Object.entries(recordShapes).map(([kind, shape]) => [kind, {
+  create: z.object({
+    ...shape,
+    facilityId: z.number().int().positive().optional(),
+    confidential: z.boolean().optional(),
+  }).strict().refine(datesInOrder, 'La date de fin doit suivre la date de début'),
+  update: z.object(shape).partial().extend({ confidential: z.boolean().optional() }).strict()
+    .refine((o) => Object.keys(o).length > 0, 'Aucun champ a modifier')
+    .refine(datesInOrder, 'La date de fin doit suivre la date de début'),
+}]));
+
+exports.recordParams = z.object({
+  patientId: z.coerce.number().int().positive(),
+  kind: z.enum(['allergies', 'conditions', 'medications', 'immunizations']).optional(),
+  entryId: z.coerce.number().int().positive().optional(),
+});
+
+exports.recordQuery = z.object({
+  includeErrors: z.enum(['true', 'false']).optional(),
+});
+
+exports.enteredInError = z.object({
+  reason: z.string().trim().min(3).max(255),
+}).strict();
+
+const prescriptionItem = z.object({
+  medicationName: z.string().trim().min(1).max(200),
+  dosage: z.string().trim().max(100).nullable().optional(),
+  route: z.string().trim().max(50).nullable().optional(),
+  frequency: z.string().trim().max(100).nullable().optional(),
+  duration: z.string().trim().max(100).nullable().optional(),
+  quantity: z.string().trim().max(50).nullable().optional(),
+  instructions: z.string().trim().max(500).nullable().optional(),
+}).strict();
+
+exports.createPrescription = z.object({
+  items: z.array(prescriptionItem).min(1, 'Ajoutez au moins un médicament').max(30),
+  notes: z.string().trim().max(2000).nullable().optional(),
+  confidential: z.boolean().optional(),
+}).strict();
+
+exports.updatePrescription = z.object({
+  items: z.array(prescriptionItem).min(1).max(30).optional(),
+  notes: z.string().trim().max(2000).nullable().optional(),
+  confidential: z.boolean().optional(),
+}).strict().refine((o) => Object.keys(o).length > 0, 'Aucun champ a modifier');
+
+exports.issuePrescription = z.object({
+  addToMedications: z.boolean().optional(),
+}).strict();
+
+exports.cancelPrescription = z.object({
+  reason: z.string().trim().min(3).max(255),
+}).strict();
+
+exports.addendum = z.object({
+  content: z.string().trim().min(1).max(5000),
+}).strict();
+
+exports.positiveIdParams = z.object({
+  id: z.coerce.number().int().positive(),
+});
+
+exports.patientIdParams = z.object({
+  patientId: z.coerce.number().int().positive(),
+});

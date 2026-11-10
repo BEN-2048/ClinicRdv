@@ -1,8 +1,11 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { MedicalRecordApi, PatientProfile, PatientsApi } from '../../api/services';
+import { MedicalRecordApi, PatientProfile, PatientRecord, PatientsApi, RecordApi } from '../../api/services';
+import { errorMessage } from '../../api/client';
+import { RecordEntryForm, RecordSections } from '../../components/record/RecordSections';
 import {
+  Button,
   Card,
   Chip,
   EmptyState,
@@ -28,9 +31,17 @@ type Consultation = {
   notes: string | null;
   prescription: string | null;
   note_created_at: string | null;
+  addenda?: { id: number; content: string; createdAt: string }[];
+  prescriptions?: {
+    id: number;
+    status: 'issued' | 'cancelled';
+    issuedAt: string | null;
+    cancelReason: string | null;
+    items: { medicationName: string; dosage: string | null; frequency: string | null; duration: string | null; instructions: string | null }[] | null;
+  }[];
 };
 
-type Tab = 'consultations' | 'documents' | 'traitements';
+type Tab = 'synthese' | 'consultations' | 'documents' | 'traitements';
 
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat('fr-FR', {
@@ -40,8 +51,34 @@ const formatDate = (value: string) =>
     year: 'numeric',
   }).format(new Date(value));
 
+function StructuredPrescriptions({ item }: { item: Consultation }) {
+  if (!item.prescriptions?.length) return null;
+  return (
+    <>
+      {item.prescriptions.map((rx) => (
+        <View key={rx.id} style={[s.note, s.prescriptionNote]}>
+          <Text style={s.noteTitle}>
+            Ordonnance{rx.issuedAt ? ` du ${formatDate(rx.issuedAt)}` : ''}{rx.status === 'cancelled' ? ' — annulée' : ''}
+          </Text>
+          {(rx.items ?? []).map((i, idx) => (
+            <Text key={idx} style={[s.detail, rx.status === 'cancelled' && s.cancelled]}>
+              {idx + 1}. {[i.medicationName, i.dosage, i.frequency, i.duration ? `pendant ${i.duration}` : null].filter(Boolean).join(' · ')}
+              {i.instructions ? `
+   ${i.instructions}` : ''}
+            </Text>
+          ))}
+          {rx.cancelReason ? <Text style={s.detail}>Motif : {rx.cancelReason}</Text> : null}
+        </View>
+      ))}
+    </>
+  );
+}
+
 export default function MedicalRecordScreen() {
-  const [tab, setTab] = useState<Tab>('consultations');
+  const [tab, setTab] = useState<Tab>('synthese');
+  const [summary, setSummary] = useState<PatientRecord | null>(null);
+  const [declaring, setDeclaring] = useState(false);
+  const [savingDeclaration, setSavingDeclaration] = useState(false);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [profiles, setProfiles] = useState<PatientProfile[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -69,16 +106,22 @@ export default function MedicalRecordScreen() {
 
       if (!target || target.link_status === 'pending') {
         setConsultations([]);
+        setSummary(null);
         return;
       }
 
-      const { data } = await MedicalRecordApi.forPatient(target.id);
+      const [{ data }, record] = await Promise.all([
+        MedicalRecordApi.forPatient(target.id),
+        RecordApi.get(target.id),
+      ]);
+      setSummary(record.data);
       if (!Array.isArray(data?.consultations)) {
         throw new Error('Format du dossier médical invalide.');
       }
       setConsultations(data.consultations as Consultation[]);
     } catch (err: any) {
       setConsultations([]);
+      setSummary(null);
       setError(err?.response?.data?.error || err?.message || 'Impossible de charger le dossier médical.');
     } finally {
       setLoading(false);
@@ -96,7 +139,7 @@ export default function MedicalRecordScreen() {
   const patientName = selected ? `${selected.first_name} ${selected.last_name}` : '';
   const isSelf = selected?.link_status === 'self';
 
-  const prescriptions = consultations.filter((item) => item.prescription?.trim());
+  const prescriptions = consultations.filter((item) => item.prescription?.trim() || item.prescriptions?.length);
 
   return (
     <Screen refreshing={refreshing} onRefresh={() => load(true, selectedId)}>
@@ -155,6 +198,7 @@ export default function MedicalRecordScreen() {
         value={tab}
         onChange={setTab}
         tabs={[
+          { key: 'synthese', label: 'Synthèse' },
           { key: 'consultations', label: 'Consultations' },
           { key: 'documents', label: 'Documents' },
           { key: 'traitements', label: 'Traitements' },
@@ -167,6 +211,43 @@ export default function MedicalRecordScreen() {
         <Card>
           <ErrorState message={error} onRetry={() => load()} />
         </Card>
+      ) : tab === 'synthese' ? (
+        summary ? (
+          <>
+            {summary.access.canDeclare ? (
+              declaring ? (
+                <RecordEntryForm
+                  kind="allergies"
+                  clinician={false}
+                  saving={savingDeclaration}
+                  onCancel={() => setDeclaring(false)}
+                  onSubmit={async (data) => {
+                    setSavingDeclaration(true);
+                    try {
+                      await RecordApi.add(summary.patient.id, 'allergies', data);
+                      setDeclaring(false);
+                      await load(true, selectedRef.current);
+                    } catch (e) {
+                      Alert.alert('Déclaration impossible', errorMessage(e));
+                    } finally {
+                      setSavingDeclaration(false);
+                    }
+                  }}
+                />
+              ) : (
+                <Button title="Déclarer une allergie" icon="add" variant="secondary" onPress={() => setDeclaring(true)} />
+              )
+            ) : null}
+            <RecordSections record={summary} />
+            <Text style={s.footnote}>
+              Les informations « Déclaré par le patient » seront vérifiées par votre médecin lors d’une prochaine consultation.
+            </Text>
+          </>
+        ) : (
+          <Card>
+            <EmptyState icon="document-text-outline" title="Synthèse indisponible" />
+          </Card>
+        )
       ) : tab === 'consultations' ? (
         consultations.length === 0 ? (
           <Card>
@@ -207,6 +288,13 @@ export default function MedicalRecordScreen() {
                   <Text style={s.detail}>{item.prescription}</Text>
                 </View>
               ) : null}
+              <StructuredPrescriptions item={item} />
+              {item.addenda?.map((a) => (
+                <View key={a.id} style={s.note}>
+                  <Text style={s.noteTitle}>Complément du {formatDate(a.createdAt)}</Text>
+                  <Text style={s.detail}>{a.content}</Text>
+                </View>
+              ))}
             </Card>
           ))
         )
@@ -236,9 +324,12 @@ export default function MedicalRecordScreen() {
             <Text style={type.h3}>
               Dr. {item.doctor_first_name} {item.doctor_last_name}
             </Text>
-            <View style={[s.note, s.prescriptionNote]}>
-              <Text style={s.detail}>{item.prescription}</Text>
-            </View>
+            {item.prescription ? (
+              <View style={[s.note, s.prescriptionNote]}>
+                <Text style={s.detail}>{item.prescription}</Text>
+              </View>
+            ) : null}
+            <StructuredPrescriptions item={item} />
           </Card>
         ))
       )}
@@ -247,6 +338,7 @@ export default function MedicalRecordScreen() {
 }
 
 const s = StyleSheet.create({
+  footnote: { ...type.caption, color: color.textMuted, textAlign: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
   flex: { flex: 1, minWidth: 0 },
   profile: {
@@ -284,5 +376,6 @@ const s = StyleSheet.create({
     gap: space.xxs,
   },
   prescriptionNote: { backgroundColor: color.successSoft + '40' },
+  cancelled: { textDecorationLine: 'line-through', color: color.textMuted },
   noteTitle: { ...type.label, color: color.text },
 });

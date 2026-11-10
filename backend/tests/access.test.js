@@ -19,18 +19,22 @@ describe('canAccessPatient', () => {
 
   test('patient - profil inexistant', async () => {
     const result = await canAccessPatient({ id: 7, role: 'patient' }, 999, 'book', dbReturning([]));
-    expect(result).toEqual({ exists: false, basis: null, allowed: false });
+    expect(result).toEqual({ exists: false, basis: null, facilityIds: null, allowed: false });
   });
 
-  test('medecin traitant - voit les rendez-vous mais pas le dossier complet', async () => {
-    const db = dbReturning([{ treating: true }]);
-    expect((await canAccessPatient({ id: 4, role: 'doctor' }, 20, 'view_appointments', db)).allowed).toBe(true);
-    expect((await canAccessPatient({ id: 4, role: 'doctor' }, 20, 'view_record', db)).allowed).toBe(false);
-    expect(db.query.mock.calls[0][0]).toContain("a.status <> 'cancelled'");
+  test('medecin traitant - lit et complete le dossier, limite a ses etablissements de soins', async () => {
+    const db = dbReturning([{ facility_id: 1 }, { facility_id: 3 }]);
+    const result = await canAccessPatient({ id: 4, role: 'doctor' }, 20, 'view_record', db);
+    expect(result).toMatchObject({ allowed: true, basis: 'treating_doctor', facilityIds: [1, 3] });
+    expect((await canAccessPatient({ id: 4, role: 'doctor' }, 20, 'write_clinical', db)).allowed).toBe(true);
+    expect((await canAccessPatient({ id: 4, role: 'doctor' }, 20, 'write_declared', db)).allowed).toBe(false);
+    const sql = db.query.mock.calls[0][0];
+    expect(sql).toContain("a.status <> 'cancelled'");
+    expect(sql).toContain("da.status = 'active'");
   });
 
   test('medecin sans rendez-vous avec le patient - aucun acces', async () => {
-    const db = dbReturning([{ treating: false }]);
+    const db = dbReturning([]);
     expect((await canAccessPatient({ id: 4, role: 'doctor' }, 20, 'view_appointments', db)).allowed).toBe(false);
   });
 
@@ -45,8 +49,13 @@ describe('canAccessPatient', () => {
     await expect(canAccessPatient({ id: 7, role: 'patient' }, 20, 'delete', dbReturning([]))).rejects.toThrow('Action inconnue');
   });
 
-  test('seuls le titulaire et un responsable verifie peuvent lire le dossier medical', () => {
+  test('lecture du dossier : titulaire, responsable verifie et medecin traitant uniquement', () => {
     const readers = Object.entries(RULES).filter(([, actions]) => actions.includes('view_record')).map(([b]) => b);
-    expect(readers.sort()).toEqual(['guardian_verified', 'self']);
+    expect(readers.sort()).toEqual(['guardian_verified', 'self', 'treating_doctor']);
+  });
+
+  test('seul le medecin traitant ecrit des informations cliniques', () => {
+    const writers = Object.entries(RULES).filter(([, actions]) => actions.includes('write_clinical')).map(([b]) => b);
+    expect(writers).toEqual(['treating_doctor']);
   });
 });

@@ -92,6 +92,7 @@ export type ConsultationResponse = {
   patient_profile_id?: number;
   patient_number?: string | null;
   patient_birth_date?: string | null;
+  addenda?: { id: number; content: string; created_at: string; author: string | null }[];
   patient_first_name: string;
   patient_last_name: string;
   patient_email: string;
@@ -659,4 +660,175 @@ export const MedicalRecordApi = {
 
   forPatient: (patientId: number) =>
     api.get(`/medical-record/patients/${patientId}`),
+};
+
+export type RecordKind = 'allergies' | 'conditions' | 'medications' | 'immunizations';
+
+type RecordEntryBase = {
+  id: number;
+  patient_id: number;
+  facility_id: number | null;
+  facility_name: string | null;
+  source: 'clinician' | 'patient';
+  confidential: boolean;
+  recorded_by_name: string | null;
+  recorded_by_role: string | null;
+  recorded_at: string;
+  updated_at: string;
+  notes: string | null;
+  entered_in_error: boolean;
+  error_reason: string | null;
+};
+
+export type AllergyEntry = RecordEntryBase & {
+  substance: string;
+  reaction: string | null;
+  severity: 'mild' | 'moderate' | 'severe' | 'unknown';
+  status: 'active' | 'resolved';
+  noted_on: string | null;
+};
+
+export type ConditionEntry = RecordEntryBase & {
+  label: string;
+  icd10_code: string | null;
+  onset_date: string | null;
+  status: 'active' | 'resolved';
+};
+
+export type MedicationEntry = RecordEntryBase & {
+  name: string;
+  dosage: string | null;
+  frequency: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  status: 'active' | 'stopped';
+};
+
+export type ImmunizationEntry = RecordEntryBase & {
+  vaccine: string;
+  dose_label: string | null;
+  administered_on: string;
+  lot_number: string | null;
+};
+
+export type PatientRecord = {
+  patient: {
+    id: number;
+    patient_number: string;
+    first_name: string;
+    last_name: string;
+    birth_date: string | null;
+    sex: 'female' | 'male' | null;
+  };
+  allergies: AllergyEntry[];
+  conditions: ConditionEntry[];
+  medications: MedicationEntry[];
+  immunizations: ImmunizationEntry[];
+  access: {
+    basis: 'self' | 'guardian_verified' | 'treating_doctor';
+    canWriteClinical: boolean;
+    canDeclare: boolean;
+    facilities: { id: number; name: string }[];
+  };
+};
+
+export const RecordApi = {
+  get: (patientId: number, includeErrors = false) =>
+    api.get<PatientRecord>(`/patients/${patientId}/record`, {
+      params: includeErrors ? { includeErrors: 'true' } : undefined,
+    }),
+
+  add: (patientId: number, kind: RecordKind, data: Record<string, unknown>) =>
+    api.post(`/patients/${patientId}/record/${kind}`, data),
+
+  update: (patientId: number, kind: RecordKind, entryId: number, data: Record<string, unknown>) =>
+    api.patch(`/patients/${patientId}/record/${kind}/${entryId}`, data),
+
+  markEnteredInError: (patientId: number, kind: RecordKind, entryId: number, reason: string) =>
+    api.post(`/patients/${patientId}/record/${kind}/${entryId}/entered-in-error`, { reason }),
+};
+
+export type PrescriptionItem = {
+  id?: number;
+  position?: number;
+  medicationName: string;
+  dosage?: string | null;
+  route?: string | null;
+  frequency?: string | null;
+  duration?: string | null;
+  quantity?: string | null;
+  instructions?: string | null;
+};
+
+export type Prescription = {
+  id: number;
+  patient_id: number;
+  appointment_id: number;
+  facility_id: number;
+  facility_name: string;
+  status: 'draft' | 'issued' | 'cancelled';
+  notes: string | null;
+  confidential: boolean;
+  issued_at: string | null;
+  cancelled_at: string | null;
+  cancel_reason: string | null;
+  created_at: string;
+  prescriber_user_id: number | null;
+  prescriber_name: string | null;
+  items: PrescriptionItem[];
+};
+
+export type Addendum = { id: number; content: string; createdAt?: string; created_at?: string; author?: string | null };
+
+export type ConsultationHistoryEntry = {
+  appointment_id: number;
+  starts_at: string;
+  reason: string | null;
+  facility_name: string;
+  facility_timezone: string;
+  doctor_name: string;
+  specialty: string;
+  chief_complaint: string | null;
+  blood_pressure: string | null;
+  heart_rate: string | null;
+  temperature: string | null;
+  oxygen_saturation: string | null;
+  weight: string | null;
+  height: string | null;
+  medical_history: string | null;
+  current_treatments: string | null;
+  clinical_examination: string | null;
+  diagnosis: string | null;
+  notes: string | null;
+  prescription: string | null;
+  completed_at: string | null;
+  addenda: Addendum[];
+};
+
+export const PrescriptionsApi = {
+  forAppointment: (appointmentId: number) =>
+    api.get<Prescription[]>(`/appointments/${appointmentId}/prescriptions`),
+
+  create: (appointmentId: number, data: { items: PrescriptionItem[]; notes?: string | null; confidential?: boolean }) =>
+    api.post<Prescription>(`/appointments/${appointmentId}/prescriptions`, data),
+
+  update: (id: number, data: { items?: PrescriptionItem[]; notes?: string | null; confidential?: boolean }) =>
+    api.put<Prescription>(`/prescriptions/${id}`, data),
+
+  issue: (id: number, addToMedications = true) =>
+    api.post<Prescription>(`/prescriptions/${id}/issue`, { addToMedications }),
+
+  cancel: (id: number, reason: string) =>
+    api.post<Prescription>(`/prescriptions/${id}/cancel`, { reason }),
+
+  forPatient: (patientId: number) =>
+    api.get<Prescription[]>(`/patients/${patientId}/prescriptions`),
+};
+
+export const ConsultationsApi = {
+  history: (patientId: number) =>
+    api.get<ConsultationHistoryEntry[]>(`/patients/${patientId}/consultations`),
+
+  addAddendum: (appointmentId: number, content: string) =>
+    api.post<Addendum[]>(`/appointments/${appointmentId}/consultation/addenda`, { content }),
 };

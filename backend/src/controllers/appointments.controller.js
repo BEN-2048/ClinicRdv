@@ -1,5 +1,6 @@
 
 const svc = require('../services/appointments.service');
+const prescriptions = require('../services/prescriptions.service');
 
 const wrap = (fn) => async (req, res, next) => {
   try {
@@ -59,7 +60,7 @@ exports.getConsultation = wrap(async (req, res) => {
     req.user.id
   );
 
-  res.json(result);
+  res.json({ ...result, addenda: await prescriptions.listAddenda(+req.params.id) });
 });
 
 // Enregistrer un brouillon

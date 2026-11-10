@@ -68,9 +68,9 @@ describe('GET /api/medical-record/me', () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual([{ appointment_id: 5, notes: 'RAS', prescription: null }]);
     const [, recordParams] = calls('FROM appointments a')[0];
-    expect(recordParams).toEqual([3]);
+    expect(recordParams).toEqual([3, false]);
     const [, logParams] = calls('INSERT INTO patient_access_logs')[0];
-    expect(logParams).toEqual([7, 'patient', 3, 'view_record', true, 'self', expect.anything()]);
+    expect(logParams.slice(0, 6)).toEqual([7, 'patient', 3, 'view_record', true, 'self']);
   });
 
   test('renvoie une liste vide si le compte n a pas de profil patient', async () => {
@@ -116,6 +116,16 @@ describe('GET /api/medical-record/patients/:id', () => {
     expect(res.body.consultations).toHaveLength(1);
     expect(calls('INSERT INTO patient_access_logs')[0][1].slice(0, 6))
       .toEqual([7, 'patient', 20, 'view_record', true, 'guardian_verified']);
+  });
+
+  test('un tuteur verifie ne voit pas les ordonnances confidentielles', async () => {
+    mockDb([accessRow({ user_id: null, link_status: 'verified' }), patientRow, consultations]);
+
+    await get();
+
+    const [sql, params] = calls('FROM appointments a')[0];
+    expect(sql).toContain('NOT (rx.confidential AND $2::boolean)');
+    expect(params).toEqual([20, true]);
   });
 
   test('un lien en attente ne donne pas acces au dossier, avec un message explicite', async () => {

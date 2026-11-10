@@ -32,6 +32,7 @@ import DoctorDashboardScreen from '../screens/doctor/DoctorDashboardScreen';
 import DoctorAgendaScreen from '../screens/doctor/DoctorAgendaScreen';
 import AgendaSettingsScreen from '../screens/doctor/AgendaSettingsScreen';
 import AppointmentDetailScreen from '../screens/doctor/AppointmentDetailScreen';
+import PatientRecordScreen from '../screens/doctor/PatientRecordScreen';
 
 import ClinicManagementScreen from '../screens/admin/ClinicManagementScreen';
 import ProfileScreen from '../screens/common/ProfileScreen';
@@ -326,6 +327,14 @@ export default function RootNavigator() {
                 headerBackTitle: 'Retour',
               }}
             />
+
+            {user.role === 'doctor' && (
+              <Stack.Screen
+                name="PatientRecord"
+                component={PatientRecordScreen}
+                options={{ title: 'Dossier du patient' }}
+              />
+            )}
 
             {user.role === 'doctor' && (
               <Stack.Screen
