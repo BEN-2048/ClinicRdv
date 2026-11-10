@@ -81,6 +81,12 @@ export const DoctorsApi = {
   deleteLeave: (id: number) =>
     api.delete(`/doctors/me/leaves/${id}`),
 
+  conflicts: () =>
+    api.get<UnavailabilityConflict[]>('/doctors/me/conflicts'),
+
+  cancelConflicts: (appointmentIds: number[], note?: string) =>
+    api.post<{ cancelled: number; skipped: number }>('/doctors/me/conflicts/cancel', { appointmentIds, note }),
+
   blockedSlots: () =>
     api.get('/doctors/me/blocked-slots'),
 
@@ -167,8 +173,8 @@ export const AppointmentsApi = {
   mine: (scope?: 'upcoming' | 'past') =>
     api.get('/appointments/mine', { params: { scope } }),
 
-  cancel: (id: number) =>
-    api.patch(`/appointments/${id}/cancel`),
+  cancel: (id: number, data?: { reason?: StaffCancelReason; note?: string }) =>
+    api.patch(`/appointments/${id}/cancel`, data ?? {}),
 
   reschedule: (id: number, startsAt: string) =>
     api.patch(`/appointments/${id}/reschedule`, { startsAt }),
@@ -275,6 +281,35 @@ export type AppointmentStatus =
   | 'cancelled'
   | 'done';
 
+export type StaffCancelReason = 'doctor_unavailable' | 'service_unavailable' | 'facility_closed' | 'other';
+
+export type CancelReason = StaffCancelReason | 'patient_request' | 'redirected';
+
+export type CancelledByRole = 'patient' | 'doctor' | 'facility' | 'system';
+
+export const CANCEL_REASON_LABEL: Record<CancelReason, string> = {
+  patient_request: 'Annulé à votre demande',
+  doctor_unavailable: 'Le médecin est indisponible',
+  service_unavailable: 'Le service est momentanément indisponible',
+  facility_closed: 'L’établissement est fermé',
+  redirected: 'Remplacé par un autre rendez-vous',
+  other: 'Annulé par l’établissement',
+};
+
+export type UnavailabilityConflict = {
+  id: number;
+  starts_at: string;
+  ends_at: string;
+  status: AppointmentStatus;
+  facility_id: number;
+  facility_name: string;
+  timezone: string;
+  patient_name: string;
+  patient_number: string | null;
+  cause: 'leave' | 'block';
+  cause_reason: string | null;
+};
+
 export type WorkingHour = {
   weekday: number;
   startTime: string;
@@ -365,7 +400,7 @@ export type FacilityDetail = Omit<FacilitySummary, 'services' | 'specialties' | 
   description: string | null;
   email: string | null;
   opening_hours: { weekday: number; opensAt: string; closesAt: string }[];
-  services: { code: string; name: string; available_24h: boolean }[];
+  services: { code: string; name: string; available_24h: boolean; unavailable_until?: string | null; unavailable_reason?: string | null }[];
   specialties: { id: number; name: string }[];
   doctors: {
     id: number;
@@ -468,7 +503,7 @@ export type ManagedFacility = {
   status: FacilityStatus;
   is_default: boolean;
   can_manage: boolean;
-  services: { code: string; available24h: boolean }[];
+  services: { code: string; available24h: boolean; unavailableUntil?: string | null; unavailableReason?: string | null }[];
   members: { id: number; role: 'facility_admin' | 'secretary'; status: 'active' | 'revoked'; user_id: number; email: string; first_name: string; last_name: string }[];
   doctors: { doctor_id: number; status: 'active' | 'inactive'; fee: string | null; first_name: string; last_name: string; specialty: string }[];
 };
@@ -586,6 +621,12 @@ export const StaffApi = {
   deleteLeave: (id: number, leaveId: number) =>
     api.delete(`/admin/doctors/${id}/leaves/${leaveId}`),
 
+  conflicts: (id: number) =>
+    api.get<UnavailabilityConflict[]>(`/admin/doctors/${id}/conflicts`),
+
+  cancelConflicts: (id: number, appointmentIds: number[], note?: string) =>
+    api.post<{ cancelled: number; skipped: number }>(`/admin/doctors/${id}/conflicts/cancel`, { appointmentIds, note }),
+
   appointments: (params?: {
     date?: string;
     doctorId?: number;
@@ -623,7 +664,7 @@ export const StaffApi = {
   updateFacility: (id: number, data: Partial<FacilityInput>) =>
     api.patch<ManagedFacility>(`/admin/facilities/${id}`, data),
 
-  setFacilityServices: (id: number, services: { code: string; available24h?: boolean }[]) =>
+  setFacilityServices: (id: number, services: { code: string; available24h?: boolean; unavailableUntil?: string | null }[]) =>
     api.put<ManagedFacility>(`/admin/facilities/${id}/services`, { services }),
 
   addFacilityMember: (id: number, data: FacilityMemberInput) =>
@@ -635,8 +676,8 @@ export const StaffApi = {
   updateAffiliation: (id: number, doctorId: number, data: { status?: 'active' | 'inactive'; fee?: number | null }) =>
     api.patch<ManagedFacility & { upcoming_appointments: number }>(`/admin/facilities/${id}/doctors/${doctorId}`, data),
 
-  cancel: (id: number) =>
-    api.patch(`/admin/appointments/${id}/cancel`),
+  cancel: (id: number, data?: { reason?: StaffCancelReason; note?: string }) =>
+    api.patch(`/admin/appointments/${id}/cancel`, data ?? {}),
 
   reschedule: (id: number, startsAt: string) =>
     api.patch(`/admin/appointments/${id}/reschedule`, { startsAt }),

@@ -13,7 +13,15 @@ import {
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
-import { AppointmentsApi, AppointmentStatus, WaitingAlertSummary, WaitingListApi } from '../../api/services';
+import {
+  AppointmentsApi,
+  AppointmentStatus,
+  CANCEL_REASON_LABEL,
+  CancelReason,
+  CancelledByRole,
+  WaitingAlertSummary,
+  WaitingListApi,
+} from '../../api/services';
 import { useAuth } from '../../context/AuthContext';
 import { getCachedAppointments } from '../../database/offlineRepository';
 import Icon, { IconName } from '../../components/ui/Icon';
@@ -39,6 +47,9 @@ type Appointment = {
   facility_id?: number;
   facility_name?: string;
   facility_timezone?: string;
+  cancel_reason?: CancelReason | null;
+  cancel_note?: string | null;
+  cancelled_by_role?: CancelledByRole | null;
 };
 
 type TabKey = 'upcoming' | 'past' | 'cancelled';
@@ -371,6 +382,7 @@ export default function MyAppointmentsScreen() {
                   busy={busyId === a.id}
                   onReschedule={() => reschedule(a)}
                   onCancel={() => cancel(a)}
+                  onRebook={() => navigation.navigate('DoctorProfile', { doctorId: a.doctor_id, facilityId: a.facility_id })}
                 />
               ))
             : null}
@@ -456,6 +468,7 @@ function AppointmentCard({
   busy,
   onReschedule,
   onCancel,
+  onRebook,
 }: {
   appointment: Appointment;
   highlight: boolean;
@@ -464,7 +477,10 @@ function AppointmentCard({
   busy: boolean;
   onReschedule: () => void;
   onCancel: () => void;
+  onRebook: () => void;
 }) {
+  const cancelledForYou =
+    a.status === 'cancelled' && (a.cancelled_by_role === 'doctor' || a.cancelled_by_role === 'facility');
   const status = STATUS[a.status] ?? STATUS.confirmed;
   const name = doctorDisplayName(a.doctor_name);
 
@@ -522,6 +538,27 @@ function AppointmentCard({
           <DetailRow icon="document-text-outline"label="Motif" value={a.reason} />
         ) : null}
       </View>
+
+      {cancelledForYou ? (
+        <View style={styles.cancelBox}>
+          <Text style={[type.bodyMedium, { color: palette.dangerInk }]}>
+            {CANCEL_REASON_LABEL[a.cancel_reason ?? 'other'] ?? CANCEL_REASON_LABEL.other}
+          </Text>
+          {a.cancel_note ? (
+            <Text style={[type.body, { color: palette.ink }]}>Message : {a.cancel_note}</Text>
+          ) : null}
+          {new Date(a.starts_at).getTime() > Date.now() ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={onRebook}
+              style={[styles.actionButton, { backgroundColor: palette.tint200, flex: 0, alignSelf: 'stretch' }]}
+            >
+              <Icon name="calendar-outline" size={16} color={palette.primary} />
+              <Text style={[type.bodyMedium, { color: palette.primary }]}>Choisir un autre créneau</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
 
       {showActions ? (
         <View style={styles.actions}>
@@ -653,6 +690,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   actions: { flexDirection: 'row', gap: 8, paddingTop: 4 },
+  cancelBox: {
+    marginTop: 12,
+    padding: 12,
+    gap: 8,
+    borderRadius: 12,
+    backgroundColor: palette.dangerSoft,
+  },
   actionButton: {
     flex: 1,
     height: 48,

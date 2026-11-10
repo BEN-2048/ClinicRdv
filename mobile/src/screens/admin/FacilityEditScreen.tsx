@@ -188,6 +188,38 @@ export default function FacilityEditScreen() {
     }
   };
 
+  const outageOf = (code: string) => facility?.services.find((sv) => sv.code === code)?.unavailableUntil ?? null;
+
+  const setOutage = async (code: string, days: number | null) => {
+    if (!facility) return;
+    try {
+      const until = days ? new Date(Date.now() + days * 86400000).toISOString() : null;
+      const saved = (await StaffApi.setFacilityServices(
+        facility.id,
+        Object.entries(services).map(([c, available24h]) => (c === code ? { code: c, available24h, unavailableUntil: until } : { code: c, available24h }))
+      )).data;
+      apply(saved);
+    } catch (e) {
+      Alert.alert('Modification impossible', errorMessage(e));
+    }
+  };
+
+  const editOutage = (code: string, name: string) => {
+    const until = outageOf(code);
+    if (until) {
+      Alert.alert(name, `Indisponible jusqu’au ${new Date(until).toLocaleString('fr-FR')}.`, [
+        { text: 'Retour', style: 'cancel' },
+        { text: 'Remettre en service', onPress: () => setOutage(code, null) },
+      ]);
+      return;
+    }
+    Alert.alert(name, 'Déclarer ce service temporairement indisponible ? Il ne sera plus proposé dans la recherche jusqu’à la date choisie.', [
+      { text: 'Retour', style: 'cancel' },
+      { text: '24 heures', onPress: () => setOutage(code, 1) },
+      { text: '7 jours', onPress: () => setOutage(code, 7) },
+    ]);
+  };
+
   const toggleService = (code: string) =>
     setServices((cur) => {
       const next = { ...cur };
@@ -319,6 +351,27 @@ export default function FacilityEditScreen() {
           selected={!!services.emergency}
           onPress={canEdit ? () => setServices((cur) => ({ ...cur, emergency: !cur.emergency })) : undefined}
         />
+      ) : null}
+
+      {facility && canEdit && facility.services.length ? (
+        <>
+          <SectionTitle title="Indisponibilités temporaires" />
+          <Text style={s.muted}>Touchez un service pour le déclarer indisponible (panne, rupture, absence) ou le remettre en service.</Text>
+          <View style={s.chips}>
+            {facility.services.map((sv) => {
+              const name = catalog.find((c) => c.code === sv.code)?.name ?? sv.code;
+              return (
+                <Chip
+                  key={sv.code}
+                  icon={sv.unavailableUntil ? 'warning-outline' : 'checkmark-circle-outline'}
+                  label={sv.unavailableUntil ? `${name} · indisponible` : name}
+                  selected={!!sv.unavailableUntil}
+                  onPress={() => editOutage(sv.code, name)}
+                />
+              );
+            })}
+          </View>
+        </>
       ) : null}
 
       {facility ? (

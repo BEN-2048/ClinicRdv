@@ -2,6 +2,7 @@
 const pool = require('../config/db');
 const { getAvailableSlots } = require('../services/slots.service');
 const adminService = require('../services/admin.service');
+const unavailability = require('../services/unavailability.service');
 
 const FACILITIES_JSON = `COALESCE((
   SELECT json_agg(json_build_object(
@@ -167,6 +168,11 @@ const handleAgendaRequest = (action) => async (req, res, next) => {
     next(error);
   }
 };
+
+exports.myConflicts = handleAgendaRequest((doctorId) => unavailability.listConflicts(doctorId));
+
+exports.cancelMyConflicts = handleAgendaRequest((doctorId, req) =>
+  unavailability.cancelConflicts(doctorId, req.body, req.user));
 
 // HORAIRES DE TRAVAIL
 exports.myWorkingHours = handleAgendaRequest(

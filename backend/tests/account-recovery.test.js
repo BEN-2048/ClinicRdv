@@ -177,7 +177,7 @@ describe('Mot de passe oublié : nouveau mot de passe', () => {
     expect(revoke).toEqual([7, 'password_reset', null]);
     expect(calls('COMMIT')).toHaveLength(1);
     expect(smsTo('+24381•••78').some((l) => l.includes('mot de passe de votre compte vient d\'etre modifie'))).toBe(true);
-    expect(calls("'notice'")).toHaveLength(1);
+    expect(calls("VALUES ($1, 'notice'")).toHaveLength(1);
   });
 
   test('un code faux compte une tentative, est enregistre et ne change rien', async () => {
@@ -218,7 +218,7 @@ describe('Mot de passe oublié : nouveau mot de passe', () => {
     const [sql, params] = calls("ec.purpose = 'recovery'")[0];
     expect(sql).toContain('LOWER(u.email) = $1');
     expect(params).toEqual(['amina@example.com']);
-    expect(calls("'notice'")).toHaveLength(0);
+    expect(calls("VALUES ($1, 'notice'")).toHaveLength(0);
   });
 
   test('refuse un mot de passe trop court', async () => {
@@ -261,7 +261,7 @@ describe('Changer son mot de passe une fois connecté', () => {
     const [, update] = calls('UPDATE users SET password_hash')[0];
     expect(await bcrypt.compare('nouveaumotdepasse', update[0])).toBe(true);
     expect(calls('UPDATE auth_sessions')[0][1]).toEqual([7, 'password_change', SID]);
-    expect(calls("'notice'")).toHaveLength(1);
+    expect(calls("VALUES ($1, 'notice'")).toHaveLength(1);
   });
 });
 

@@ -3,6 +3,7 @@ const pool = require('../config/db');
 const { getAvailableSlots, resolveFacility } = require('./slots.service');
 const { isStaff } = require('../middleware/auth');
 const scopes = require('./scope.service');
+const unavailability = require('./unavailability.service');
 
 const staffFacilities = async (user) => {
   if (!isStaff(user.role)) return { staff: false, facilities: null };
@@ -99,11 +100,12 @@ exports.book = async (patientId, { doctorId, startsAt, reason, patientProfileId,
 };
 
 // Annuler un rendez-vous
-exports.cancel = async (id, user) => {
+exports.cancel = async (id, user, { reason, note } = {}) => {
   const staff = await staffFacilities(user);
   const r = await pool.query(
     `UPDATE appointments
-        SET status = 'cancelled'
+        SET status = 'cancelled', cancelled_at = now(), cancelled_by_user_id = $3,
+            cancelled_by_role = $5, cancel_reason = $6, cancel_note = $7
       WHERE id = $1
         AND status IN ('pending', 'confirmed')
         AND (
@@ -114,7 +116,15 @@ exports.cancel = async (id, user) => {
           )
         )
       RETURNING *`,
-    [id, staff.staff, user.id, staff.facilities]
+    [
+      id,
+      staff.staff,
+      user.id,
+      staff.facilities,
+      unavailability.actorRole(user.role),
+      unavailability.resolveReason(user.role, reason),
+      user.role === 'patient' ? null : note?.trim() || null,
+    ]
   );
 
   if (!r.rowCount) {
@@ -123,16 +133,8 @@ exports.cancel = async (id, user) => {
 
   const appointment = r.rows[0];
 
-  // Notification d'annulation
-  await createPatientNotification({
-    patientId: appointment.patient_id,
-    appointmentId: appointment.id,
-    title: 'Rendez-vous annulé',
-    body: 'Votre rendez-vous a été annulé.',
-    type: 'appointment_cancelled',
-  });
-
-  // TODO : notifier les patients de la liste d'attente
+  await unavailability.notifyCancellation([appointment.id]);
+  await unavailability.dispatchFreedSlot(appointment);
   return appointment;
 };
 
@@ -191,6 +193,7 @@ exports.reschedule = async (id, user, startsAt) => {
     );
 
     await client.query('COMMIT');
+    await unavailability.dispatchFreedSlot(appointment);
     return updated.rows[0];
   } catch (error) {
     await client.query('ROLLBACK');

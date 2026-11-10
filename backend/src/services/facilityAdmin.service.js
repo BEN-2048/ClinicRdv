@@ -63,7 +63,9 @@ exports.get = async (scope, id) => {
       `SELECT weekday, to_char(opens_at,'HH24:MI') AS "opensAt", to_char(closes_at,'HH24:MI') AS "closesAt"
          FROM facility_opening_hours WHERE facility_id = $1 ORDER BY weekday, opens_at`, [id]),
     pool.query(
-      `SELECT service_code AS code, available_24h AS "available24h"
+      `SELECT service_code AS code, available_24h AS "available24h",
+              CASE WHEN unavailable_until > now() THEN unavailable_until END AS "unavailableUntil",
+              CASE WHEN unavailable_until > now() THEN unavailable_reason END AS "unavailableReason"
          FROM facility_services WHERE facility_id = $1 ORDER BY service_code`, [id]),
     pool.query('SELECT specialty_id FROM facility_specialties WHERE facility_id = $1', [id]),
     pool.query(
@@ -133,11 +135,19 @@ exports.update = async (scope, id, data) => {
 exports.setServices = async (scope, id, { services }) => {
   scopes.assertCanAdministerFacility(scope, id);
   await withTransaction(async (db) => {
+    const previous = new Map((await db.query(
+      'SELECT service_code, unavailable_until, unavailable_reason FROM facility_services WHERE facility_id = $1',
+      [id]
+    )).rows.map((r) => [r.service_code, r]));
     await db.query('DELETE FROM facility_services WHERE facility_id = $1', [id]);
     for (const s of services) {
+      const kept = previous.get(s.code);
+      const until = s.unavailableUntil !== undefined ? s.unavailableUntil : kept?.unavailable_until ?? null;
+      const reason = s.unavailableReason !== undefined ? s.unavailableReason : kept?.unavailable_reason ?? null;
       await db.query(
-        'INSERT INTO facility_services (facility_id, service_code, available_24h) VALUES ($1, $2, $3)',
-        [id, s.code, s.available24h ?? false]
+        `INSERT INTO facility_services (facility_id, service_code, available_24h, unavailable_until, unavailable_reason)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [id, s.code, s.available24h ?? false, until, until ? reason || null : null]
       );
     }
   }).catch((e) => {

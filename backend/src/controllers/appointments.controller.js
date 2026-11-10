@@ -33,7 +33,7 @@ exports.mine = wrap(async (req, res) => {
 // Annuler un rendez-vous
 exports.cancel = wrap(async (req, res) => {
   res.json(
-    await svc.cancel(+req.params.id, req.user)
+    await svc.cancel(+req.params.id, req.user, req.body)
   );
 });
 

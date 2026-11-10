@@ -64,21 +64,25 @@ export default function SecretaryAppointmentsScreen() {
   );
 
   const cancel = (a: StaffAppointment) =>
-    Alert.alert('Annuler le rendez-vous', `Annuler le RDV de ${a.patient_name} avec Dr. ${a.doctor_name} ?`, [
-      { text: 'Non', style: 'cancel' },
-      {
-        text: 'Annuler le RDV',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await StaffApi.cancel(a.id);
-            load();
-          } catch (err) {
-            Alert.alert('Erreur', errorText(err, "L'annulation a échoué."));
-          }
-        },
-      },
-    ]);
+    Alert.alert(
+      'Annuler le rendez-vous',
+      `Annuler le RDV de ${a.patient_name} avec Dr. ${a.doctor_name} ? Le patient sera prévenu avec le motif choisi.`,
+      [
+        { text: 'Non', style: 'cancel' },
+        ...(['doctor_unavailable', 'other'] as const).map((reason) => ({
+          text: reason === 'doctor_unavailable' ? 'Médecin indisponible' : 'Autre motif',
+          style: 'destructive' as const,
+          onPress: async () => {
+            try {
+              await StaffApi.cancel(a.id, { reason });
+              load();
+            } catch (err) {
+              Alert.alert('Erreur', errorText(err, "L'annulation a échoué."));
+            }
+          },
+        })),
+      ]
+    );
 
   const active = (a: StaffAppointment) => a.status === 'pending' || a.status === 'confirmed';
   const today = clinicToday();
