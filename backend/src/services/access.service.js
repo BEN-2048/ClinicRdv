@@ -3,13 +3,17 @@ const pool = require('../config/db');
 const httpError = (status, message) =>
   Object.assign(new Error(message), { status });
 
-const ACTIONS = ['view_record', 'view_appointments', 'book', 'write_clinical', 'write_declared'];
+const ACTIONS = [
+  'view_record', 'view_summary', 'view_appointments', 'book',
+  'write_clinical', 'write_declared', 'manage_consent',
+];
 
 const RULES = {
-  self: ['view_record', 'view_appointments', 'book', 'write_declared'],
-  guardian_verified: ['view_record', 'view_appointments', 'book', 'write_declared'],
+  self: ['view_record', 'view_summary', 'view_appointments', 'book', 'write_declared', 'manage_consent'],
+  guardian_verified: ['view_record', 'view_summary', 'view_appointments', 'book', 'write_declared', 'manage_consent'],
   guardian_pending: ['view_appointments', 'book'],
-  treating_doctor: ['view_appointments', 'view_record', 'write_clinical'],
+  treating_doctor: ['view_appointments', 'view_record', 'view_summary', 'write_clinical'],
+  emergency_access: ['view_summary'],
   staff: ['view_appointments', 'book'],
 };
 
@@ -44,10 +48,27 @@ const resolveBasis = async (user, patientId, db = pool) => {
       [user.id, patientId]
     );
     const facilityIds = r.rows.map((x) => x.facility_id);
+    const extra = (await db.query(
+      `SELECT
+         (SELECT array_agg(DISTINCT c.scope) FROM record_consents c
+           WHERE c.patient_id = $2 AND c.facility_id = ANY($3::int[])
+             AND c.revoked_at IS NULL AND (c.expires_at IS NULL OR c.expires_at > now())) AS consent_scopes,
+         EXISTS (SELECT 1 FROM emergency_access_sessions e
+                  WHERE e.patient_id = $2 AND e.doctor_user_id = $1 AND e.expires_at > now()) AS emergency`,
+      [user.id, patientId, facilityIds]
+    )).rows[0] ?? {};
+    const scopes = Array.isArray(extra.consent_scopes) ? extra.consent_scopes : [];
+    const emergency = extra.emergency === true;
     return {
       exists: true,
-      basis: facilityIds.length ? 'treating_doctor' : null,
+      basis: facilityIds.length ? 'treating_doctor' : emergency ? 'emergency_access' : null,
       facilityIds,
+      sharing: {
+        summaryAll: scopes.length > 0 || emergency,
+        fullAll: scopes.includes('full'),
+        consent: scopes.length > 0,
+        emergency,
+      },
     };
   }
 
@@ -60,11 +81,12 @@ const resolveBasis = async (user, patientId, db = pool) => {
 
 exports.canAccessPatient = async (user, patientId, action, db = pool) => {
   if (!ACTIONS.includes(action)) throw new Error(`Action inconnue : ${action}`);
-  const { exists, basis, facilityIds = null } = await resolveBasis(user, patientId, db);
+  const { exists, basis, facilityIds = null, sharing = null } = await resolveBasis(user, patientId, db);
   return {
     exists,
     basis,
     facilityIds,
+    sharing,
     allowed: exists && !!basis && RULES[basis].includes(action),
   };
 };

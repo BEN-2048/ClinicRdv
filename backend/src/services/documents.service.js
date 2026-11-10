@@ -28,7 +28,10 @@ const PUBLIC_COLUMNS = `d.id, d.patient_id, d.facility_id, d.appointment_id, d.c
 
 const visibility = (access) => {
   if (access.basis === 'treating_doctor') {
-    return { sql: '(d.facility_id = ANY($2::int[]) OR d.facility_id IS NULL)', params: [access.facilityIds] };
+    return {
+      sql: `(d.facility_id = ANY($2::int[]) OR d.facility_id IS NULL${access.sharing?.fullAll ? ' OR true' : ''})`,
+      params: [access.facilityIds],
+    };
   }
   const base = 'NOT d.entered_in_error AND d.released_at IS NOT NULL';
   if (access.basis === 'guardian_verified') return { sql: `${base} AND NOT d.confidential`, params: [] };
@@ -37,7 +40,7 @@ const visibility = (access) => {
 
 const canSee = (access, doc) => {
   if (access.basis === 'treating_doctor') {
-    return doc.facility_id === null || access.facilityIds.includes(doc.facility_id);
+    return doc.facility_id === null || access.facilityIds.includes(doc.facility_id) || !!access.sharing?.fullAll;
   }
   if (doc.entered_in_error || !doc.released_at) return false;
   if (access.basis === 'guardian_verified' && doc.confidential) return false;

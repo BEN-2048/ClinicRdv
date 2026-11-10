@@ -205,7 +205,8 @@ exports.cancel = async (user, id, { reason }, { ip } = {}) => {
 
 const visibleFilter = (access, user) => {
   if (access.basis === 'treating_doctor') {
-    return { sql: "rx.facility_id = ANY($2::int[]) AND (rx.status <> 'draft' OR rx.prescriber_user_id = $3)", params: [access.facilityIds, user.id] };
+    const scope = access.sharing?.fullAll ? '(rx.facility_id = ANY($2::int[]) OR true)' : 'rx.facility_id = ANY($2::int[])';
+    return { sql: `${scope} AND (rx.status <> 'draft' OR rx.prescriber_user_id = $3)`, params: [access.facilityIds, user.id] };
   }
   if (access.basis === 'guardian_verified') {
     return { sql: "rx.status <> 'draft' AND NOT rx.confidential", params: [] };
@@ -246,9 +247,9 @@ exports.consultationHistory = async (user, patientId, { ip } = {}) => {
        JOIN doctors d ON d.id = a.doctor_id
        JOIN users du ON du.id = d.user_id
        JOIN specialties s ON s.id = d.specialty_id
-      WHERE a.patient_profile_id = $1 AND a.facility_id = ANY($2::int[])
+      WHERE a.patient_profile_id = $1 AND (a.facility_id = ANY($2::int[]) OR $3::boolean)
       ORDER BY a.starts_at DESC`,
-    [patientId, access.facilityIds]
+    [patientId, access.facilityIds, !!access.sharing?.fullAll]
   );
   return r.rows;
 };

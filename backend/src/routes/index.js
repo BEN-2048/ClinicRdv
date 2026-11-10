@@ -26,7 +26,8 @@ const facilityAdmin = require('../controllers/facilityAdmin.controller');
 const record = require('../controllers/record.controller');
 const rx = require('../controllers/prescriptions.controller');
 const documents = require('../controllers/documents.controller');
-const { createUploadLimiter } = require('../middleware/rateLimit');
+const sharing = require('../controllers/sharing.controller');
+const { createUploadLimiter, createUserLimiter } = require('../middleware/rateLimit');
 const {
   staffScopeMiddleware,
   doctorInScopeMiddleware,
@@ -292,6 +293,30 @@ router.post(
   documents.enteredInError
 );
 router.get('/files/:token', validate(s.fileTokenParams, 'params'), documents.serveFile);
+
+const patientOwner = [authenticate, requireRole('patient')];
+router.get('/patients/:patientId/consents', ...patientOwner, validate(s.patientIdParams, 'params'), sharing.listConsents);
+router.post('/patients/:patientId/consents', ...patientOwner, validate(s.patientIdParams, 'params'), validate(s.grantConsent), sharing.grantConsent);
+router.post('/consents/:id/revoke', ...patientOwner, validate(s.positiveIdParams, 'params'), sharing.revokeConsent);
+router.get('/patients/:patientId/access-history', ...patientOwner, validate(s.patientIdParams, 'params'), sharing.accessHistory);
+
+const emergencyLimiter = createUserLimiter('emergency-lookup', 20);
+router.get(
+  '/emergency/patient-lookup',
+  authenticate,
+  requireRole('doctor'),
+  emergencyLimiter,
+  validate(s.emergencyLookupQuery, 'query'),
+  sharing.lookup
+);
+router.post(
+  '/patients/:patientId/emergency-access',
+  authenticate,
+  requireRole('doctor'),
+  validate(s.patientIdParams, 'params'),
+  validate(s.startEmergencyAccess),
+  sharing.startEmergency
+);
 
 router.get(
   '/patients/:patientId/consultations',

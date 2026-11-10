@@ -52,7 +52,7 @@ describe('Lecture du dossier', () => {
     expect(sql).toContain('NOT e.entered_in_error');
     expect(sql).not.toContain('NOT e.confidential');
     const log = calls(/INSERT INTO patient_access_logs/)[0][1];
-    expect(log.slice(0, 6)).toEqual([7, 'patient', 20, 'view_record', true, 'self']);
+    expect(log.slice(0, 6)).toEqual([7, 'patient', 20, 'view_summary', true, 'self']);
     expect(log.slice(7)).toEqual(['record_summary', null]);
   });
 

@@ -130,7 +130,7 @@ describe('Historique des consultations et complements', () => {
     const [sql, params] = calls('JOIN consultation_notes c')[0];
     expect(sql).toContain("c.status = 'completed'");
     expect(sql).toContain('a.facility_id = ANY($2::int[])');
-    expect(params).toEqual([20, [3]]);
+    expect(params).toEqual([20, [3], false]);
   });
 
   test.each(['patient', 'secretary'])('le role %s n a pas acces a l historique clinique', async (role) => {

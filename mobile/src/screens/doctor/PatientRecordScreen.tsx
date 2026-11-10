@@ -107,21 +107,34 @@ export default function PatientRecordScreen() {
         </Text>
       </Card>
 
-      <Notice
-        icon="shield-checkmark-outline"
-        message={`Vous voyez les informations enregistrées dans vos établissements de soins (${record.access.facilities.map((f) => f.name).join(', ')}) et celles déclarées par le patient. Chaque consultation de ce dossier est journalisée.`}
-      />
+      {record.access.basis === 'emergency_access' ? (
+        <Notice
+          tone="danger"
+          icon="alert-circle-outline"
+          title="Accès d’urgence"
+          message="Synthèse non confidentielle en lecture seule, valable 24 heures. Cet accès a été notifié au patient."
+        />
+      ) : (
+        <Notice
+          icon="shield-checkmark-outline"
+          message={record.access.sharing?.consent
+            ? `Le patient a autorisé le partage ${record.access.sharing.fullAll ? 'de son dossier complet' : 'de sa synthèse'} avec votre établissement : vous voyez aussi les informations enregistrées ailleurs. Chaque consultation est journalisée.`
+            : `Vous voyez les informations enregistrées dans vos établissements de soins (${record.access.facilities.map((f) => f.name).join(', ')}) et celles déclarées par le patient. Chaque consultation de ce dossier est journalisée.`}
+        />
+      )}
 
-      <SegmentedTabs<Tab>
-        value={tab}
-        onChange={setTab}
-        tabs={[
-          { key: 'synthese', label: 'Synthèse' },
-          { key: 'consultations', label: 'Consultations' },
-          { key: 'ordonnances', label: 'Ordonnances' },
-          { key: 'documents', label: 'Documents' },
-        ]}
-      />
+      {record.access.basis === 'emergency_access' ? null : (
+        <SegmentedTabs<Tab>
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { key: 'synthese', label: 'Synthèse' },
+            { key: 'consultations', label: 'Consultations' },
+            { key: 'ordonnances', label: 'Ordonnances' },
+            { key: 'documents', label: 'Documents' },
+          ]}
+        />
+      )}
 
       {tab === 'consultations' ? (
         history === null ? (
@@ -168,7 +181,7 @@ export default function PatientRecordScreen() {
         />
       ) : null}
 
-      {tab !== 'synthese' ? null : adding ? (
+      {tab !== 'synthese' || !record.access.canWriteClinical ? null : adding ? (
         <RecordEntryForm
           kind={adding}
           clinician
@@ -189,7 +202,7 @@ export default function PatientRecordScreen() {
 
       {tab === 'synthese' ? <RecordSections
         record={record}
-        renderActions={(kind, entry) => {
+        renderActions={!record.access.canWriteClinical ? undefined : (kind, entry) => {
           const e = entry as any;
           const isOpen = errorFor?.kind === kind && errorFor.id === entry.id;
           if (isOpen) {

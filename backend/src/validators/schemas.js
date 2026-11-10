@@ -372,3 +372,18 @@ exports.documentUpload = z.object({
 exports.fileTokenParams = z.object({
   token: z.string().regex(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/).max(600),
 });
+
+exports.grantConsent = z.object({
+  facilityId: z.number().int().positive(),
+  scope: z.enum(['summary', 'full']),
+  durationDays: z.union([z.literal(30), z.literal(90), z.literal(180), z.literal(365)]).nullable().optional(),
+}).strict();
+
+exports.emergencyLookupQuery = z.object({
+  number: z.string().trim().regex(/^CLRDV-P-[0-9]{6,}$/i, 'Numéro patient invalide'),
+});
+
+exports.startEmergencyAccess = z.object({
+  reason: z.string().trim().min(15, 'Décrivez la situation d’urgence (15 caractères minimum)').max(1000),
+  facilityId: z.number().int().positive().optional(),
+}).strict();

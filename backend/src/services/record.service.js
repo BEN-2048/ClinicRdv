@@ -60,18 +60,25 @@ const KINDS = {
 
 exports.KINDS = Object.keys(KINDS);
 
+const isClinicalReader = (access) => ['treating_doctor', 'emergency_access'].includes(access.basis);
+
 const visibilitySql = (access, includeErrors) => {
   const parts = [];
   if (!(includeErrors && access.basis === 'treating_doctor')) parts.push('NOT e.entered_in_error');
   if (access.basis === 'guardian_verified') parts.push('NOT e.confidential');
-  if (access.basis === 'treating_doctor') parts.push('(e.facility_id = ANY($2::int[]) OR e.facility_id IS NULL)');
+  if (isClinicalReader(access)) {
+    const shared = access.sharing?.summaryAll
+      ? ` OR ${access.sharing.fullAll ? 'true' : 'NOT e.confidential'}`
+      : '';
+    parts.push(`(e.facility_id = ANY($2::int[]) OR e.facility_id IS NULL${shared})`);
+  }
   return parts.length ? parts.join(' AND ') : 'true';
 };
 
 const listKind = (kind, patientId, access, includeErrors) => {
   const { table, order } = KINDS[kind];
   const params = [patientId];
-  if (access.basis === 'treating_doctor') params.push(access.facilityIds);
+  if (isClinicalReader(access)) params.push(access.facilityIds);
   return pool.query(
     `SELECT e.*, f.name AS facility_name,
             u.first_name || ' ' || u.last_name AS recorded_by_name, u.role AS recorded_by_role
@@ -85,7 +92,7 @@ const listKind = (kind, patientId, access, includeErrors) => {
 };
 
 exports.getRecord = async (user, patientId, { ip, includeErrors = false } = {}) => {
-  const access = await assertAccess(user, patientId, 'view_record', {
+  const access = await assertAccess(user, patientId, 'view_summary', {
     ip, audit: true, resource: 'record_summary',
   });
 
@@ -98,7 +105,7 @@ exports.getRecord = async (user, patientId, { ip, includeErrors = false } = {}) 
     ...exports.KINDS.map((k) => listKind(k, patientId, access, includeErrors)),
   ]);
 
-  const facilities = access.basis === 'treating_doctor'
+  const facilities = isClinicalReader(access) && access.facilityIds.length
     ? (await pool.query('SELECT id, name FROM facilities WHERE id = ANY($1::int[]) ORDER BY name', [access.facilityIds])).rows
     : [];
 
@@ -110,6 +117,7 @@ exports.getRecord = async (user, patientId, { ip, includeErrors = false } = {}) 
       canWriteClinical: access.basis === 'treating_doctor',
       canDeclare: ['self', 'guardian_verified'].includes(access.basis),
       facilities,
+      sharing: access.sharing ?? null,
     },
   };
 };
