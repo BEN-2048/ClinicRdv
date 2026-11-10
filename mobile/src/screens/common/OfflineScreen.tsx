@@ -154,6 +154,14 @@ export default function OfflineScreen() {
         Les appels et les SMS passent par le réseau téléphonique classique : ils peuvent fonctionner même sans Internet, si votre téléphone capte le réseau.
       </Text>
 
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => navigation.navigate('Emergency')}
+        style={styles.emergencyButton}
+      >
+        <Text style={styles.emergencyButtonText}>Urgence : numéros et hôpitaux enregistrés</Text>
+      </Pressable>
+
       {userId ? (
         <Pressable
           accessibilityRole="button"

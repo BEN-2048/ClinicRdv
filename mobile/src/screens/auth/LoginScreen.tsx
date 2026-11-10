@@ -110,6 +110,13 @@ export default function LoginScreen({ navigation }: any) {
 
         <Button title="Se connecter" icon="log-in-outline" loading={busy} onPress={submit} />
 
+        <Button
+          title="Urgence : appeler ou trouver un hôpital"
+          icon="medkit-outline"
+          variant="danger"
+          onPress={() => navigation.navigate('Emergency')}
+        />
+
         <View style={auth.linkRow}>
           <Text style={auth.muted}>Vous n'avez pas de compte ?</Text>
           <Button

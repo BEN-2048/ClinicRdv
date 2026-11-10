@@ -13,6 +13,12 @@
         {
           "faceIDPermission": "ClinicRDV utilise Face ID pour protéger votre fiche d’urgence hors ligne."
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "ClinicRDV utilise votre position uniquement sur l’écran Urgence, pour trouver les services d’urgence les plus proches."
+        }
       ]
     ]
   }

@@ -27,6 +27,7 @@ const record = require('../controllers/record.controller');
 const rx = require('../controllers/prescriptions.controller');
 const documents = require('../controllers/documents.controller');
 const sharing = require('../controllers/sharing.controller');
+const emergency = require('../controllers/emergency.controller');
 const { createUploadLimiter, createUserLimiter } = require('../middleware/rateLimit');
 const {
   staffScopeMiddleware,
@@ -222,6 +223,13 @@ router.delete(
 
 // Informations d'un médecin et ses créneaux
 router.get('/doctors/:id', authenticate, validate(s.idParams, 'params'), doctors.get);
+
+router.get(
+  '/emergency/directory',
+  createUserLimiter('emergency-directory', 120, 15 * 60 * 1000),
+  validate(s.emergencyDirectoryQuery, 'query'),
+  emergency.directory
+);
 
 const alternativesLimiter = createUserLimiter('alternatives', 60);
 router.get(
@@ -471,6 +479,11 @@ staff.use('/appointments/:id', appointmentInScopeMiddleware('id'));
 
 const platformOnly = requireRole('admin');
 const facilityParams = validate(s.facilityParams, 'params');
+
+staff.get('/emergency-numbers', platformOnly, emergency.listNumbers);
+staff.post('/emergency-numbers', platformOnly, validate(s.createEmergencyNumber), emergency.createNumber);
+staff.patch('/emergency-numbers/:id', platformOnly, validate(s.idParams, 'params'), validate(s.updateEmergencyNumber), emergency.updateNumber);
+staff.delete('/emergency-numbers/:id', platformOnly, validate(s.idParams, 'params'), emergency.deleteNumber);
 
 
 // Périmètre du compte connecté
