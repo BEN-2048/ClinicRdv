@@ -480,4 +480,7 @@ export const WaitingListApi = {
 
 export const MedicalRecordApi = {
   mine: () => api.get('/medical-record/me'),
+
+  forPatient: (patientId: number) =>
+    api.get(`/medical-record/patients/${patientId}`),
 };

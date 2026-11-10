@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { canAccessPatient } = require('./access.service');
 
 const httpError = (status, message) =>
   Object.assign(new Error(message), { status });
@@ -98,20 +99,14 @@ exports.addDependent = async (userId, { firstName, lastName, birthDate, sex, rel
 };
 
 exports.resolveBookingProfile = async (userId, patientId, db = pool) => {
-  const r = patientId
-    ? await db.query(
-      `SELECT id FROM patients
-        WHERE id = $2 AND id IN ${accessibleProfilesSql('$1')}`,
-      [userId, patientId]
-    )
-    : await db.query('SELECT id FROM patients WHERE user_id = $1', [userId]);
-
-  if (!r.rowCount) {
-    throw httpError(
-      patientId ? 403 : 404,
-      patientId ? 'Vous ne pouvez pas reserver pour ce patient' : 'Profil patient introuvable'
-    );
+  if (patientId) {
+    const { allowed } = await canAccessPatient({ id: userId, role: 'patient' }, patientId, 'book', db);
+    if (!allowed) throw httpError(403, 'Vous ne pouvez pas reserver pour ce patient');
+    return patientId;
   }
+
+  const r = await db.query('SELECT id FROM patients WHERE user_id = $1', [userId]);
+  if (!r.rowCount) throw httpError(404, 'Profil patient introuvable');
   return r.rows[0].id;
 };
 

@@ -52,6 +52,12 @@ router.post(
 
 router.get('/users/me', authenticate, users.getMe);
 router.get('/medical-record/me', authenticate, requireRole('patient'), medicalRecord.mine);
+router.get(
+  '/medical-record/patients/:patientId',
+  authenticate,
+  requireRole('patient'),
+  medicalRecord.forPatient
+);
 
 router.patch(
   '/users/me',

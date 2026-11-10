@@ -177,8 +177,13 @@ describe('Reservation pour un enfant', () => {
     patientProfileId: 20,
   };
 
-  test('refuse de reserver pour un profil non rattache', async () => {
-    pool.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+  test.each([
+    ['inexistant', []],
+    ['non rattache', [{ user_id: 99, link_status: null }]],
+    ['au lien refuse', [{ user_id: null, link_status: 'rejected' }]],
+    ['au lien revoque', [{ user_id: null, link_status: 'revoked' }]],
+  ])('refuse de reserver pour un profil %s', async (_label, rows) => {
+    pool.query.mockResolvedValueOnce({ rows, rowCount: rows.length });
 
     const res = await request(app)
       .post('/api/appointments')
@@ -190,8 +195,8 @@ describe('Reservation pour un enfant', () => {
     expect(pool.query.mock.calls.some(([sql]) => sql.includes('INSERT INTO appointments'))).toBe(false);
   });
 
-  test('verifie le rattachement (en attente ou verifie) avant de reserver', async () => {
-    pool.query.mockResolvedValueOnce({ rows: [{ id: 20 }], rowCount: 1 });
+  test('un lien en attente suffit pour reserver', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [{ user_id: null, link_status: 'pending' }], rowCount: 1 });
     getAvailableSlots.mockResolvedValue([
       { startsAt: booking.startsAt, endsAt: '2030-01-07T08:30:00.000Z', available: true },
     ]);
@@ -204,7 +209,7 @@ describe('Reservation pour un enfant', () => {
 
     expect(res.status).toBe(201);
     const [checkSql, checkParams] = pool.query.mock.calls[0];
-    expect(checkSql).toContain("g.status IN ('pending', 'verified')");
+    expect(checkSql).toContain('LEFT JOIN patient_guardians g');
     expect(checkParams).toEqual([7, 20]);
     const insert = pool.query.mock.calls.find(([sql]) => sql.includes('INSERT INTO appointments'));
     expect(insert[1].slice(0, 2)).toEqual([7, 20]);
