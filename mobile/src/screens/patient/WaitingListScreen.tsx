@@ -263,7 +263,7 @@ export default function WaitingListScreen() {
   const name = doctorDisplayName(`${doctor.first_name} ${doctor.last_name}`);
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.page} contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
       <View style={styles.section}>
         <View style={[styles.card, shadow.soft]}>
           <View style={styles.row}>

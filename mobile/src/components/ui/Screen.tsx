@@ -34,6 +34,7 @@ export default function Screen({
           style={s.flex}
           contentContainerStyle={[s.content, contentStyle]}
           keyboardShouldPersistTaps="handled"
+          contentInsetAdjustmentBehavior="automatic"
           refreshControl={
             onRefresh ? (
               <RefreshControl

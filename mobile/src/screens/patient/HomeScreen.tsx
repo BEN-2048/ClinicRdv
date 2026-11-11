@@ -153,9 +153,9 @@ export default function HomeScreen({ navigation }: any) {
         />
       }
     >
-      <Button title="Prendre un nouveau rendez-vous" icon="add" onPress={openDoctors} />
+      <Button title="Nouveau rendez-vous" icon="add" onPress={openDoctors} />
       <Button
-        title="Je ne sais pas quel médecin consulter"
+        title="Quel médecin consulter ?"
         icon="help-circle-outline"
         variant="secondary"
         onPress={() => navigation.navigate('FindDoctor')}
