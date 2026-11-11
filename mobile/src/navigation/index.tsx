@@ -47,6 +47,7 @@ import EmergencyScreen from '../screens/common/EmergencyScreen';
 import EmergencyNumbersScreen from '../screens/admin/EmergencyNumbersScreen';
 import DevicesScreen from '../screens/common/DevicesScreen';
 import AlternativesScreen from '../screens/patient/AlternativesScreen';
+import FindDoctorScreen from '../screens/patient/FindDoctorScreen';
 import ChangePasswordScreen from '../screens/common/ChangePasswordScreen';
 import ChangePhoneScreen from '../screens/common/ChangePhoneScreen';
 import ChangeEmailScreen from '../screens/common/ChangeEmailScreen';
@@ -384,6 +385,14 @@ export default function RootNavigator() {
               component={EmergencyNumbersScreen}
               options={{ title: 'Numéros d’urgence' }}
             />
+
+            {user.role === 'patient' && (
+              <Stack.Screen
+                name="FindDoctor"
+                component={FindDoctorScreen}
+                options={{ title: 'Trouver le bon médecin' }}
+              />
+            )}
 
             <Stack.Screen
               name="Alternatives"
