@@ -118,7 +118,7 @@ export default function LoginScreen({ navigation }: any) {
         />
 
         <View style={auth.linkRow}>
-          <Text style={auth.muted}>Vous n'avez pas de compte ?</Text>
+          <Text style={auth.muted}>Vous n’avez pas de compte ?</Text>
           <Button
             title="Créer un compte"
             variant="ghost"

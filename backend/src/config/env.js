@@ -41,4 +41,9 @@ module.exports = {
   storageLocalDir: process.env.STORAGE_LOCAL_DIR,
   fileUrlSecret: process.env.FILE_URL_SECRET,
   publicApiUrl: process.env.PUBLIC_API_URL,
+
+  remindersEnabled: process.env.REMINDERS_ENABLED
+    ? process.env.REMINDERS_ENABLED === 'true'
+    : process.env.NODE_ENV !== 'test',
+  reminderIntervalMinutes: positiveInteger(process.env.REMINDER_INTERVAL_MINUTES, 5),
 };

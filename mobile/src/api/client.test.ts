@@ -1,3 +1,5 @@
+import { api, errorMessage } from './client';
+
 const mockStore = new Map<string, string>();
 const mockRefresh = jest.fn();
 const mockRejected = jest.fn();
@@ -17,8 +19,6 @@ jest.mock('../services/session', () => ({
   refreshSession: (...args: unknown[]) => mockRefresh(...args),
   notifySessionRejected: (...args: unknown[]) => mockRejected(...args),
 }));
-
-import { api, errorMessage } from './client';
 
 type Reply = { status: number; data?: unknown };
 let replies: Reply[];

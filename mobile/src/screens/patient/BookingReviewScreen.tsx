@@ -162,7 +162,7 @@ export default function BookingReviewScreen() {
           />
           <View style={s.cancelInfo}>
             <Icon name="time-outline" size="sm" color={color.textMuted} />
-            <Text style={s.cancelText}>Annulation gratuite jusqu'à 4 heures avant le rendez-vous.</Text>
+            <Text style={s.cancelText}>Annulation gratuite jusqu’à 4 heures avant le rendez-vous.</Text>
           </View>
         </View>
       }

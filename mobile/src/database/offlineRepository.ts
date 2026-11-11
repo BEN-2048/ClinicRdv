@@ -1,3 +1,6 @@
+import { getOfflineDatabase } from "./offlineDatabase";
+import { clearEmergencyCards } from "../services/emergencyCard";
+
 export type CachedProfile = {
   user_id: string;
   email: string;
@@ -44,9 +47,6 @@ export type CachedDoctor = {
   languages: string[] | null;
   phone?: string | null;
 };
-
-import { getOfflineDatabase } from "./offlineDatabase";
-import { clearEmergencyCards } from "../services/emergencyCard";
 
 export async function saveCachedProfile(
   profile: CachedProfile,

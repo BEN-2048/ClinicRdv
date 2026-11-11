@@ -19,6 +19,8 @@ const distanceSql = (lat, lng) => `(6371 * acos(LEAST(1, GREATEST(-1,
   cos(radians(${lat})) * cos(radians(f.latitude)) * cos(radians(f.longitude) - radians(${lng}))
   + sin(radians(${lat})) * sin(radians(f.latitude))))))`;
 
+exports.distanceSql = distanceSql;
+
 exports.nextSlots = async (doctorId, facility, { count = SLOTS_PER_OPTION, skip = null, db = pool } = {}) => {
   const workdays = new Set((await db.query(
     'SELECT DISTINCT weekday FROM working_hours WHERE doctor_id = $1 AND facility_id = $2',
