@@ -1,3 +1,11 @@
+import {
+  classifyRefreshError,
+  clearStoredSession,
+  currentSessionKey,
+  refreshSession,
+  tokenExpiresInMs,
+} from './session';
+
 const mockStore = new Map<string, string>();
 
 jest.mock('expo-secure-store', () => ({
@@ -21,14 +29,6 @@ jest.mock('axios', () => {
     create: jest.fn(() => ({ post: (...args: unknown[]) => mockPost(...args) })),
   };
 });
-
-import {
-  classifyRefreshError,
-  clearStoredSession,
-  currentSessionKey,
-  refreshSession,
-  tokenExpiresInMs,
-} from './session';
 
 const jwtWithExp = (secondsFromNow: number) => {
   const payload = Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + secondsFromNow })).toString('base64url');

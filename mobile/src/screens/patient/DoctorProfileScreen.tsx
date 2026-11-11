@@ -104,7 +104,7 @@ export default function DoctorProfileScreen() {
         <Text style={s.name}>Dr. {fullName}</Text>
         <Text style={s.specialty}>{doctor.specialty}</Text>
         {!doctor.active ? (
-          <Text style={s.unavailable}>Ce médecin n'est actuellement pas disponible.</Text>
+          <Text style={s.unavailable}>Ce médecin n’est actuellement pas disponible.</Text>
         ) : null}
       </Card>
 
