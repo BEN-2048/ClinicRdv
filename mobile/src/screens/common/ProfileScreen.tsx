@@ -274,6 +274,16 @@ export default function ProfileScreen() {
           onPress={isPatient ? () => navigation.navigate('Notifications') : undefined}
           style={s.divider}
         />
+        {user?.role === 'admin' ? (
+          <ListItem
+            icon="call-outline"
+            iconColor={color.dangerInk}
+            title="Numéros d’urgence"
+            subtitle="Publier les numéros vérifiés, avec leur source"
+            onPress={() => navigation.navigate('EmergencyNumbers')}
+            style={s.divider}
+          />
+        ) : null}
         <ListItem
           icon="lock-closed-outline"
           title="Mes appareils"

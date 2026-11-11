@@ -43,6 +43,8 @@ import PatientRecordScreen from '../screens/doctor/PatientRecordScreen';
 import ClinicManagementScreen from '../screens/admin/ClinicManagementScreen';
 import ProfileScreen from '../screens/common/ProfileScreen';
 import OfflineScreen from '../screens/common/OfflineScreen';
+import EmergencyScreen from '../screens/common/EmergencyScreen';
+import EmergencyNumbersScreen from '../screens/admin/EmergencyNumbersScreen';
 import DevicesScreen from '../screens/common/DevicesScreen';
 import AlternativesScreen from '../screens/patient/AlternativesScreen';
 import ChangePasswordScreen from '../screens/common/ChangePasswordScreen';
@@ -378,6 +380,12 @@ export default function RootNavigator() {
             />
 
             <Stack.Screen
+              name="EmergencyNumbers"
+              component={EmergencyNumbersScreen}
+              options={{ title: 'Numéros d’urgence' }}
+            />
+
+            <Stack.Screen
               name="Alternatives"
               component={AlternativesScreen}
               options={{ title: 'Solutions proposées' }}
@@ -452,6 +460,11 @@ export default function RootNavigator() {
             />
           </>
         )}
+        <Stack.Screen
+          name="Emergency"
+          component={EmergencyScreen}
+          options={{ title: 'Urgence' }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

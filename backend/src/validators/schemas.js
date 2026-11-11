@@ -263,6 +263,30 @@ exports.cancelAppointment = z.object({
   note: z.string().trim().max(255).optional(),
 }).strict().default({});
 
+exports.emergencyDirectoryQuery = z.object({
+  lat: z.coerce.number().min(-90).max(90).optional(),
+  lng: z.coerce.number().min(-180).max(180).optional(),
+  city: z.string().trim().max(80).optional(),
+}).strict().refine((o) => (o.lat === undefined) === (o.lng === undefined), {
+  message: 'lat et lng doivent etre fournis ensemble',
+});
+
+const emergencyNumberFields = {
+  label: z.string().trim().min(2).max(120),
+  number: z.string().trim().regex(/^\+?[0-9][0-9 ]{1,19}$/, 'Numéro invalide'),
+  province: z.string().trim().max(80).nullable().optional(),
+  source: z.string().trim().min(3, 'Indiquez la source officielle').max(255),
+  verifiedAt: z.string().date('Format AAAA-MM-JJ').refine((d) => d <= new Date().toISOString().slice(0, 10), 'La date de vérification ne peut pas être future'),
+  sortOrder: z.number().int().min(0).max(1000).optional(),
+};
+
+exports.createEmergencyNumber = z.object(emergencyNumberFields).strict();
+
+exports.updateEmergencyNumber = z.object({
+  ...Object.fromEntries(Object.entries(emergencyNumberFields).map(([k, v]) => [k, v.optional()])),
+  active: z.boolean().optional(),
+}).strict().refine((o) => Object.keys(o).length > 0, { message: 'Au moins un champ doit être fourni' });
+
 exports.alternativesQuery = z.object({
   facilityId: z.coerce.number().int().positive().optional(),
   lat: z.coerce.number().min(-90).max(90).optional(),

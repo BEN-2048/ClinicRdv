@@ -673,6 +673,18 @@ export const StaffApi = {
   conflicts: (id: number) =>
     api.get<UnavailabilityConflict[]>(`/admin/doctors/${id}/conflicts`),
 
+  emergencyNumbers: () =>
+    api.get<EmergencyNumber[]>('/admin/emergency-numbers'),
+
+  createEmergencyNumber: (data: { label: string; number: string; province: string | null; source: string; verifiedAt: string }) =>
+    api.post<EmergencyNumber>('/admin/emergency-numbers', data),
+
+  updateEmergencyNumber: (id: number, data: Partial<{ active: boolean; verifiedAt: string }>) =>
+    api.patch<EmergencyNumber>(`/admin/emergency-numbers/${id}`, data),
+
+  deleteEmergencyNumber: (id: number) =>
+    api.delete(`/admin/emergency-numbers/${id}`),
+
   cancelConflicts: (id: number, appointmentIds: number[], note?: string) =>
     api.post<{ cancelled: number; skipped: number }>(`/admin/doctors/${id}/conflicts/cancel`, { appointmentIds, note }),
 
@@ -1113,7 +1125,43 @@ export type EmergencyLookup = {
   facilities: { id: number; name: string }[];
 };
 
+export type EmergencyNumber = {
+  id: number;
+  label: string;
+  number: string;
+  province: string | null;
+  source: string;
+  verified_at: string;
+  sort_order: number;
+  active: boolean;
+};
+
+export type EmergencyFacility = {
+  id: number;
+  name: string;
+  type: string;
+  address: string | null;
+  city: string | null;
+  province: string | null;
+  phone: string | null;
+  emergency_phone: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  available_24h: boolean;
+  distance_km: number | null;
+};
+
+export type EmergencyDirectory = {
+  disclaimer: string;
+  generatedAt: string;
+  numbers: Omit<EmergencyNumber, 'active'>[];
+  facilities: EmergencyFacility[];
+};
+
 export const EmergencyApi = {
+  directory: (position?: { lat: number; lng: number }) =>
+    api.get<EmergencyDirectory>('/emergency/directory', { params: position ?? {}, timeout: 8000 }),
+
   lookup: (patientNumber: string) =>
     api.get<EmergencyLookup>('/emergency/patient-lookup', { params: { number: patientNumber } }),
 

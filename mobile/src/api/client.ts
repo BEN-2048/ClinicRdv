@@ -33,6 +33,7 @@ const PUBLIC_AUTH_ROUTES = [
   '/auth/resend-phone-otp',
   '/auth/forgot-password',
   '/auth/reset-password',
+  '/emergency/directory',
   '/auth/refresh',
   '/auth/upgrade-session',
   '/auth/logout',
