@@ -1168,3 +1168,75 @@ export const EmergencyApi = {
   start: (patientId: number, reason: string, facilityId?: number) =>
     api.post(`/patients/${patientId}/emergency-access`, { reason, facilityId }),
 };
+
+export type TriageItem = { code: string; label: string };
+
+export type TriageCatalog = {
+  disclaimer: string;
+  redFlags: TriageItem[];
+  symptoms: TriageItem[];
+};
+
+export type TriageSuggestion = {
+  specialtyId: number;
+  name: string;
+  confidence: 'forte' | 'moyenne' | 'faible';
+  reasons: string[];
+};
+
+export type TriageResult = {
+  urgent: boolean;
+  disclaimer: string;
+  message?: string;
+  redFlags: TriageItem[];
+  suggestions: TriageSuggestion[];
+};
+
+export type RecommendationWeights = { delay: number; distance: number; language: number; history: number };
+
+export type RecommendedDoctor = {
+  rank: number;
+  doctorId: number;
+  doctorName: string;
+  specialty: string;
+  fee: string | null;
+  languages: string[];
+  facilityId: number;
+  facilityName: string;
+  city: string | null;
+  address: string | null;
+  distanceKm: number | null;
+  timezone: string;
+  nextSlot: { startsAt: string; endsAt: string };
+  score: number;
+  parts: RecommendationWeights;
+  reasons: string[];
+};
+
+export type RecommendationResult = {
+  specialty: { id: number; name: string };
+  weights: RecommendationWeights;
+  criteria: { position: boolean; city: string | null; language: string | null };
+  withoutSlot: number;
+  doctors: RecommendedDoctor[];
+};
+
+export type RecommendationQuery = {
+  specialtyId: number;
+  profileId?: number;
+  lat?: number;
+  lng?: number;
+  city?: string;
+  language?: string;
+};
+
+export const RecommendationsApi = {
+  symptoms: () =>
+    api.get<TriageCatalog>('/triage/symptoms'),
+
+  orient: (data: { symptoms: string[]; age?: number }) =>
+    api.post<TriageResult>('/triage', data),
+
+  doctors: (params: RecommendationQuery) =>
+    api.get<RecommendationResult>('/recommendations/doctors', { params }),
+};
