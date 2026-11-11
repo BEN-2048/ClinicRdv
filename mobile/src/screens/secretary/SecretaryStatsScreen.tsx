@@ -5,6 +5,7 @@ import { StaffApi } from '../../api/services';
 import { AppHeader, Card, EmptyState, Screen, SectionTitle, SegmentedTabs, StatCard } from '../../components/ui';
 import { color, radius, space, type } from '../../theme';
 import { ErrorCard, Loading, clinicToday, errorText, shared, shiftDate } from './shared';
+import { doctorName } from '../../utils/doctorName';
 
 type Stats = {
   total: number;
@@ -108,7 +109,7 @@ export default function SecretaryStatsScreen() {
                 <View key={d.doctor_id} style={[s.item, i > 0 && s.divider]}>
                   <View style={shared.row}>
                     <Text style={[type.bodyMedium, shared.flex]} numberOfLines={1}>
-                      Dr. {d.doctor_name}
+                      {doctorName(d.doctor_name)}
                     </Text>
                     <Text style={shared.muted}>
                       {d.total} RDV · {d.cancelled} annulé{d.cancelled > 1 ? 's' : ''}

@@ -132,7 +132,7 @@ export default function OfflineScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={styles.container} contentInsetAdjustmentBehavior="always">
       <Text style={styles.title}>Connexion indisponible</Text>
 
       <Text style={styles.message}>
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     padding: 24,
-    paddingTop: 48,
+    paddingTop: 24,
     paddingBottom: 40,
     backgroundColor: '#FFFFFF',
   },

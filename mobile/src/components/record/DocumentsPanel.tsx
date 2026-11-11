@@ -10,6 +10,7 @@ import {
 } from '../../api/services';
 import { Button, Card, Chip, EmptyState, Icon, Input, Loader, StatusBadge } from '../ui';
 import { color, space, type } from '../../theme';
+import { doctorName } from '../../utils/doctorName';
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const ACCEPTED = ['application/pdf', 'image/jpeg', 'image/png'];
@@ -187,7 +188,7 @@ export function DocumentsPanel({
                   {[DOCUMENT_CATEGORY_LABEL[d.category], formatDay(d.document_date ?? d.uploaded_at), formatSize(d.size_bytes)].join(' · ')}
                 </Text>
                 <Text style={s.muted}>
-                  {[d.source === 'patient' ? 'Déposé par le patient' : d.uploaded_by_name ? `Dr. ${d.uploaded_by_name}` : null, d.facility_name, d.confidential ? 'Confidentiel' : null]
+                  {[d.source === 'patient' ? 'Déposé par le patient' : d.uploaded_by_name ? doctorName(d.uploaded_by_name) : null, d.facility_name, d.confidential ? 'Confidentiel' : null]
                     .filter(Boolean)
                     .join(' · ')}
                 </Text>

@@ -27,6 +27,7 @@ import {
   shared,
   shiftDate,
 } from './shared';
+import { doctorName } from '../../utils/doctorName';
 
 const STATUSES: AppointmentStatus[] = ['confirmed', 'pending', 'cancelled', 'done'];
 
@@ -66,7 +67,7 @@ export default function SecretaryAppointmentsScreen() {
   const cancel = (a: StaffAppointment) =>
     Alert.alert(
       'Annuler le rendez-vous',
-      `Annuler le RDV de ${a.patient_name} avec Dr. ${a.doctor_name} ? Le patient sera prévenu avec le motif choisi.`,
+      `Annuler le RDV de ${a.patient_name} avec ${doctorName(a.doctor_name)} ? Le patient sera prévenu avec le motif choisi.`,
       [
         { text: 'Non', style: 'cancel' },
         ...(['doctor_unavailable', 'other'] as const).map((reason) => ({
@@ -148,7 +149,7 @@ export default function SecretaryAppointmentsScreen() {
                 </View>
                 <StatusBadge status={a.status} />
               </View>
-              <InfoRow icon="person-outline" label="Médecin" value={`Dr. ${a.doctor_name} · ${a.specialty}`} />
+              <InfoRow icon="person-outline" label="Médecin" value={`${doctorName(a.doctor_name)} · ${a.specialty}`} />
               <InfoRow
                 icon="time-outline"
                 label="Horaire"

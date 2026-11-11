@@ -5,6 +5,7 @@ import { StaffApi, StaffDoctor } from '../../api/services';
 import { AppHeader, Avatar, Button, Card, EmptyState, Icon, Screen } from '../../components/ui';
 import { color, radius, space, type } from '../../theme';
 import { ErrorCard, Loading, errorText, shared } from './shared';
+import { doctorName } from '../../utils/doctorName';
 
 export default function SecretaryDoctorsScreen() {
   const navigation = useNavigation<any>();
@@ -38,8 +39,8 @@ export default function SecretaryDoctorsScreen() {
     Alert.alert(
       d.active ? 'Désactiver le médecin' : 'Réactiver le médecin',
       d.active
-        ? `Dr. ${d.last_name} ne sera plus proposé aux patients. Les RDV existants sont conservés.`
-        : `Dr. ${d.last_name} sera de nouveau proposé aux patients.`,
+        ? `${doctorName(d.last_name)} ne sera plus proposé aux patients. Les RDV existants sont conservés.`
+        : `${doctorName(d.last_name)} sera de nouveau proposé aux patients.`,
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -85,7 +86,7 @@ export default function SecretaryDoctorsScreen() {
                   <Avatar name={fullName} size={48} dotColor={d.active ? color.success : color.textMuted} />
                   <View style={shared.flex}>
                     <Text style={type.h3} numberOfLines={1}>
-                      Dr. {fullName}
+                      {doctorName(fullName)}
                     </Text>
                     <Text style={s.specialty}>{d.specialty}</Text>
                     <View style={s.meta}>
@@ -109,7 +110,7 @@ export default function SecretaryDoctorsScreen() {
                     variant="secondary"
                     style={shared.action}
                     onPress={() =>
-                      navigation.navigate('SecretaryDoctorSchedule', { doctorId: d.id, name: `Dr. ${d.last_name}` })
+                      navigation.navigate('SecretaryDoctorSchedule', { doctorId: d.id, name: doctorName(d.last_name) })
                     }
                   />
                   <Button

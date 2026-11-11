@@ -26,6 +26,7 @@ import {
   sameDay,
 } from './shared';
 import BlockSlotSheet from './BlockSlotSheet';
+import { doctorName } from '../../utils/doctorName';
 
 type Doctor = {
   id: number;
@@ -278,7 +279,7 @@ export default function DoctorAgendaScreen() {
         header={
           <AppHeader
             title="Agenda"
-            subtitle={fullName ? `Dr. ${fullName}` : 'Espace médecin'}
+            subtitle={fullName ? doctorName(fullName) : 'Espace médecin'}
             right={
               <IconButton
                 icon="settings-outline"

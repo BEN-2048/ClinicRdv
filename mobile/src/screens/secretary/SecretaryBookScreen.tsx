@@ -20,6 +20,7 @@ import {
 } from '../../components/ui';
 import { color, space, type } from '../../theme';
 import { Loading, clinicDate, clinicToday, errorText, formatDateTime, formatLongDate, formatTime, shared } from './shared';
+import { doctorName } from '../../utils/doctorName';
 
 type Patient = {
   id: number;
@@ -134,7 +135,7 @@ export default function SecretaryBookScreen() {
         <Card style={shared.card}>
           <Text style={type.h2}>Rendez-vous actuel</Text>
           <InfoRow icon="person-outline" label="Patient" value={existing!.patient_name} strong />
-          <InfoRow icon="medkit-outline" label="Médecin" value={`Dr. ${existing!.doctor_name}`} />
+          <InfoRow icon="medkit-outline" label="Médecin" value={doctorName(existing!.doctor_name)} />
           <InfoRow icon="time-outline" label="Créneau actuel" value={formatDateTime(existing!.starts_at)} />
         </Card>
       ) : (
@@ -191,7 +192,7 @@ export default function SecretaryBookScreen() {
             {doctors.map((d) => (
               <Chip
                 key={d.id}
-                label={`Dr. ${d.last_name} · ${d.specialty}`}
+                label={`${doctorName(d.last_name)} · ${d.specialty}`}
                 selected={doctorId === d.id}
                 onPress={() => setDoctorId(d.id)}
               />
@@ -205,6 +206,7 @@ export default function SecretaryBookScreen() {
           <SectionTitle title={isReschedule ? 'Nouvelle date' : '3. Date et créneau'} />
           <Card padded={false} style={s.calendar}>
             <Calendar
+              firstDay={1}
               minDate={clinicToday()}
               current={date}
               onDayPress={(d: DateData) => setDate(d.dateString)}

@@ -21,6 +21,7 @@ import {
 } from '../../components/ui';
 import { CLINIC_TIME_ZONE } from '../../components/PatientFigmaUI';
 import { color, radius, space, type } from '../../theme';
+import { doctorName } from '../../utils/doctorName';
 
 type Consultation = {
   appointment_id: number;
@@ -273,7 +274,7 @@ export default function MedicalRecordScreen() {
               </View>
               <View>
                 <Text style={type.h3}>
-                  Dr. {item.doctor_first_name} {item.doctor_last_name}
+                  {doctorName(item.doctor_first_name, item.doctor_last_name)}
                 </Text>
                 <Text style={s.muted}>{item.specialty}</Text>
               </View>
@@ -334,7 +335,7 @@ export default function MedicalRecordScreen() {
               <Text style={s.date}>{formatDate(item.starts_at)}</Text>
             </View>
             <Text style={type.h3}>
-              Dr. {item.doctor_first_name} {item.doctor_last_name}
+              {doctorName(item.doctor_first_name, item.doctor_last_name)}
             </Text>
             {item.prescription ? (
               <View style={[s.note, s.prescriptionNote]}>

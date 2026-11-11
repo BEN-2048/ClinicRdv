@@ -4,6 +4,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { DoctorFacility, DoctorsApi } from '../../api/services';
 import { Avatar, Button, Card, Chip, ErrorState, InfoRow, Loader, Screen } from '../../components/ui';
 import { color, space, type } from '../../theme';
+import { doctorName } from '../../utils/doctorName';
 
 type DoctorProfile = {
   id: number;
@@ -101,7 +102,7 @@ export default function DoctorProfileScreen() {
     >
       <Card style={s.identity}>
         <Avatar name={fullName} size={80} dotColor={doctor.active ? color.success : color.textMuted} />
-        <Text style={s.name}>Dr. {fullName}</Text>
+        <Text style={s.name}>{doctorName(fullName)}</Text>
         <Text style={s.specialty}>{doctor.specialty}</Text>
         {!doctor.active ? (
           <Text style={s.unavailable}>Ce médecin n'est actuellement pas disponible.</Text>

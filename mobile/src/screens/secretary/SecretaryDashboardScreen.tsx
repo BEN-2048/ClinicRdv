@@ -16,6 +16,7 @@ import {
   StatCard,
 } from '../../components/ui';
 import { ErrorCard, Loading, StatusBadge, errorText, formatDateTime, shared } from './shared';
+import { doctorName } from '../../utils/doctorName';
 
 type Dashboard = {
   today: { total: number; confirmed: number; pending: number; cancelled: number; done: number };
@@ -126,7 +127,7 @@ export default function SecretaryDashboardScreen() {
                   </Text>
                   <StatusBadge status={a.status} />
                 </View>
-                <InfoRow icon="person-outline" label="Médecin" value={`Dr. ${a.doctor_name}`} />
+                <InfoRow icon="person-outline" label="Médecin" value={doctorName(a.doctor_name)} />
                 <InfoRow icon="time-outline" label="Horaire" value={formatDateTime(a.starts_at)} strong />
               </Card>
             ))
