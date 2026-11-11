@@ -490,3 +490,8 @@ exports.refreshTokenBody = z.object({
 exports.upgradeSessionBody = z.object({
   token: z.string().min(20).max(2000),
 }).strict();
+
+exports.triageBody = z.object({
+  symptoms: z.array(z.string().trim().regex(/^[a-z_]{2,40}$/)).min(1, 'Choisissez au moins un symptôme').max(15),
+  age: z.number().int().min(0).max(120).optional(),
+}).strict();
