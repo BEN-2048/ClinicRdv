@@ -44,8 +44,7 @@ clinicrdv/
 │   ├── src/         routes, contrôleurs, services, validateurs
 │   └── tests/       tests Jest + Supertest
 ├── mobile/    Application React Native (Expo, TypeScript)
-├── docs/      Conception, backlog, guides (SMS, sauvegardes)
-└── docker-compose.yml
+└── docs/      Conception, backlog, guides (SMS, sauvegardes)
 ```
 - **Backend** : Express, JWT + jetons de renouvellement, bcrypt, zod (validation), helmet, limitation des tentatives, pg.
 - **BD** : PostgreSQL. Anti double réservation via la contrainte `EXCLUDE USING gist` sur `appointments`.
@@ -54,7 +53,7 @@ clinicrdv/
 ## Installation
 
 ### Prérequis
-Node.js 20+, PostgreSQL 16 (ou Docker), application **Expo Go** sur le téléphone.
+Node.js 20+, application **Expo Go** sur le téléphone. Aucune installation de PostgreSQL : la base est hébergée sur Neon.
 
 ### 1. Base de données
 
@@ -76,8 +75,8 @@ npm run db:seed                  # données fictives + comptes de test (ignoré 
 npm run db:reset                 # ⚠ supprime TOUTES les données puis recrée les tables
 ```
 
-Pour travailler avec une base locale : `docker compose up -d db` et
-`DATABASE_URL=postgres://clinic:clinic@localhost:5432/clinicrdv`.
+Pour travailler avec une base locale : installer PostgreSQL 16, créer une base `clinicrdv` et
+renseigner `DATABASE_URL=postgres://<utilisateur>:<mot_de_passe>@localhost:5432/clinicrdv`.
 
 ### Migrations
 Les fichiers `backend/db/migrations/NNN_nom.sql` sont appliqués dans l'ordre par `npm run db:migrate`, qui note chaque fichier passé dans la table `schema_migrations`. Après chaque fusion qui ajoute une migration, chacun relance `npm run db:migrate`. Une nouvelle migration prend le numéro suivant et ne modifie jamais un fichier déjà appliqué.
@@ -99,6 +98,22 @@ npm run lint                     # ESLint (configuration Expo)
 npx tsc --noEmit                 # vérification des types
 npx jest                         # tests
 ```
+
+### 4. APK Android
+L'APK est généré dans le cloud par **EAS Build** (offre gratuite Expo) avec le profil `preview` de `mobile/eas.json`.
+
+```bash
+cd mobile
+npx eas-cli login                # une seule fois, compte Expo
+npx eas-cli build -p android --profile preview
+```
+
+Le lien de téléchargement de l'APK s'affiche à la fin du build, avec un QR code sur la page du build.
+
+- L'URL de l'API est **figée dans l'APK** : elle vient de `EXPO_PUBLIC_API_URL` dans `mobile/eas.json` (les fichiers `.env` ne sont pas envoyés à EAS). Mettre l'IP du PC qui fait tourner le backend avant chaque build.
+- Le téléphone Android doit être sur le même réseau que ce PC, backend lancé (`npm start`). Vérifier depuis son navigateur : `http://<IP du PC>:4000/health`.
+- Si la page ne répond pas, autoriser le port 4000 dans le pare-feu Windows.
+- L'APK ne s'installe que sur **Android**. Sur iPhone, utiliser Expo Go (une version iOS installable demande un compte Apple Developer payant).
 
 ## Variables d'environnement (backend/.env)
 
