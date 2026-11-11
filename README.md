@@ -113,7 +113,22 @@ Le lien de téléchargement de l'APK s'affiche à la fin du build, avec un QR co
 - L'URL de l'API est **figée dans l'APK** : elle vient de `EXPO_PUBLIC_API_URL` dans `mobile/eas.json` (les fichiers `.env` ne sont pas envoyés à EAS). Mettre l'IP du PC qui fait tourner le backend avant chaque build.
 - Le téléphone Android doit être sur le même réseau que ce PC, backend lancé (`npm start`). Vérifier depuis son navigateur : `http://<IP du PC>:4000/health`.
 - Si la page ne répond pas, autoriser le port 4000 dans le pare-feu Windows.
-- L'APK ne s'installe que sur **Android**. Sur iPhone, utiliser Expo Go (une version iOS installable demande un compte Apple Developer payant).
+- L'APK ne s'installe que sur **Android**. Pour l'iPhone, voir la section suivante.
+
+### 5. Application iOS (IPA)
+Sans Mac ni compte Apple Developer payant : l'IPA est compilé sans signature sur un runner macOS de **GitHub Actions**, puis signé et installé depuis Windows avec **Sideloadly** et un Apple ID gratuit.
+
+1. Pousser le dépôt sur GitHub (miroir du dépôt GitLab) : `git push github main`.
+2. Sur GitHub : **Actions → iOS IPA → Run workflow**, saisir l'URL de l'API (`http://<IP du PC>:4000/api`).
+3. À la fin du build (20 à 30 min), télécharger l'artefact **ClinicRDV-ipa** et le décompresser pour obtenir `ClinicRDV.ipa`.
+4. Sur le PC : installer [iTunes](https://www.apple.com/itunes/) (version du site Apple, pas celle du Microsoft Store) et [Sideloadly](https://sideloadly.io).
+5. Brancher l'iPhone en USB, faire confiance à l'ordinateur, glisser `ClinicRDV.ipa` dans Sideloadly, saisir son Apple ID, puis **Start**.
+6. Sur l'iPhone : **Réglages → Confidentialité et sécurité → Mode développeur** (activer, redémarrer), puis **Réglages → Général → VPN et gestion de l'appareil** → faire confiance à son Apple ID.
+
+- Avec un Apple ID gratuit, l'application **expire au bout de 7 jours** : relancer l'étape 5 avec le même IPA pour la renouveler (pas besoin de recompiler). Trois applications au maximum par appareil.
+- Comme pour l'APK, l'URL de l'API est figée dans l'IPA : relancer le workflow si l'IP du PC change.
+- Au premier lancement, accepter l'autorisation **Réseau local**.
+- Dépôt privé : les minutes macOS comptent 10 fois (environ 200 min par mois offertes, soit 6 à 8 builds). Un dépôt public n'a pas cette limite.
 
 ## Variables d'environnement (backend/.env)
 

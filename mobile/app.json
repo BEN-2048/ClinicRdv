@@ -6,6 +6,17 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
+    "ios": {
+      "bundleIdentifier": "com.clinicrdv.app",
+      "buildNumber": "1",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        },
+        "NSLocalNetworkUsageDescription": "ClinicRDV se connecte au serveur de la clinique sur votre réseau local."
+      }
+    },
     "android": {
       "package": "com.clinicrdv.app",
       "versionCode": 1,
