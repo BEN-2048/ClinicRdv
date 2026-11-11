@@ -495,3 +495,14 @@ exports.triageBody = z.object({
   symptoms: z.array(z.string().trim().regex(/^[a-z_]{2,40}$/)).min(1, 'Choisissez au moins un symptôme').max(15),
   age: z.number().int().min(0).max(120).optional(),
 }).strict();
+
+exports.recommendationQuery = z.object({
+  specialtyId: z.coerce.number().int().positive(),
+  profileId: z.coerce.number().int().positive().optional(),
+  lat: z.coerce.number().min(-90).max(90).optional(),
+  lng: z.coerce.number().min(-180).max(180).optional(),
+  city: z.string().trim().min(1).max(80).optional(),
+  language: z.string().trim().toLowerCase().regex(/^[a-z]{2,3}$/).optional(),
+}).strict().refine((o) => (o.lat === undefined) === (o.lng === undefined), {
+  message: 'lat et lng doivent etre fournis ensemble',
+});
