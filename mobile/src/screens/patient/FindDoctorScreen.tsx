@@ -185,7 +185,7 @@ export default function FindDoctorScreen() {
 
   if (step === 'specialty' && triage?.urgent) {
     return (
-      <Screen>
+      <Screen key="urgent">
         <Notice tone="danger" title="Ne prenez pas de rendez-vous" message={triage.message} />
         <Card style={s.card}>
           <Text style={type.bodyMedium}>Signes signalés :</Text>
@@ -202,7 +202,7 @@ export default function FindDoctorScreen() {
 
   if (step === 'specialty' && triage) {
     return (
-      <Screen>
+      <Screen key="specialty">
         <SectionTitle title="Spécialité conseillée" />
         {triage.suggestions.length === 0 ? (
           <Card>
@@ -228,7 +228,7 @@ export default function FindDoctorScreen() {
           </Card>
         ))}
         {specialty ? (
-          <Button title={`Voir les médecins : ${specialty.name}`} icon="search" loading={busy} onPress={() => search(specialty)} />
+          <Button title="Voir les médecins" icon="search" loading={busy} onPress={() => search(specialty)} />
         ) : null}
         <Button title="Modifier les symptômes" variant="ghost" onPress={() => setStep('symptoms')} />
         <Text style={s.disclaimer}>{triage.disclaimer}</Text>
@@ -238,7 +238,7 @@ export default function FindDoctorScreen() {
 
   if (step === 'doctors' && specialty) {
     return (
-      <Screen>
+      <Screen key="doctors">
         <Text style={type.h2}>{specialty.name}</Text>
         <View style={s.chips}>
           <Chip
@@ -307,7 +307,7 @@ export default function FindDoctorScreen() {
   }
 
   return (
-    <Screen>
+    <Screen key="symptoms">
       <Notice tone="warning" message={catalog.disclaimer} />
 
       {profiles.length > 1 ? (

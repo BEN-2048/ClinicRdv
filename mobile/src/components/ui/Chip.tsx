@@ -27,7 +27,7 @@ export default function Chip({
       style={({ pressed }) => [s.chip, selected && s.selected, pressed && s.pressed, style]}
     >
       {icon ? <Icon name={icon} size="sm" color={fg} /> : null}
-      <Text style={[selected ? s.textSelected : s.text, { color: fg }]}>{label}</Text>
+      <Text style={[selected ? s.textSelected : s.text, s.label, { color: fg }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -41,9 +41,11 @@ const s = StyleSheet.create({
     borderRadius: radius.sm,
     paddingHorizontal: space.sm,
     paddingVertical: space.xs,
+    maxWidth: '100%',
   },
   selected: { backgroundColor: color.primary },
   pressed: { opacity: 0.85 },
+  label: { flexShrink: 1 },
   text: { ...type.body },
   textSelected: { ...type.bodyMedium },
 });
