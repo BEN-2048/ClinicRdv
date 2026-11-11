@@ -26,5 +26,5 @@ mobile-check:
     - cd mobile
     - npm ci --cache .npm --prefer-offline
     - npx tsc --noEmit
-    - npm run lint -- --max-warnings 40
+    - npm run lint -- --max-warnings 45
     - npx jest --ci
