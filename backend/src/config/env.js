@@ -35,6 +35,7 @@ module.exports = {
     ? process.env.RATE_LIMIT_ENABLED === 'true'
     : process.env.NODE_ENV !== 'test',
   trustProxy: process.env.TRUST_PROXY,
+  corsOrigins: process.env.CORS_ORIGINS,
 
   storageDriver: process.env.STORAGE_DRIVER || 'local',
   storageLocalDir: process.env.STORAGE_LOCAL_DIR,

@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const routes = require('./routes');
 const { notFound, errorHandler } = require('./middleware/error');
 const env = require('./config/env');
+const { corsOptions } = require('./config/cors');
 
 const parseTrustProxy = (value) => {
   if (value === undefined || value === '') return false;
@@ -15,7 +16,7 @@ const parseTrustProxy = (value) => {
 const app = express();
 app.set('trust proxy', parseTrustProxy(env.trustProxy));
 app.use(helmet());
-app.use(cors());
+app.use(cors(corsOptions(env)));
 app.use(express.json({ limit: '1mb' }));
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 app.use('/api', routes);
