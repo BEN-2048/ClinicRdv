@@ -5,6 +5,15 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
+    "android": {
+      "package": "com.clinicrdv.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#004AC6"
+      }
+    },
     "plugins": [
       "expo-font",
       "expo-sqlite",
@@ -18,6 +27,14 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "ClinicRDV utilise votre position uniquement sur l’écran Urgence, pour trouver les services d’urgence les plus proches."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
         }
       ]
     ]
