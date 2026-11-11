@@ -7,6 +7,16 @@ import {
   getCachedFacilities,
 } from '../../database/offlineRepository';
 import { callNumber, sendSms } from '../../utils/contact';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../context/AuthContext';
 
 const DEFAULT_TIME_ZONE = 'Africa/Lubumbashi';
 
@@ -35,16 +45,6 @@ function ContactButtons({ phone, emergency }: { phone?: string | null; emergency
     </View>
   );
 }
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { useAuth } from '../../context/AuthContext';
 
 export default function OfflineScreen() {
   const { user, retryConnection } = useAuth();

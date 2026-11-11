@@ -1,23 +1,30 @@
 ﻿stages: [test]
 
+.on-mr-and-main:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
 backend-test:
+  extends: .on-mr-and-main
   stage: test
   image: node:20
   script:
     - cd backend
     - npm install
     - npm test
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
-mobile-typecheck:
+mobile-check:
+  extends: .on-mr-and-main
   stage: test
   image: node:24
+  cache:
+    key:
+      files: [mobile/package-lock.json]
+    paths: [mobile/.npm/]
   script:
     - cd mobile
-    - npm install
+    - npm ci --cache .npm --prefer-offline
     - npx tsc --noEmit
-  allow_failure: true
-
-
+    - npm run lint -- --max-warnings 45
+    - npx jest --ci

@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Button, Card, ErrorState, Icon, InfoRow, Screen, StatusBadge } from '../../components/ui';

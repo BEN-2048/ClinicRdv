@@ -292,7 +292,7 @@ export default function WaitingListScreen() {
           <View style={styles.flexText}>
             <Text style={type.h3}>Soyez le premier prévenu</Text>
             <Text style={styles.infoText}>
-              Les créneaux libérés par désistement sont réservés en exclusivité temporaire aux patients inscrits sur liste d'attente intelligente.
+              Les créneaux libérés par désistement sont réservés en exclusivité temporaire aux patients inscrits sur liste d’attente intelligente.
             </Text>
           </View>
         </View>

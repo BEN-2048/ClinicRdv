@@ -253,7 +253,7 @@ export default function ClinicManagementScreen() {
           </View>
           <View style={s.flex}>
             <Text style={s.hubTitle}>Réservation manuelle</Text>
-            <Text style={s.hubSub}>Guichet & prise d'appel direct</Text>
+            <Text style={s.hubSub}>Guichet & prise d’appel direct</Text>
           </View>
           <View style={s.hubCta}>
             <Text style={s.hubCtaText}>Nouveau RDV</Text>
@@ -321,7 +321,7 @@ export default function ClinicManagementScreen() {
                       {leave ? ` · Reprise ${formatLongDate(shiftDate(leave.endDate, 1)).replace(/ \d{4}$/, '')}` : ''}
                     </Text>
                     {d.active && !leave ? (
-                      <Text style={s.doctorCount}>{countFor(d.id)} RDV aujourd'hui</Text>
+                      <Text style={s.doctorCount}>{countFor(d.id)} RDV aujourd’hui</Text>
                     ) : leave?.reason ? (
                       <Text style={s.doctorNote} numberOfLines={1}>
                         {leave.reason}
