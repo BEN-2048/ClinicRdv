@@ -9,9 +9,6 @@ export const api = axios.create({
   headers: { 'X-Device-Name': DEVICE_NAME },
 });
 
-
-console.log('API URL =', api.defaults.baseURL);
-
 api.interceptors.request.use(async (config) => {
   const token = await SecureStore.getItemAsync('token');
 
