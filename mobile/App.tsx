@@ -9,6 +9,7 @@ import {
 } from '@expo-google-fonts/inter';
 import { AuthProvider } from './src/context/AuthContext';
 import RootNavigator from './src/navigation';
+import './src/utils/calendarLocale';
 
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({

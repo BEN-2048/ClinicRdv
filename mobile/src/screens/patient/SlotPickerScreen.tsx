@@ -19,6 +19,7 @@ import {
 } from '../../components/ui';
 import { CLINIC_TIME_ZONE } from '../../components/PatientFigmaUI';
 import { color, space, type } from '../../theme';
+import { doctorName } from '../../utils/doctorName';
 
 type Doctor = {
   id: number;
@@ -208,7 +209,7 @@ export default function SlotPickerScreen() {
         <Avatar name={fullName} size={56} />
         <View style={s.flex}>
           <Text style={type.h3} numberOfLines={1}>
-            Dr. {fullName}
+            {doctorName(fullName)}
           </Text>
           <Text style={s.specialty}>{doctor.specialty}</Text>
           <Text style={s.muted}>
@@ -223,6 +224,7 @@ export default function SlotPickerScreen() {
       <SectionTitle title="1. Choisissez une date" />
       <Card padded={false} style={s.calendar}>
         <Calendar
+          firstDay={1}
           minDate={formatDate(new Date())}
           maxDate={formatDate(new Date(Date.now() + 13 * 86400000))}
           current={selectedDate}
@@ -289,7 +291,7 @@ export default function SlotPickerScreen() {
 
       <Card style={s.summary}>
         <Text style={type.h2}>Récapitulatif</Text>
-        <InfoRow icon="person-outline" label="Médecin" value={`Dr. ${fullName}`} strong />
+        <InfoRow icon="person-outline" label="Médecin" value={doctorName(fullName)} strong />
         <InfoRow icon="calendar-outline" label="Date" value={formatLongDate(selectedDate)} />
         <InfoRow
           icon="time-outline"

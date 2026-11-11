@@ -1,14 +1,11 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { fonts, palette, shadow } from '../theme/figma';
+import { doctorName } from '../utils/doctorName';
 
 export const CLINIC_TIME_ZONE = 'Africa/Lubumbashi';
 
-export const doctorDisplayName = (name?: string | null) => {
-  const clean = (name || '').trim();
-  if (!clean) return 'Médecin';
-  return /^dr\.?\s/i.test(clean) ? clean : `Dr. ${clean}`;
-};
+export const doctorDisplayName = (name?: string | null) => doctorName(name);
 
 export const initialsOf = (name?: string | null) => {
   const parts = (name || '')

@@ -17,6 +17,7 @@ import {
 } from '../../components/ui';
 import { CLINIC_TIME_ZONE } from '../../components/PatientFigmaUI';
 import { color, space, type } from '../../theme';
+import { doctorName } from '../../utils/doctorName';
 
 type Doctor = {
   id: number;
@@ -194,7 +195,7 @@ export default function BookingConflictScreen() {
         <View style={s.flex}>
           <View style={s.nameRow}>
             <Text style={[type.h3, s.shrink]} numberOfLines={1}>
-              Dr. {fullName}
+              {doctorName(fullName)}
             </Text>
             <Icon name="checkmark-circle" size="sm" color={color.primaryBright} />
           </View>
@@ -259,7 +260,7 @@ export default function BookingConflictScreen() {
         <ListItem
           icon="calendar-outline"
           title="Planning complet"
-          subtitle={`Ouvrir l'agenda du Dr. ${fullName}`}
+          subtitle={`Ouvrir l'agenda du ${doctorName(fullName)}`}
           onPress={() => navigation.goBack()}
           style={s.divider}
         />

@@ -27,6 +27,7 @@ import {
 } from '../../components/ui';
 import { color, space, type } from '../../theme';
 import { FACILITY_STATUS_BADGE } from './FacilitiesManageScreen';
+import { doctorName } from '../../utils/doctorName';
 
 const TYPES = Object.keys(FACILITY_TYPE_LABEL) as FacilityType[];
 const TIMEZONES: { key: FacilityTimeZone; label: string }[] = [
@@ -384,7 +385,7 @@ export default function FacilityEditScreen() {
               facility.doctors.map((d, i) => (
                 <ListItem
                   key={d.doctor_id}
-                  title={`Dr. ${d.first_name} ${d.last_name}`}
+                  title={doctorName(d.first_name, d.last_name)}
                   subtitle={`${d.specialty} · ${d.status === 'active' ? 'Actif' : 'Inactif'}`}
                   right={canEdit ? (
                     <Button

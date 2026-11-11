@@ -19,6 +19,7 @@ import {
 } from '../../components/ui';
 import { color, space, type } from '../../theme';
 import { callNumber } from './FacilityListScreen';
+import { doctorName } from '../../utils/doctorName';
 
 const WEEKDAYS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 
@@ -155,7 +156,7 @@ export default function FacilityDetailScreen() {
             return (
               <ListItem
                 key={d.id}
-                title={`Dr. ${name}`}
+                title={doctorName(name)}
                 subtitle={`${d.specialty} · ${d.fee} USD`}
                 left={<Avatar name={name} size={40} />}
                 onPress={() => navigation.navigate('DoctorProfile', { doctorId: d.id, facilityId: facility.id })}

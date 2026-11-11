@@ -16,6 +16,7 @@ import {
 } from '../../components/ui';
 import { color, radius, space, type } from '../../theme';
 import { AppointmentRow, DoctorAppointment, formatTime, sameDay } from './shared';
+import { doctorName } from '../../utils/doctorName';
 
 type Doctor = {
   id: number;
@@ -123,7 +124,7 @@ export default function DoctorDashboardScreen() {
       }}
       header={
         <AppHeader
-          title={`Bonjour Dr. ${doctor.last_name}`}
+          title={`Bonjour ${doctorName(doctor.last_name)}`}
           subtitle={`${doctor.specialty} · ${dateLabel}`}
           right={<Avatar name={fullName} size={40} />}
         />

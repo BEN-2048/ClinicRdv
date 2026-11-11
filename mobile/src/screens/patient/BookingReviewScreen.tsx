@@ -17,6 +17,7 @@ import {
 } from '../../components/ui';
 import { CLINIC_TIME_ZONE } from '../../components/PatientFigmaUI';
 import { color, radius, space, type } from '../../theme';
+import { doctorName } from '../../utils/doctorName';
 
 type Doctor = {
   id: number;
@@ -186,7 +187,7 @@ export default function BookingReviewScreen() {
           <View style={s.flex}>
             <View style={s.nameRow}>
               <Text style={[type.h3, s.flexShrink]} numberOfLines={1}>
-                Dr. {fullName}
+                {doctorName(fullName)}
               </Text>
               <Icon name="checkmark-circle" size="sm" color={color.primaryBright} />
             </View>

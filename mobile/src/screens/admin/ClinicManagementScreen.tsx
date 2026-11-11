@@ -27,6 +27,7 @@ import {
   formatTime,
   shiftDate,
 } from '../secretary/shared';
+import { doctorName, doctorShortName } from '../../utils/doctorName';
 
 type Leave = { id: number; startDate: string; endDate: string; reason: string | null };
 type StatusFilter = 'all' | 'confirmed' | 'pending' | 'cancelled' | 'done';
@@ -122,8 +123,8 @@ export default function ClinicManagementScreen() {
     Alert.alert(
       next ? 'Réactiver le médecin' : 'Suspendre le médecin',
       next
-        ? `Dr. ${d.first_name} ${d.last_name} sera de nouveau réservable par les patients.`
-        : `Dr. ${d.first_name} ${d.last_name} ne sera plus proposé aux patients. Ses rendez-vous existants sont conservés.`,
+        ? `${doctorName(d.first_name, d.last_name)} sera de nouveau réservable par les patients.`
+        : `${doctorName(d.first_name, d.last_name)} ne sera plus proposé aux patients. Ses rendez-vous existants sont conservés.`,
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -145,7 +146,7 @@ export default function ClinicManagementScreen() {
   const cancel = (a: StaffAppointment) =>
     Alert.alert(
       'Annuler le rendez-vous',
-      `Annuler le RDV de ${a.patient_name} avec Dr. ${a.doctor_name} ? Le patient sera prévenu avec le motif choisi.`,
+      `Annuler le RDV de ${a.patient_name} avec ${doctorName(a.doctor_name)} ? Le patient sera prévenu avec le motif choisi.`,
       [
         { text: 'Non', style: 'cancel' },
         ...(['doctor_unavailable', 'other'] as const).map((reason) => ({
@@ -164,7 +165,7 @@ export default function ClinicManagementScreen() {
     );
 
   const openActions = (a: StaffAppointment) =>
-    Alert.alert(a.patient_name, `${formatTime(a.starts_at)} · Dr. ${a.doctor_name}`, [
+    Alert.alert(a.patient_name, `${formatTime(a.starts_at)} · ${doctorName(a.doctor_name)}`, [
       { text: 'Reporter', onPress: () => navigation.navigate('SecretaryBook', { appointment: a }) },
       { text: 'Annuler le RDV', style: 'destructive', onPress: () => cancel(a) },
       { text: 'Fermer', style: 'cancel' },
@@ -196,7 +197,7 @@ export default function ClinicManagementScreen() {
           formatTime(a.ends_at),
           a.patient_name,
           a.patient_phone ?? '',
-          `Dr. ${a.doctor_name}`,
+          doctorName(a.doctor_name),
           a.specialty,
           STATUS_LABELS[a.status] ?? a.status,
           (a.reason ?? '').replace(/[;\n]/g, ' '),
@@ -310,7 +311,7 @@ export default function ClinicManagementScreen() {
                   <View style={s.flex}>
                     <View style={s.nameRow}>
                       <Text style={s.doctorName} numberOfLines={1}>
-                        Dr. {name}
+                        {doctorName(name)}
                       </Text>
                       <View style={[s.badge, { backgroundColor: st.bg }]}>
                         <Text style={[s.badgeText, { color: st.fg }]}>{st.label}</Text>
@@ -332,19 +333,19 @@ export default function ClinicManagementScreen() {
                     <IconButton
                       icon="create-outline"
                       size={36}
-                      accessibilityLabel={`Modifier Dr. ${name}`}
+                      accessibilityLabel={`Modifier ${doctorName(name)}`}
                       onPress={() => navigation.navigate('SecretaryDoctorForm', { doctorId: d.id })}
                     />
                     <IconButton
                       icon="calendar-outline"
                       size={36}
-                      accessibilityLabel={`Horaires et congés de Dr. ${name}`}
+                      accessibilityLabel={`Horaires et congés de ${doctorName(name)}`}
                       onPress={() => navigation.navigate('SecretaryDoctorSchedule', { doctorId: d.id, name })}
                     />
                     <IconButton
                       icon={d.active ? 'pause-circle-outline' : 'play-circle-outline'}
                       size={36}
-                      accessibilityLabel={d.active ? `Suspendre Dr. ${name}` : `Réactiver Dr. ${name}`}
+                      accessibilityLabel={d.active ? `Suspendre ${doctorName(name)}` : `Réactiver ${doctorName(name)}`}
                       onPress={() => toggleActive(d)}
                     />
                   </View>
@@ -375,7 +376,7 @@ export default function ClinicManagementScreen() {
               .map((d) => (
                 <Chip
                   key={d.id}
-                  label={`Dr. ${d.first_name.charAt(0)}. ${d.last_name} (${appointments.filter((a) => a.doctor_id === d.id).length})`}
+                  label={`${doctorShortName(d.first_name, d.last_name)} (${appointments.filter((a) => a.doctor_id === d.id).length})`}
                   selected={doctorFilter === d.id}
                   onPress={() => setDoctorFilter(d.id)}
                 />
@@ -431,7 +432,7 @@ export default function ClinicManagementScreen() {
                     <View style={s.assigned}>
                       <Icon name="person-outline" size="sm" color={cancelled ? color.textMuted : color.primary} />
                       <Text style={s.assignedText} numberOfLines={1}>
-                        Dr. {a.doctor_name} ({a.specialty})
+                        {doctorName(a.doctor_name)} ({a.specialty})
                         {cancelled && !slotTaken(a) ? ' · Créneau rouvert' : ''}
                       </Text>
                     </View>

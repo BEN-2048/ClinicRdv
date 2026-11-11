@@ -4,6 +4,7 @@ import { errorMessage } from '../../api/client';
 import { Prescription, PrescriptionItem, PrescriptionsApi } from '../../api/services';
 import { Button, Card, Chip, Icon, Input, SectionTitle, StatusBadge } from '../ui';
 import { color, space, type } from '../../theme';
+import { doctorName } from '../../utils/doctorName';
 
 const STATUS: Record<Prescription['status'], { status: string; label: string }> = {
   draft: { status: 'pending', label: 'Brouillon' },
@@ -40,7 +41,7 @@ export function PrescriptionCard({ prescription, footer }: { prescription: Presc
       {prescription.notes ? <Text style={s.detail}>{prescription.notes}</Text> : null}
       {prescription.cancel_reason ? <Text style={s.error}>Annulée : {prescription.cancel_reason}</Text> : null}
       <Text style={s.muted}>
-        {[prescription.prescriber_name ? `Dr. ${prescription.prescriber_name}` : null, prescription.facility_name, prescription.confidential ? 'Confidentielle' : null]
+        {[prescription.prescriber_name ? doctorName(prescription.prescriber_name) : null, prescription.facility_name, prescription.confidential ? 'Confidentielle' : null]
           .filter(Boolean)
           .join(' · ')}
       </Text>

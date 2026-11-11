@@ -4,6 +4,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Button, Card, ErrorState, Icon, InfoRow, Screen, StatusBadge } from '../../components/ui';
 import { CLINIC_TIME_ZONE } from '../../components/PatientFigmaUI';
 import { color, radius, space, type } from '../../theme';
+import { doctorName } from '../../utils/doctorName';
 
 type Appointment = {
   id: number;
@@ -96,7 +97,7 @@ export default function BookingConfirmScreen() {
         <Text style={type.h2}>Détails du rendez-vous</Text>
         <InfoRow icon="receipt-outline" label="Numéro de réservation" value={`#${appointment.id}`} strong />
         {patientName ? <InfoRow icon="people-outline" label="Patient" value={patientName} strong /> : null}
-        <InfoRow icon="person-outline" label="Médecin" value={`Dr. ${doctor.name}`} strong />
+        <InfoRow icon="person-outline" label="Médecin" value={doctorName(doctor.name)} strong />
         <InfoRow icon="medkit-outline" label="Spécialité" value={doctor.specialty} />
         {facility ? (
           <InfoRow icon="business-outline" label="Établissement" value={[facility.name, facility.city].filter(Boolean).join(' · ')} strong />

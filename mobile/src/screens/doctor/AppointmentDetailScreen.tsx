@@ -19,6 +19,7 @@ import {
   StatusBadge,
 } from '../../components/ui';
 import { color, radius, space, type } from '../../theme';
+import { doctorName } from '../../utils/doctorName';
 
 type ConsultationForm = {
   chiefComplaint: string;
@@ -429,7 +430,7 @@ export default function AppointmentDetailScreen() {
               <View key={a.id} style={s.addendum}>
                 <Text style={type.body}>{a.content}</Text>
                 <Text style={s.muted}>
-                  {[a.author ? `Dr. ${a.author}` : null, new Date(a.created_at).toLocaleString('fr-FR')].filter(Boolean).join(' · ')}
+                  {[a.author ? doctorName(a.author) : null, new Date(a.created_at).toLocaleString('fr-FR')].filter(Boolean).join(' · ')}
                 </Text>
               </View>
             ))}

@@ -16,6 +16,7 @@ import { PrescriptionCard } from '../../components/record/PrescriptionViews';
 import { DocumentsPanel } from '../../components/record/DocumentsPanel';
 import { KIND_LABEL, RecordEntryForm, RecordSections } from '../../components/record/RecordSections';
 import { color, space, type } from '../../theme';
+import { doctorName } from '../../utils/doctorName';
 
 type Tab = 'synthese' | 'consultations' | 'ordonnances' | 'documents';
 
@@ -147,7 +148,7 @@ export default function PatientRecordScreen() {
               <Text style={type.bodyMedium}>
                 {new Date(c.starts_at).toLocaleDateString('fr-FR', { timeZone: c.facility_timezone, day: 'numeric', month: 'long', year: 'numeric' })}
               </Text>
-              <Text style={s.muted}>Dr. {c.doctor_name} · {c.specialty} · {c.facility_name}</Text>
+              <Text style={s.muted}>{doctorName(c.doctor_name)} · {c.specialty} · {c.facility_name}</Text>
               {c.chief_complaint ? <Text style={s.line}><Text style={s.key}>Motif : </Text>{c.chief_complaint}</Text> : null}
               {VITAL_LABELS.some(([k]) => c[k]) ? (
                 <Text style={s.line}>
@@ -159,7 +160,7 @@ export default function PatientRecordScreen() {
               {c.prescription ? <Text style={s.line}><Text style={s.key}>Prescription : </Text>{c.prescription}</Text> : null}
               {c.notes ? <Text style={s.line}><Text style={s.key}>Notes : </Text>{c.notes}</Text> : null}
               {c.addenda.map((a) => (
-                <Text key={a.id} style={s.addendum}>Complément{a.author ? ` (Dr. ${a.author})` : ''} : {a.content}</Text>
+                <Text key={a.id} style={s.addendum}>Complément{a.author ? ` (${doctorName(a.author)})` : ''} : {a.content}</Text>
               ))}
             </Card>
           ))
