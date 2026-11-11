@@ -28,6 +28,7 @@ const rx = require('../controllers/prescriptions.controller');
 const documents = require('../controllers/documents.controller');
 const sharing = require('../controllers/sharing.controller');
 const emergency = require('../controllers/emergency.controller');
+const triage = require('../controllers/triage.controller');
 const { createUploadLimiter, createUserLimiter } = require('../middleware/rateLimit');
 const {
   staffScopeMiddleware,
@@ -229,6 +230,14 @@ router.get(
   createUserLimiter('emergency-directory', 120, 15 * 60 * 1000),
   validate(s.emergencyDirectoryQuery, 'query'),
   emergency.directory
+);
+
+router.get('/triage/symptoms', triage.catalog);
+router.post(
+  '/triage',
+  createUserLimiter('triage', 60, 15 * 60 * 1000),
+  validate(s.triageBody),
+  triage.orient
 );
 
 const alternativesLimiter = createUserLimiter('alternatives', 60);
