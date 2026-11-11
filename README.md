@@ -1,7 +1,7 @@
 # ClinicRDV – Prise de rendez-vous médicaux
 
-Application mobile (React Native / Expo) de réservation de rendez-vous pour une **clinique fictive**.
-Projet d'examen – Programmation mobile L4 Informatique. **Toutes les données sont fictives.**
+Application mobile (React Native / Expo) de prise de rendez-vous et de suivi médical pour un réseau d'établissements de santé **fictifs**.
+Projet d'examen – Programmation mobile L4 Informatique. **Toutes les données sont fictives.** Le projet n'utilise que des services gratuits.
 
 ## Équipe
 | Membre | Rôle / modules principaux |
@@ -9,19 +9,47 @@ Projet d'examen – Programmation mobile L4 Informatique. **Toutes les données 
 | Étudiant 1 | Authentification, rôles, sécurité |
 | Étudiant 2 | Annuaire, agenda médecin, calcul des créneaux |
 | Étudiant 3 | Réservation, annulation/report, liste d'attente |
-| Étudiant 4 | Dossier patient, notifications, PDF, export .ics |
+| Étudiant 4 | Dossier patient, notifications, ordonnances, documents |
+
+## Fonctionnalités
+
+| Domaine | Ce que l'application permet |
+|---------|-----------------------------|
+| Comptes | Inscription et connexion par e-mail **ou par téléphone** (code SMS), sessions courtes renouvelées, appareils connectés, récupération du compte, changement de mot de passe, de numéro et d'e-mail |
+| Patients | Profils de la famille (enfants, personnes à charge) liés à un tuteur vérifié par l'établissement |
+| Établissements | Plusieurs hôpitaux, cliniques et centres, avec services, spécialités, horaires et fuseau horaire ; médecins affiliés à plusieurs établissements |
+| Rendez-vous | Créneaux calculés à partir des horaires, congés et créneaux bloqués ; réservation sans double réservation ; annulation, report, liste d'attente avec alertes de désistement |
+| Indisponibilités | Annulation expliquée par l'établissement et **redirection** vers un autre créneau, médecin ou établissement |
+| Rappels | Rappel in-app la veille et 2 h avant chaque rendez-vous, SMS la veille si le numéro est vérifié |
+| Dossier médical | Allergies, antécédents, traitements, vaccins, consultations, ordonnances, documents ; consentements de partage par établissement ; journal des accès ; accès d'urgence encadré |
+| Hors ligne | Fiche d'urgence et contacts des établissements consultables sans réseau |
+| Urgence | Écran public (sans compte) : numéros vérifiés et services d'urgence les plus proches |
+| Orientation | « Je ne sais pas quel médecin consulter » : symptômes → spécialité conseillée (les signes graves renvoient vers l'urgence) → médecins classés sur 100 avec les raisons |
+
+## Rôles
+
+| Rôle | Accès |
+|------|-------|
+| Patient | Ses rendez-vous, ceux de sa famille, son dossier, ses partages, l'orientation |
+| Médecin | Tableau de bord, agenda, horaires et congés, fiches de consultation, dossiers des patients autorisés |
+| Secrétaire | Rendez-vous, médecins et statistiques **de son établissement**, validation des liens familiaux |
+| Administrateur | Tous les établissements, numéros d'urgence nationaux |
 
 ## Architecture
 ```
 clinicrdv/
 ├── backend/   API REST Node.js + Express + PostgreSQL
+│   ├── db/          schema.sql, migrations/, seed.js, migrate.js
+│   ├── scripts/     sauvegarde et restauration chiffrées
+│   ├── src/         routes, contrôleurs, services, validateurs
+│   └── tests/       tests Jest + Supertest
 ├── mobile/    Application React Native (Expo, TypeScript)
-├── docs/      Conception (à copier dans Confluence)
+├── docs/      Conception, backlog, guides (SMS, sauvegardes)
 └── docker-compose.yml
 ```
-- **Backend** : Express, JWT, bcrypt (mots de passe hachés), zod (validation des entrées), pg.
-- **BD** : PostgreSQL. Anti double-réservation via contrainte `EXCLUDE USING gist` sur `appointments`.
-- **Mobile** : React Navigation (navigation par rôle), axios, expo-secure-store.
+- **Backend** : Express, JWT + jetons de renouvellement, bcrypt, zod (validation), helmet, limitation des tentatives, pg.
+- **BD** : PostgreSQL. Anti double réservation via la contrainte `EXCLUDE USING gist` sur `appointments`.
+- **Mobile** : React Navigation (navigation par rôle), axios, expo-secure-store, expo-sqlite (hors ligne), expo-location.
 
 ## Installation
 
@@ -34,26 +62,31 @@ L'équipe partage une base PostgreSQL distante hébergée sur **Neon** : aucune 
 
 ```bash
 cd backend
-cp .env.example .env             # coller l'URL Neon dans DATABASE_URL, définir JWT_SECRET
+cp .env.example .env             # coller l'URL Neon dans DATABASE_URL, définir les secrets
 npm install
+npm run db:migrate               # applique les migrations manquantes
 ```
 
 L'URL de connexion (transmise par le responsable de la base, à ne jamais committer) se trouve dans le tableau de bord Neon → *Connect* → *Connection string*, option **Pooled connection** cochée. Remplacer `sslmode=require` par `sslmode=verify-full` à la fin de l’URL (même sécurité, sans avertissement de `pg`).
 
 La base partagée est déjà initialisée. Uniquement pour une base neuve :
 ```bash
-npm run db:init                  # crée les tables (refuse si elles existent déjà)
+npm run db:init                  # crée les tables puis applique les migrations (refuse si elles existent)
 npm run db:seed                  # données fictives + comptes de test (ignoré si déjà présentes)
 npm run db:reset                 # ⚠ supprime TOUTES les données puis recrée les tables
 ```
 
-Pour travailler hors ligne avec une base locale : `docker compose up -d db` et
+Pour travailler avec une base locale : `docker compose up -d db` et
 `DATABASE_URL=postgres://clinic:clinic@localhost:5432/clinicrdv`.
+
+### Migrations
+Les fichiers `backend/db/migrations/NNN_nom.sql` sont appliqués dans l'ordre par `npm run db:migrate`, qui note chaque fichier passé dans la table `schema_migrations`. Après chaque fusion qui ajoute une migration, chacun relance `npm run db:migrate`. Une nouvelle migration prend le numéro suivant et ne modifie jamais un fichier déjà appliqué.
 
 ### 2. Backend
 ```bash
 cd backend
 npm run dev                      # http://localhost:4000/health
+npm test                         # tests (base simulée, aucune connexion requise)
 ```
 
 ### 3. Mobile
@@ -62,7 +95,30 @@ cd mobile
 cp .env.example .env             # mettre l'IP de votre PC dans EXPO_PUBLIC_API_URL
 npm install
 npx expo start                   # scanner le QR code avec Expo Go
+npm run lint                     # ESLint (configuration Expo)
+npx tsc --noEmit                 # vérification des types
+npx jest                         # tests
 ```
+
+## Variables d'environnement (backend/.env)
+
+| Variable | Rôle | Valeur par défaut |
+|----------|------|-------------------|
+| `DATABASE_URL` | Connexion PostgreSQL | — (obligatoire) |
+| `JWT_SECRET` | Signature des jetons d'accès | — (obligatoire) |
+| `ACCESS_TOKEN_TTL`, `REFRESH_TOKEN_DAYS`, `SESSION_MAX_DAYS` | Durée du jeton d'accès, du renouvellement et maximale d'une session | `15m`, `30`, `90` |
+| `OTP_SECRET` | Hachage des codes de vérification | — (obligatoire) |
+| `OTP_EXPIRES_MINUTES`, `OTP_MAX_ATTEMPTS`, `OTP_RESEND_COOLDOWN_SECONDS` | Validité, essais et délai de renvoi des codes | `10`, `5`, `60` |
+| `EMAIL_DRIVER`, `BREVO_API_KEY`, `BREVO_SENDER_EMAIL` | Envoi des e-mails : `console` (terminal) ou `brevo` (offre gratuite) | `brevo` si une clé est fournie, sinon `console` |
+| `SMS_DRIVER`, `SMSGATE_URL`, `SMSGATE_USERNAME`, `SMSGATE_PASSWORD` | Envoi des SMS : `console` ou `smsgate` (téléphone Android), voir `docs/sms-passerelle.md` | `console` |
+| `SMS_DAILY_CAP`, `SMS_PER_NUMBER_DAILY` | Plafonds de SMS par jour, au total et par numéro | `200`, `5` |
+| `REMINDERS_ENABLED`, `REMINDER_INTERVAL_MINUTES` | Tâche des rappels de rendez-vous | activée, `5` |
+| `CORS_ORIGINS` | Origines web autorisées, séparées par des virgules. Vide : toutes en développement, aucune en production. L'app mobile n'est pas concernée | vide |
+| `RATE_LIMIT_ENABLED`, `TRUST_PROXY` | Limitation des tentatives ; proxy de confiance pour l'adresse IP | activée hors tests |
+| `STORAGE_DRIVER`, `STORAGE_LOCAL_DIR`, `FILE_URL_SECRET`, `PUBLIC_API_URL` | Stockage des documents médicaux et liens signés | `local` |
+| `BACKUP_ENCRYPTION_KEY`, `BACKUP_DIR`, `PG_DUMP_PATH`, `PG_RESTORE_PATH`, `RESTORE_DATABASE_URL` | Sauvegardes chiffrées, voir `docs/sauvegardes.md` | — |
+
+En production (`NODE_ENV=production`), les pilotes `console` sont refusés et `CORS_ORIGINS=*` empêche le démarrage.
 
 ## Comptes de test (mot de passe : `Test1234!`)
 | Rôle | E-mail |
@@ -72,21 +128,42 @@ npx expo start                   # scanner le QR code avec Expo Go
 | Patient | patient@clinic.test |
 | Médecin | kabila@clinic.test, mutombo@clinic.test, ilunga@clinic.test |
 
+En développement, les codes envoyés par SMS ou par e-mail s'affichent dans le terminal du backend.
+
 ## API (extrait)
 | Méthode | Route | Description |
 |---------|-------|-------------|
-| POST | /api/auth/register, /login | Inscription / connexion |
+| POST | /api/auth/register, /login, /refresh, /logout | Comptes et sessions |
 | GET | /api/doctors?q=&specialtyId= | Annuaire |
 | GET | /api/doctors/:id/slots?date=AAAA-MM-JJ | Créneaux d'un jour |
 | POST | /api/appointments | Réserver (409 si conflit) |
 | GET | /api/appointments/mine?scope=upcoming | Mes rendez-vous |
 | PATCH | /api/appointments/:id/cancel, /reschedule | Annuler / reporter |
+| GET | /api/appointments/:id/alternatives | Solutions de remplacement |
+| GET | /api/facilities | Établissements |
+| GET | /api/notifications | Notifications et rappels |
+| GET | /api/emergency/directory | Annuaire d'urgence public |
+| GET, POST | /api/triage/symptoms, /api/triage | Orientation par symptômes (public) |
+| GET | /api/recommendations/doctors?specialtyId= | Médecins classés avec les raisons |
+
+## Intégration continue
+GitLab CI tourne sur chaque merge request et sur `main` :
+- `backend-test` : tests du backend ;
+- `mobile-check` : types, lint (45 avertissements au plus) et tests du mobile.
+
+Les deux jobs doivent passer avant la fusion.
 
 ## Workflow Git
-- Branches : `main` (protégée) ← `develop` ← `feature/CLIN-<n>-description`
+- Une branche par étape : `feature/<phase>-<description>` (ex. `feature/phase6a-orientation`), créée depuis `main`
 - Un commit = une idée, message au format `feat(slots): calcul des créneaux libres`
-- Merge Request obligatoire, relue par un autre membre
-- Chaque commit est lié à une clé Jira (ex. `CLIN-12`)
+- Merge Request vers `main`, relue par un autre membre, pipeline au vert
+- Branches empilées : chaque MR cible la précédente et se fusionne dans l'ordre
+
+## Documentation
+- `docs/conception.md` : conception
+- `docs/backlog-jira.md` : backlog
+- `docs/sms-passerelle.md` : envoi des SMS gratuit
+- `docs/sauvegardes.md` : sauvegardes et restauration
 
 ## Liens
 - Jira : _à compléter_
