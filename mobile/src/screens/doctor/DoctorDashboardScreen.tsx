@@ -132,10 +132,10 @@ export default function DoctorDashboardScreen() {
     >
       <SectionTitle title="Vue d'ensemble" />
       <View style={s.grid}>
-        <StatCard style={s.tile} icon="people-outline" label="Consultations aujourd'hui" value={todayAppointments.length} />
-        <StatCard style={s.tile} icon="checkmark-done-outline" tone="success" label="Terminées" value={completedToday} />
-        <StatCard style={s.tile} icon="time-outline" tone="neutral" label="Restantes" value={remainingToday} />
-        <StatCard style={s.tile} icon="hourglass-outline" tone="warning" label="En attente" value={waitingToday} />
+        <StatCard style={s.tile} icon="users" label="Consultations aujourd'hui" value={todayAppointments.length} />
+        <StatCard style={s.tile} icon="check-double" tone="success" label="Terminées" value={completedToday} />
+        <StatCard style={s.tile} icon="clock" tone="neutral" label="Restantes" value={remainingToday} />
+        <StatCard style={s.tile} icon="hourglass-half" tone="warning" label="En attente" value={waitingToday} />
       </View>
 
       <Card style={s.progress}>
@@ -156,7 +156,7 @@ export default function DoctorDashboardScreen() {
       {todayAppointments.length === 0 ? (
         <Card>
           <EmptyState
-            icon="calendar-clear-outline"
+            icon="calendar-days"
             title="Aucun rendez-vous aujourd'hui"
             message="Vos consultations apparaîtront ici."
           />
@@ -190,10 +190,10 @@ export default function DoctorDashboardScreen() {
 
       <SectionTitle title="Cette semaine" />
       <View style={s.grid}>
-        <StatCard style={s.tile} icon="calendar-outline" label="Rendez-vous" value={weekAppointments.length} />
+        <StatCard style={s.tile} icon="calendar" label="Rendez-vous" value={weekAppointments.length} />
         <StatCard
           style={s.tile}
-          icon="cash-outline"
+          icon="money-bill-1"
           tone="success"
           label="Honoraires estimés"
           value={`${weeklyFees.toLocaleString('fr-FR')} $`}
@@ -202,10 +202,10 @@ export default function DoctorDashboardScreen() {
 
       <SectionTitle title="Mon profil professionnel" />
       <Card style={s.profile}>
-        <InfoRow icon="mail-outline" label="Adresse e-mail" value={doctor.email} />
-        <InfoRow icon="medkit-outline" label="Spécialité" value={doctor.specialty} />
+        <InfoRow icon="envelope" label="Adresse e-mail" value={doctor.email} />
+        <InfoRow icon="kit-medical" label="Spécialité" value={doctor.specialty} />
         <InfoRow
-          icon="cash-outline"
+          icon="money-bill-1"
           label="Honoraires par consultation"
           value={`${Number(doctor.fee).toLocaleString('fr-FR')} $`}
           strong

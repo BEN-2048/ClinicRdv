@@ -142,7 +142,7 @@ export default function AlternativesScreen() {
       {data.options.length === 0 ? (
         <Card>
           <EmptyState
-            icon="calendar-clear-outline"
+            icon="calendar-days"
             title="Aucune solution disponible"
             message="Aucun médecin de cette spécialité n’a de créneau libre dans les prochains jours. Activez une alerte désistement ou contactez l’établissement."
           />
@@ -166,7 +166,7 @@ export default function AlternativesScreen() {
                   {o.slots.map((slot) => (
                     <Chip
                       key={slot.startsAt}
-                      icon="time-outline"
+                      icon="clock"
                       label={formatSlot(slot.startsAt, o.timezone)}
                       onPress={busy ? undefined : () => choose(o, slot.startsAt)}
                     />

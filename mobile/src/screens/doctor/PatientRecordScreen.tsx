@@ -111,13 +111,13 @@ export default function PatientRecordScreen() {
       {record.access.basis === 'emergency_access' ? (
         <Notice
           tone="danger"
-          icon="alert-circle-outline"
+          icon="circle-exclamation"
           title="Accès d’urgence"
           message="Synthèse non confidentielle en lecture seule, valable 24 heures. Cet accès a été notifié au patient."
         />
       ) : (
         <Notice
-          icon="shield-checkmark-outline"
+          icon="shield-halved"
           message={record.access.sharing?.consent
             ? `Le patient a autorisé le partage ${record.access.sharing.fullAll ? 'de son dossier complet' : 'de sa synthèse'} avec votre établissement : vous voyez aussi les informations enregistrées ailleurs. Chaque consultation est journalisée.`
             : `Vous voyez les informations enregistrées dans vos établissements de soins (${record.access.facilities.map((f) => f.name).join(', ')}) et celles déclarées par le patient. Chaque consultation de ce dossier est journalisée.`}
@@ -141,7 +141,7 @@ export default function PatientRecordScreen() {
         history === null ? (
           <Loader label="Chargement de l’historique..." />
         ) : history.length === 0 ? (
-          <EmptyState icon="pulse-outline" title="Aucune consultation terminée" />
+          <EmptyState icon="heart-pulse" title="Aucune consultation terminée" />
         ) : (
           history.map((c) => (
             <Card key={c.appointment_id} style={s.consult}>
@@ -169,7 +169,7 @@ export default function PatientRecordScreen() {
         prescriptions === null ? (
           <Loader label="Chargement des ordonnances..." />
         ) : prescriptions.length === 0 ? (
-          <EmptyState icon="document-text-outline" title="Aucune ordonnance" />
+          <EmptyState icon="file-lines" title="Aucune ordonnance" />
         ) : (
           prescriptions.map((rx) => <PrescriptionCard key={rx.id} prescription={rx} />)
         )
@@ -196,7 +196,7 @@ export default function PatientRecordScreen() {
       ) : (
         <View style={s.chips}>
           {ADDABLE.map((k) => (
-            <Chip key={k} icon="add" label={KIND_LABEL[k]} onPress={() => setAdding(k)} />
+            <Chip key={k} icon="plus" label={KIND_LABEL[k]} onPress={() => setAdding(k)} />
           ))}
         </View>
       )}

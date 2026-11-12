@@ -289,7 +289,7 @@ export default function FacilityEditScreen() {
 
   return (
     <Screen
-      footer={canEdit ? <Button title="Enregistrer" icon="save-outline" loading={saving} onPress={save} /> : undefined}
+      footer={canEdit ? <Button title="Enregistrer" icon="floppy-disk" loading={saving} onPress={save} /> : undefined}
     >
       {facility ? (
         <View style={s.row}>
@@ -299,7 +299,7 @@ export default function FacilityEditScreen() {
       ) : null}
 
       {!canEdit ? (
-        <Notice icon="eye-outline" title="Consultation seule" message="Seuls les administrateurs de cet établissement peuvent modifier ces informations." />
+        <Notice icon="eye" title="Consultation seule" message="Seuls les administrateurs de cet établissement peuvent modifier ces informations." />
       ) : null}
 
       <Card style={s.section}>
@@ -347,7 +347,7 @@ export default function FacilityEditScreen() {
       </View>
       {'emergency' in services ? (
         <Chip
-          icon="time-outline"
+          icon="clock"
           label="Urgences ouvertes 24h/24"
           selected={!!services.emergency}
           onPress={canEdit ? () => setServices((cur) => ({ ...cur, emergency: !cur.emergency })) : undefined}
@@ -364,7 +364,7 @@ export default function FacilityEditScreen() {
               return (
                 <Chip
                   key={sv.code}
-                  icon={sv.unavailableUntil ? 'warning-outline' : 'checkmark-circle-outline'}
+                  icon={sv.unavailableUntil ? 'triangle-exclamation' : 'circle-check'}
                   label={sv.unavailableUntil ? `${name} · indisponible` : name}
                   selected={!!sv.unavailableUntil}
                   onPress={() => editOutage(sv.code, name)}
@@ -437,12 +437,12 @@ export default function FacilityEditScreen() {
               <Input label="Prénom" value={memberFirstName} onChangeText={setMemberFirstName} />
               <Input label="Nom" value={memberLastName} onChangeText={setMemberLastName} />
               <Input label="Mot de passe provisoire" value={memberPassword} onChangeText={setMemberPassword} secureTextEntry />
-              <Button title="Ajouter" icon="person-add-outline" variant="secondary" loading={saving} disabled={!memberEmail.trim()} onPress={addMember} />
+              <Button title="Ajouter" icon="user-plus" variant="secondary" loading={saving} disabled={!memberEmail.trim()} onPress={addMember} />
             </Card>
           ) : null}
         </>
       ) : (
-        <Notice icon="information-circle-outline" message="Enregistrez d’abord l’établissement pour ajouter son personnel et ses médecins." />
+        <Notice icon="circle-info" message="Enregistrez d’abord l’établissement pour ajouter son personnel et ses médecins." />
       )}
     </Screen>
   );

@@ -55,7 +55,7 @@ export default function FacilitiesManageScreen() {
       onRefresh={load}
       footer={
         scope?.platformAdmin ? (
-          <Button title="Nouvel établissement" icon="add" onPress={() => navigation.navigate('FacilityEdit')} />
+          <Button title="Nouvel établissement" icon="plus" onPress={() => navigation.navigate('FacilityEdit')} />
         ) : undefined
       }
     >
@@ -68,7 +68,7 @@ export default function FacilitiesManageScreen() {
       </Text>
 
       {facilities.length === 0 ? (
-        <EmptyState icon="business-outline" title="Aucun établissement" />
+        <EmptyState icon="building" title="Aucun établissement" />
       ) : (
         facilities.map((f) => {
           const badge = FACILITY_STATUS_BADGE[f.status];
@@ -80,7 +80,7 @@ export default function FacilitiesManageScreen() {
               accessibilityLabel={`Gérer ${f.name}`}
             >
               <View style={s.row}>
-                <Icon name="business" size="md" color={color.primary} />
+                <Icon name="building" solid size="md" color={color.primary} />
                 <View style={s.flex}>
                   <Text style={type.h3} numberOfLines={1}>{f.name}</Text>
                   <Text style={s.muted}>

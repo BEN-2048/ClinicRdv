@@ -61,7 +61,7 @@ export default function BookingConfirmScreen() {
     return (
       <Screen>
         <ErrorState message="Les informations du rendez-vous sont indisponibles." />
-        <Button title="Retour à l'accueil" icon="home-outline" onPress={() => navigation.navigate('Main')} />
+        <Button title="Retour à l'accueil" icon="house" onPress={() => navigation.navigate('Main')} />
       </Screen>
     );
   }
@@ -72,13 +72,13 @@ export default function BookingConfirmScreen() {
         <View style={s.footer}>
           <Button
             title="Voir mes rendez-vous"
-            icon="calendar-outline"
+            icon="calendar"
             onPress={() => navigation.navigate('Main', { screen: 'Mes RDV' })}
           />
           <Button
             title="Retour à l'accueil"
             variant="secondary"
-            icon="home-outline"
+            icon="house"
             onPress={() => navigation.navigate('Main', { screen: 'Accueil' })}
           />
         </View>
@@ -86,7 +86,7 @@ export default function BookingConfirmScreen() {
     >
       <Card style={s.success}>
         <View style={s.successIcon}>
-          <Icon name="checkmark" size={32} color={color.onPrimary} />
+          <Icon name="check" size={32} color={color.onPrimary} />
         </View>
         <Text style={s.successTitle}>Réservation enregistrée</Text>
         <Text style={s.successText}>Votre rendez-vous a été créé avec succès.</Text>
@@ -95,28 +95,28 @@ export default function BookingConfirmScreen() {
 
       <Card style={s.section}>
         <Text style={type.h2}>Détails du rendez-vous</Text>
-        <InfoRow icon="receipt-outline" label="Numéro de réservation" value={`#${appointment.id}`} strong />
-        {patientName ? <InfoRow icon="people-outline" label="Patient" value={patientName} strong /> : null}
-        <InfoRow icon="person-outline" label="Médecin" value={doctorName(doctor.name)} strong />
-        <InfoRow icon="medkit-outline" label="Spécialité" value={doctor.specialty} />
+        <InfoRow icon="receipt" label="Numéro de réservation" value={`#${appointment.id}`} strong />
+        {patientName ? <InfoRow icon="users" label="Patient" value={patientName} strong /> : null}
+        <InfoRow icon="user" label="Médecin" value={doctorName(doctor.name)} strong />
+        <InfoRow icon="kit-medical" label="Spécialité" value={doctor.specialty} />
         {facility ? (
-          <InfoRow icon="business-outline" label="Établissement" value={[facility.name, facility.city].filter(Boolean).join(' · ')} strong />
+          <InfoRow icon="building" label="Établissement" value={[facility.name, facility.city].filter(Boolean).join(' · ')} strong />
         ) : null}
-        <InfoRow icon="calendar-outline" label="Date" value={formatDate(appointment.starts_at, timeZone)} strong />
+        <InfoRow icon="calendar" label="Date" value={formatDate(appointment.starts_at, timeZone)} strong />
         <InfoRow
-          icon="time-outline"
+          icon="clock"
           label="Horaire"
           value={`${formatTime(appointment.starts_at, timeZone)} – ${formatTime(appointment.ends_at, timeZone)}`}
           strong
         />
-        <InfoRow icon="cash-outline" label="Tarif de consultation" value={`${doctor.fee} USD`} />
+        <InfoRow icon="money-bill-1" label="Tarif de consultation" value={`${doctor.fee} USD`} />
         {appointment.reason ? (
-          <InfoRow icon="document-text-outline" label="Motif" value={appointment.reason} />
+          <InfoRow icon="file-lines" label="Motif" value={appointment.reason} />
         ) : null}
       </Card>
 
       <View style={s.note}>
-        <Icon name="information-circle" size="md" color={color.successInk} />
+        <Icon name="circle-info" size="md" color={color.successInk} />
         <Text style={s.noteText}>
           Conservez votre numéro de réservation. Le statut affiché correspond à celui enregistré par la clinique.
         </Text>

@@ -70,7 +70,7 @@ export default function LoginScreen({ navigation }: any) {
 
         <Input
           label="Téléphone ou adresse e-mail"
-          icon="person-circle-outline"
+          icon="circle-user"
           placeholder="081 234 5678 ou exemple@email.com"
           keyboardType="email-address"
           autoCapitalize="none"
@@ -108,11 +108,11 @@ export default function LoginScreen({ navigation }: any) {
           />
         </View>
 
-        <Button title="Se connecter" icon="log-in-outline" loading={busy} onPress={submit} />
+        <Button title="Se connecter" icon="right-to-bracket" loading={busy} onPress={submit} />
 
         <Button
           title="Urgence : appeler ou trouver un hôpital"
-          icon="medkit-outline"
+          icon="kit-medical"
           variant="danger"
           onPress={() => navigation.navigate('Emergency')}
         />

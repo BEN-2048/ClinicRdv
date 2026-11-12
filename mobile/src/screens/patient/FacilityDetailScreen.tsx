@@ -58,7 +58,7 @@ export default function FacilityDetailScreen() {
     return (
       <Screen>
         <ErrorState message={error || 'Établissement introuvable.'} />
-        <Button title="Retour" variant="secondary" icon="arrow-back" onPress={() => navigation.goBack()} />
+        <Button title="Retour" variant="secondary" icon="arrow-left" onPress={() => navigation.goBack()} />
       </Screen>
     );
   }
@@ -80,31 +80,31 @@ export default function FacilityDetailScreen() {
         </Text>
         {facility.description ? <Text style={s.detail}>{facility.description}</Text> : null}
         <InfoRow
-          icon="location-outline"
+          icon="location-dot"
           label="Adresse"
           value={[facility.address, facility.city, facility.province].filter(Boolean).join(', ') || 'Non renseignée'}
         />
-        <InfoRow icon="time-outline" label="Fuseau horaire" value={TIME_ZONE_LABEL[facility.timezone]} />
-        {facility.email ? <InfoRow icon="mail-outline" label="E-mail" value={facility.email} /> : null}
+        <InfoRow icon="clock" label="Fuseau horaire" value={TIME_ZONE_LABEL[facility.timezone]} />
+        {facility.email ? <InfoRow icon="envelope" label="E-mail" value={facility.email} /> : null}
         <View style={s.actions}>
           {facility.phone ? (
             <Button
               title="Appeler"
-              icon="call-outline"
+              icon="phone"
               onPress={() => callNumber(facility.phone as string)}
               style={s.flex}
             />
           ) : null}
-          <Button title="Itinéraire" icon="navigate-outline" variant="secondary" onPress={openMap} style={s.flex} />
+          <Button title="Itinéraire" icon="location-arrow" variant="secondary" onPress={openMap} style={s.flex} />
         </View>
       </Card>
 
       {facility.emergency_phone ? (
-        <Notice tone="danger" icon="alert-circle-outline" title="Urgences" message={`Ligne d'urgence : ${facility.emergency_phone}`}>
+        <Notice tone="danger" icon="circle-exclamation" title="Urgences" message={`Ligne d'urgence : ${facility.emergency_phone}`}>
           <Button
             title="Appeler les urgences"
             variant="danger"
-            icon="call"
+            icon="phone"
             size="sm"
             fullWidth={false}
             onPress={() => callNumber(facility.emergency_phone as string)}
@@ -148,7 +148,7 @@ export default function FacilityDetailScreen() {
 
       <SectionTitle title={`Médecins (${facility.doctors.length})`} />
       {facility.doctors.length === 0 ? (
-        <EmptyState icon="medkit-outline" title="Aucun médecin disponible pour le moment" />
+        <EmptyState icon="kit-medical" title="Aucun médecin disponible pour le moment" />
       ) : (
         <Card style={s.list}>
           {facility.doctors.map((d, i) => {

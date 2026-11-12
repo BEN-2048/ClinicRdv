@@ -164,7 +164,7 @@ export default function SharingScreen() {
       {emergencies.length ? (
         <Notice
           tone="danger"
-          icon="alert-circle-outline"
+          icon="circle-exclamation"
           title={`${emergencies.length} accès d’urgence à ce dossier`}
           message={`Dernier : ${emergencies[0].actor ?? 'un médecin'}, le ${formatDateTime(emergencies[0].created_at)}.`}
         />
@@ -185,7 +185,7 @@ export default function SharingScreen() {
         ) : (
           <>
             <Notice
-              icon="shield-checkmark-outline"
+              icon="shield-halved"
               message="Par défaut, chaque établissement ne voit que ce qu’il a lui-même enregistré. Un partage permet à un établissement de voir aussi ce qui a été enregistré ailleurs."
             />
 
@@ -193,12 +193,12 @@ export default function SharingScreen() {
               <Card style={s.form}>
                 <Text style={type.h3}>Nouveau partage</Text>
                 {facility ? (
-                  <Chip icon="business-outline" label={`${facility.name}${facility.city ? ` · ${facility.city}` : ''}`} selected onPress={() => setFacility(null)} />
+                  <Chip icon="building" label={`${facility.name}${facility.city ? ` · ${facility.city}` : ''}`} selected onPress={() => setFacility(null)} />
                 ) : (
                   <>
-                    <Input icon="search" value={query} onChangeText={setQuery} placeholder="Rechercher un établissement" />
+                    <Input icon="magnifying-glass" value={query} onChangeText={setQuery} placeholder="Rechercher un établissement" />
                     {results.slice(0, 6).map((f) => (
-                      <ListItem key={f.id} title={f.name} subtitle={f.city ?? undefined} icon="business-outline" onPress={() => setFacility(f)} />
+                      <ListItem key={f.id} title={f.name} subtitle={f.city ?? undefined} icon="building" onPress={() => setFacility(f)} />
                     ))}
                   </>
                 )}
@@ -215,16 +215,16 @@ export default function SharingScreen() {
                 </View>
                 <View style={s.pair}>
                   <Button title="Annuler" variant="secondary" onPress={() => setAdding(false)} disabled={busy} style={s.flex} />
-                  <Button title="Autoriser" icon="checkmark-circle-outline" onPress={grant} loading={busy} disabled={!facility} style={s.flex} />
+                  <Button title="Autoriser" icon="circle-check" onPress={grant} loading={busy} disabled={!facility} style={s.flex} />
                 </View>
               </Card>
             ) : (
-              <Button title="Partager avec un établissement" icon="share-social-outline" variant="secondary" onPress={() => setAdding(true)} />
+              <Button title="Partager avec un établissement" icon="share-nodes" variant="secondary" onPress={() => setAdding(true)} />
             )}
 
             <SectionTitle title={`Partages actifs (${active.length})`} />
             {active.length === 0 ? (
-              <EmptyState icon="lock-closed-outline" title="Aucun partage actif" />
+              <EmptyState icon="lock" title="Aucun partage actif" />
             ) : (
               active.map((c) => (
                 <Card key={c.id} style={s.card}>
@@ -251,7 +251,7 @@ export default function SharingScreen() {
       ) : history === null ? (
         <Loader label="Chargement..." />
       ) : history.length === 0 ? (
-        <EmptyState icon="time-outline" title="Aucun accès enregistré" />
+        <EmptyState icon="clock" title="Aucun accès enregistré" />
       ) : (
         history.map((h) => (
           <Card key={h.id} style={[s.card, h.action === 'emergency_access' && s.emergency]}>

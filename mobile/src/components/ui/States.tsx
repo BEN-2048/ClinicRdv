@@ -14,7 +14,7 @@ export function Loader({ label, fullscreen = false }: { label?: string; fullscre
 }
 
 export function EmptyState({
-  icon = 'file-tray-outline',
+  icon = 'inbox',
   title,
   message,
   actionLabel,
@@ -50,13 +50,13 @@ export function ErrorState({
   return (
     <View style={s.center}>
       <View style={[s.bubble, { backgroundColor: color.dangerSoft }]}>
-        <Icon name="alert-circle-outline" size={28} color={color.dangerInk} />
+        <Icon name="circle-exclamation" size={28} color={color.dangerInk} />
       </View>
       <Text style={s.message}>{message}</Text>
       {onRetry ? (
         <Button
           title="Réessayer"
-          icon="refresh"
+          icon="arrows-rotate"
           variant="secondary"
           onPress={onRetry}
           fullWidth={false}

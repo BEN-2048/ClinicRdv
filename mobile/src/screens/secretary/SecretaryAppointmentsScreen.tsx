@@ -96,11 +96,11 @@ export default function SecretaryAppointmentsScreen() {
         <AppHeader title="Rendez-vous du cabinet" subtitle="Tous les médecins" />
       }
     >
-      <Button title="Nouveau rendez-vous" icon="add" onPress={() => navigation.navigate('SecretaryBook')} />
+      <Button title="Nouveau rendez-vous" icon="plus" onPress={() => navigation.navigate('SecretaryBook')} />
 
       <Card padded={false} style={s.dateNav}>
         <IconButton
-          icon="chevron-back"
+          icon="chevron-left"
           variant="plain"
           accessibilityLabel="Jour précédent"
           disabled={!date}
@@ -110,7 +110,7 @@ export default function SecretaryAppointmentsScreen() {
           <Text style={s.dateTitle}>{date ? formatLongDate(date) : 'Toutes les dates'}</Text>
         </Pressable>
         <IconButton
-          icon="chevron-forward"
+          icon="chevron-right"
           variant="plain"
           accessibilityLabel="Jour suivant"
           disabled={!date}
@@ -119,7 +119,7 @@ export default function SecretaryAppointmentsScreen() {
       </Card>
 
       <Wrap>
-        <Chip label="Aujourd'hui" icon="today-outline" selected={date === today} onPress={() => setDate(today)} />
+        <Chip label="Aujourd'hui" icon="calendar-day" selected={date === today} onPress={() => setDate(today)} />
         <Chip label="Toutes les dates" selected={date === null} onPress={() => setDate(null)} />
       </Wrap>
       <Wrap>
@@ -133,7 +133,7 @@ export default function SecretaryAppointmentsScreen() {
       {error ? <ErrorCard message={error} onRetry={() => load()} /> : null}
       {!loading && !error && items.length === 0 ? (
         <Card>
-          <EmptyState icon="calendar-clear-outline" title="Aucun rendez-vous" message="Aucun rendez-vous pour ces critères." />
+          <EmptyState icon="calendar-days" title="Aucun rendez-vous" message="Aucun rendez-vous pour ces critères." />
         </Card>
       ) : null}
 
@@ -149,14 +149,14 @@ export default function SecretaryAppointmentsScreen() {
                 </View>
                 <StatusBadge status={a.status} />
               </View>
-              <InfoRow icon="person-outline" label="Médecin" value={`${doctorName(a.doctor_name)} · ${a.specialty}`} />
+              <InfoRow icon="user" label="Médecin" value={`${doctorName(a.doctor_name)} · ${a.specialty}`} />
               <InfoRow
-                icon="time-outline"
+                icon="clock"
                 label="Horaire"
                 value={`${date ? formatTime(a.starts_at) : formatDateTime(a.starts_at)} – ${formatTime(a.ends_at)}`}
                 strong
               />
-              {a.reason ? <InfoRow icon="document-text-outline" label="Motif" value={a.reason} /> : null}
+              {a.reason ? <InfoRow icon="file-lines" label="Motif" value={a.reason} /> : null}
               {active(a) ? (
                 <View style={shared.actions}>
                   <Button
@@ -169,7 +169,7 @@ export default function SecretaryAppointmentsScreen() {
                   />
                   <Button
                     title="Annuler"
-                    icon="close-circle-outline"
+                    icon="circle-xmark"
                     size="sm"
                     variant="danger"
                     style={shared.action}

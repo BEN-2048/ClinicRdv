@@ -135,7 +135,7 @@ export default function FamilyScreen() {
   return (
     <Screen refreshing={false} onRefresh={load}>
       <Notice
-        icon="people-outline"
+        icon="users"
         title="Gérez les profils de vos proches"
         message="Vous pouvez prendre rendez-vous pour un enfant dès son ajout. Son dossier médical ne vous sera accessible qu'après vérification du lien par la clinique."
       />
@@ -144,7 +144,7 @@ export default function FamilyScreen() {
 
       <SectionTitle title="Profils" />
       {profiles.length === 0 ? (
-        <EmptyState icon="people-outline" title="Aucun profil" />
+        <EmptyState icon="users" title="Aucun profil" />
       ) : (
         profiles.map((p) => {
           const badge = LINK_STATUS_BADGE[p.link_status];
@@ -197,11 +197,11 @@ export default function FamilyScreen() {
           </View>
           <View style={s.actions}>
             <Button title="Annuler" variant="secondary" disabled={saving} onPress={resetForm} style={s.flex} />
-            <Button title="Ajouter" icon="person-add-outline" loading={saving} onPress={submit} style={s.flex} />
+            <Button title="Ajouter" icon="user-plus" loading={saving} onPress={submit} style={s.flex} />
           </View>
         </Card>
       ) : (
-        <Button title="Ajouter un enfant ou un proche" icon="person-add-outline" onPress={() => setAdding(true)} />
+        <Button title="Ajouter un enfant ou un proche" icon="user-plus" onPress={() => setAdding(true)} />
       )}
     </Screen>
   );

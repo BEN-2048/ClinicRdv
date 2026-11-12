@@ -145,20 +145,20 @@ export function DocumentsPanel({
             {clinician && facilities.length > 1 ? (
               <View style={s.chips}>
                 {facilities.map((f) => (
-                  <Chip key={f.id} icon="business-outline" label={f.name} selected={facilityId === f.id} onPress={() => setFacilityId(f.id)} />
+                  <Chip key={f.id} icon="building" label={f.name} selected={facilityId === f.id} onPress={() => setFacilityId(f.id)} />
                 ))}
               </View>
             ) : null}
             {clinician ? (
               <>
                 <Chip
-                  icon="eye-off-outline"
+                  icon="eye-slash"
                   label="Ne pas publier tout de suite au patient"
                   selected={!releaseNow}
                   onPress={() => setReleaseNow(!releaseNow)}
                 />
                 <Chip
-                  icon="lock-closed-outline"
+                  icon="lock"
                   label="Confidentiel (masqué aux parents et tuteurs)"
                   selected={confidential}
                   onPress={() => setConfidential(!confidential)}
@@ -167,21 +167,21 @@ export function DocumentsPanel({
             ) : null}
             <View style={s.pair}>
               <Button title="Annuler" variant="secondary" onPress={() => setPicked(null)} disabled={busy} style={s.flex} />
-              <Button title="Envoyer" icon="cloud-upload-outline" onPress={send} loading={busy} disabled={!title.trim()} style={s.flex} />
+              <Button title="Envoyer" icon="cloud-arrow-up" onPress={send} loading={busy} disabled={!title.trim()} style={s.flex} />
             </View>
           </Card>
         ) : (
-          <Button title="Ajouter un document (PDF, photo)" icon="attach-outline" variant="secondary" onPress={pick} />
+          <Button title="Ajouter un document (PDF, photo)" icon="paperclip" variant="secondary" onPress={pick} />
         )
       ) : null}
 
       {docs.length === 0 ? (
-        <EmptyState icon="document-attach-outline" title="Aucun document" message="Les ordonnances, résultats et comptes rendus apparaîtront ici." />
+        <EmptyState icon="file-arrow-up" title="Aucun document" message="Les ordonnances, résultats et comptes rendus apparaîtront ici." />
       ) : (
         docs.map((d) => (
           <Card key={d.id} style={[s.card, d.entered_in_error && s.faded]}>
             <View style={s.row}>
-              <Icon name={d.mime_type === 'application/pdf' ? 'document-text-outline' : 'image-outline'} size="md" color={color.primary} />
+              <Icon name={d.mime_type === 'application/pdf' ? 'file-lines' : 'image'} size="md" color={color.primary} />
               <View style={s.flex}>
                 <Text style={[type.bodyMedium, d.entered_in_error && s.strike]} numberOfLines={2}>{d.title}</Text>
                 <Text style={s.muted}>
@@ -221,7 +221,7 @@ export function DocumentsPanel({
                 </View>
               ) : (
                 <View style={s.actions}>
-                  <Button title="Ouvrir" size="sm" icon="open-outline" fullWidth={false} onPress={() => open(d)} />
+                  <Button title="Ouvrir" size="sm" icon="arrow-up-right-from-square" fullWidth={false} onPress={() => open(d)} />
                   {clinician && !d.released_at ? (
                     <Button title="Publier au patient" size="sm" variant="secondary" fullWidth={false} onPress={() => run(() => DocumentsApi.release(d.id))} />
                   ) : null}

@@ -70,7 +70,7 @@ export default function DoctorProfileScreen() {
     return (
       <Screen>
         <ErrorState message={error || 'Médecin introuvable.'} />
-        <Button title="Retour" variant="secondary" icon="arrow-back" onPress={() => navigation.goBack()} />
+        <Button title="Retour" variant="secondary" icon="arrow-left" onPress={() => navigation.goBack()} />
       </Screen>
     );
   }
@@ -86,13 +86,13 @@ export default function DoctorProfileScreen() {
         <View style={s.footer}>
           <Button
             title="Choisir un créneau"
-            icon="calendar-outline"
+            icon="calendar"
             disabled={!canBook}
             onPress={() => navigation.navigate('SlotPicker', { doctorId: doctor.id, facilityId: facility?.id })}
           />
           <Button
             title="M'alerter d'un désistement"
-            icon="notifications-outline"
+            icon="bell"
             variant="secondary"
             disabled={!doctor.active}
             onPress={() => navigation.navigate('WaitingList', { doctorId: doctor.id })}
@@ -119,7 +119,7 @@ export default function DoctorProfileScreen() {
             {facilities.map((f) => (
               <Chip
                 key={f.id}
-                icon="business-outline"
+                icon="building"
                 label={f.city ? `${f.name} · ${f.city}` : f.name}
                 selected={f.id === facilityId}
                 onPress={facilities.length > 1 ? () => setFacilityId(f.id) : undefined}
@@ -131,10 +131,10 @@ export default function DoctorProfileScreen() {
 
       <Card style={s.section}>
         <Text style={type.h2}>Informations professionnelles</Text>
-        <InfoRow icon="document-text-outline" label="Biographie" value={doctor.bio || 'Aucune biographie renseignée.'} />
-        <InfoRow icon="cash-outline" label="Tarif de consultation" value={`${facility?.fee ?? doctor.fee ?? 0} USD`} strong />
-        <InfoRow icon="time-outline" label="Durée de consultation" value={`${doctor.consultation_minutes} minutes`} strong />
-        <InfoRow icon="language-outline" label="Langues parlées" value={doctor.languages || 'Non renseignées'} />
+        <InfoRow icon="file-lines" label="Biographie" value={doctor.bio || 'Aucune biographie renseignée.'} />
+        <InfoRow icon="money-bill-1" label="Tarif de consultation" value={`${facility?.fee ?? doctor.fee ?? 0} USD`} strong />
+        <InfoRow icon="clock" label="Durée de consultation" value={`${doctor.consultation_minutes} minutes`} strong />
+        <InfoRow icon="language" label="Langues parlées" value={doctor.languages || 'Non renseignées'} />
       </Card>
     </Screen>
   );

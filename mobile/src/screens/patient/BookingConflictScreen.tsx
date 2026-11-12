@@ -151,7 +151,7 @@ export default function BookingConflictScreen() {
     return (
       <Screen>
         <ErrorState message="Les informations du rendez-vous sont indisponibles." />
-        <Button title="Retour" variant="secondary" icon="arrow-back" onPress={() => navigation.goBack()} />
+        <Button title="Retour" variant="secondary" icon="arrow-left" onPress={() => navigation.goBack()} />
       </Screen>
     );
   }
@@ -172,17 +172,17 @@ export default function BookingConflictScreen() {
         <View style={s.footer}>
           <Button
             title={selectedSlot ? `Sélectionner ${formatTime(selectedSlot.startsAt, timeZone)}` : 'Sélectionner un créneau'}
-            iconRight="arrow-forward"
+            iconRight="arrow-right"
             disabled={!selectedSlot}
             onPress={selectAlternative}
           />
-          <Button title="Retourner à la recherche" icon="search" variant="ghost" onPress={goToDoctors} />
+          <Button title="Retourner à la recherche" icon="magnifying-glass" variant="ghost" onPress={goToDoctors} />
         </View>
       }
     >
       <Notice
         tone="warning"
-        icon="sync-outline"
+        icon="rotate"
         title="Ce créneau vient d'être réservé"
         message={`Un autre patient a réservé le créneau du ${formatDay(originalDate)} à ${formatTime(
           originalSlot.startsAt,
@@ -197,11 +197,11 @@ export default function BookingConflictScreen() {
             <Text style={[type.h3, s.shrink]} numberOfLines={1}>
               {doctorName(fullName)}
             </Text>
-            <Icon name="checkmark-circle" size="sm" color={color.primaryBright} />
+            <Icon name="circle-check" solid size="sm" color={color.primaryBright} />
           </View>
           <Text style={s.specialty}>{doctor.specialty}</Text>
           <View style={s.addressRow}>
-            <Icon name="location-outline" size={14} color={color.textMuted} />
+            <Icon name="location-dot" size={14} color={color.textMuted} />
             <Text style={s.muted}>Cabinet médical</Text>
           </View>
         </View>
@@ -211,7 +211,7 @@ export default function BookingConflictScreen() {
 
       {!loading && days.length > 0 ? (
         <Notice
-          icon="sparkles-outline"
+          icon="wand-magic-sparkles"
           title="Option suggérée · même praticien"
           message="Choisissez l'un des prochains créneaux disponibles ci-dessous pour poursuivre votre réservation."
         />
@@ -229,7 +229,7 @@ export default function BookingConflictScreen() {
         ? days.map((day) => (
             <View key={day.date} style={s.day}>
               <View style={s.dayHead}>
-                <Icon name="calendar-outline" size="sm" color={color.primary} />
+                <Icon name="calendar" size="sm" color={color.primary} />
                 <Text style={s.dayTitle}>{dayTitle(day.date, timeZone)}</Text>
               </View>
               <SlotGrid
@@ -252,13 +252,13 @@ export default function BookingConflictScreen() {
 
       <Card style={s.list}>
         <ListItem
-          icon="people-outline"
+          icon="users"
           title="Consulter un autre médecin"
           subtitle="Trouvez un autre praticien disponible dans l'annuaire"
           onPress={goToDoctors}
         />
         <ListItem
-          icon="calendar-outline"
+          icon="calendar"
           title="Planning complet"
           subtitle={`Ouvrir l'agenda du ${doctorName(fullName)}`}
           onPress={() => navigation.goBack()}

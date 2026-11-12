@@ -94,7 +94,7 @@ export default function BookingReviewScreen() {
         <Button
           title="Retour à la sélection"
           variant="secondary"
-          icon="arrow-back"
+          icon="arrow-left"
           onPress={() => navigation.goBack()}
         />
       </Screen>
@@ -156,13 +156,13 @@ export default function BookingReviewScreen() {
         <View style={s.footer}>
           <Button
             title="Confirmer le rendez-vous"
-            icon="checkmark-circle-outline"
+            icon="circle-check"
             loading={booking}
             disabled={!doctor.active}
             onPress={handleConfirm}
           />
           <View style={s.cancelInfo}>
-            <Icon name="time-outline" size="sm" color={color.textMuted} />
+            <Icon name="clock" size="sm" color={color.textMuted} />
             <Text style={s.cancelText}>Annulation gratuite jusqu’à 4 heures avant le rendez-vous.</Text>
           </View>
         </View>
@@ -172,7 +172,7 @@ export default function BookingReviewScreen() {
         <View style={s.progressHead}>
           <Text style={s.progressLabel}>ÉTAPE 3 SUR 3</Text>
           <View style={s.secure}>
-            <Icon name="shield-checkmark-outline" size={14} color={color.textSecondary} />
+            <Icon name="shield-halved" size={14} color={color.textSecondary} />
             <Text style={s.secureText}>Réservation sécurisée</Text>
           </View>
         </View>
@@ -189,7 +189,7 @@ export default function BookingReviewScreen() {
               <Text style={[type.h3, s.flexShrink]} numberOfLines={1}>
                 {doctorName(fullName)}
               </Text>
-              <Icon name="checkmark-circle" size="sm" color={color.primaryBright} />
+              <Icon name="circle-check" solid size="sm" color={color.primaryBright} />
             </View>
             <Text style={s.specialty}>{doctor.specialty}</Text>
             <Text style={s.muted}>{facility ? [facility.name, facility.city].filter(Boolean).join(' · ') : 'Cabinet médical'} · Présentiel</Text>
@@ -199,7 +199,7 @@ export default function BookingReviewScreen() {
 
         <View style={s.slotBox}>
           <View style={s.slotIcon}>
-            <Icon name="calendar" size="md" color={color.primary} />
+            <Icon name="calendar" solid size="md" color={color.primary} />
           </View>
           <View style={s.flex}>
             <Text style={s.slotDate}>{dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)}</Text>
@@ -217,7 +217,7 @@ export default function BookingReviewScreen() {
       {profiles.length > 1 ? (
         <Card style={s.form}>
           <View style={s.formTitle}>
-            <Icon name="people-outline" size="md" color={color.primary} />
+            <Icon name="users" size="md" color={color.primary} />
             <Text style={type.h2}>Pour qui est ce rendez-vous ?</Text>
           </View>
           <View style={s.chips}>
@@ -235,7 +235,7 @@ export default function BookingReviewScreen() {
       ) : null}
 
       <Notice
-        icon="location-outline"
+        icon="location-dot"
         title={facility ? `Lieu : ${facility.name}` : 'Adresse du cabinet à confirmer'}
         message={facility ? 'Retrouvez l’adresse et le téléphone dans la fiche de l’établissement.' : 'Les informations précises du cabinet seront communiquées par la clinique.'}
       />
@@ -243,7 +243,7 @@ export default function BookingReviewScreen() {
       <Card style={s.price}>
         <View style={s.priceRow}>
           <View style={s.priceLabel}>
-            <Icon name="cash-outline" size="md" color={color.primary} />
+            <Icon name="money-bill-1" size="md" color={color.primary} />
             <Text style={type.bodyMedium}>Tarif de consultation</Text>
           </View>
           <Text style={type.h2}>{fee} USD</Text>
@@ -253,7 +253,7 @@ export default function BookingReviewScreen() {
 
       <Card style={s.form}>
         <View style={s.formTitle}>
-          <Icon name="clipboard-outline" size="md" color={color.primary} />
+          <Icon name="clipboard" size="md" color={color.primary} />
           <Text style={type.h2}>Préparation du rendez-vous</Text>
         </View>
 
@@ -280,7 +280,7 @@ export default function BookingReviewScreen() {
 
         <View style={s.reminder}>
           <View style={s.reminderIcon}>
-            <Icon name="notifications-outline" size="md" color={color.primary} />
+            <Icon name="bell" size="md" color={color.primary} />
           </View>
           <View style={s.flex}>
             <Text style={type.bodyMedium}>Rappels automatiques</Text>
@@ -297,7 +297,7 @@ export default function BookingReviewScreen() {
 
       <Notice
         tone="success"
-        icon="document-text-outline"
+        icon="file-lines"
         title="Pensez à apporter vos documents médicaux"
         message="Munissez-vous de vos ordonnances et de vos résultats d'analyses récentes."
       />

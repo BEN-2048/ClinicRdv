@@ -24,7 +24,7 @@ export default function Checkbox({
       hitSlop={6}
     >
       <View style={[s.box, checked && s.boxChecked]}>
-        {checked ? <Icon name="checkmark" size={14} color={color.onPrimary} /> : null}
+        {checked ? <Icon name="check" size={14} color={color.onPrimary} /> : null}
       </View>
       <Text style={s.label}>{label}</Text>
     </Pressable>

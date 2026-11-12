@@ -157,7 +157,7 @@ export default function MedicalRecordScreen() {
             <Chip
               key={p.id}
               label={p.link_status === 'self' ? 'Moi' : p.first_name}
-              icon={p.link_status === 'pending' ? 'time-outline' : undefined}
+              icon={p.link_status === 'pending' ? 'clock' : undefined}
               selected={p.id === selectedId}
               onPress={() => load(false, p.id)}
             />
@@ -168,7 +168,7 @@ export default function MedicalRecordScreen() {
       {selected?.link_status === 'pending' ? (
         <Notice
           tone="warning"
-          icon="lock-closed-outline"
+          icon="lock"
           title="Dossier non accessible pour le moment"
           message="Présentez l’acte de naissance ou le jugement de tutelle à la clinique. Le dossier sera visible dès que le lien sera vérifié."
         />
@@ -176,7 +176,7 @@ export default function MedicalRecordScreen() {
 
       <View style={s.profile}>
         <View style={s.profileIcon}>
-          <Icon name="folder-open-outline" size="lg" color={color.onPrimary} />
+          <Icon name="folder-open" size="lg" color={color.onPrimary} />
         </View>
         <View style={s.flex}>
           <Text style={s.profileLabel}>DOSSIER PATIENT</Text>
@@ -191,12 +191,12 @@ export default function MedicalRecordScreen() {
 
       <View style={s.stats}>
         <Card style={s.stat}>
-          <Icon name="pulse-outline" size="md" color={color.primary} />
+          <Icon name="heart-pulse" size="md" color={color.primary} />
           <Text style={s.statValue}>{consultations.length}</Text>
           <Text style={s.statLabel}>Consultations</Text>
         </Card>
         <Card style={s.stat}>
-          <Icon name="medical-outline" size="md" color={color.success} />
+          <Icon name="star-of-life" size="md" color={color.success} />
           <Text style={s.statValue}>{prescriptions.length}</Text>
           <Text style={s.statLabel}>Prescriptions</Text>
         </Card>
@@ -243,7 +243,7 @@ export default function MedicalRecordScreen() {
                   }}
                 />
               ) : (
-                <Button title="Déclarer une allergie" icon="add" variant="secondary" onPress={() => setDeclaring(true)} />
+                <Button title="Déclarer une allergie" icon="plus" variant="secondary" onPress={() => setDeclaring(true)} />
               )
             ) : null}
             <RecordSections record={summary} />
@@ -253,14 +253,14 @@ export default function MedicalRecordScreen() {
           </>
         ) : (
           <Card>
-            <EmptyState icon="document-text-outline" title="Synthèse indisponible" />
+            <EmptyState icon="file-lines" title="Synthèse indisponible" />
           </Card>
         )
       ) : tab === 'consultations' ? (
         consultations.length === 0 ? (
           <Card>
             <EmptyState
-              icon="pulse-outline"
+              icon="heart-pulse"
               title="Aucune consultation"
               message="Votre historique apparaîtra ici après une consultation enregistrée."
             />
@@ -269,7 +269,7 @@ export default function MedicalRecordScreen() {
           consultations.map((item) => (
             <Card key={item.appointment_id} style={s.consultation}>
               <View style={s.dateRow}>
-                <Icon name="calendar-outline" size="sm" color={color.primary} />
+                <Icon name="calendar" size="sm" color={color.primary} />
                 <Text style={s.date}>{formatDate(item.starts_at)}</Text>
               </View>
               <View>
@@ -316,13 +316,13 @@ export default function MedicalRecordScreen() {
           />
         ) : (
           <Card>
-            <EmptyState icon="document-attach-outline" title="Documents indisponibles" />
+            <EmptyState icon="file-arrow-up" title="Documents indisponibles" />
           </Card>
         )
       ) : prescriptions.length === 0 ? (
         <Card>
           <EmptyState
-            icon="medical-outline"
+            icon="star-of-life"
             title="Aucune prescription"
             message="Aucune prescription enregistrée dans votre dossier."
           />
@@ -331,7 +331,7 @@ export default function MedicalRecordScreen() {
         prescriptions.map((item) => (
           <Card key={item.appointment_id} style={s.consultation}>
             <View style={s.dateRow}>
-              <Icon name="calendar-outline" size="sm" color={color.primary} />
+              <Icon name="calendar" size="sm" color={color.primary} />
               <Text style={s.date}>{formatDate(item.starts_at)}</Text>
             </View>
             <Text style={type.h3}>

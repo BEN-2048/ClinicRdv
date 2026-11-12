@@ -84,10 +84,10 @@ export default function ChangePhoneScreen({ navigation }: any) {
           <>
             <Text style={s.help}>Code envoyé au {formatDrcPhone(pending)}.</Text>
             <CodeInput label="Code reçu par SMS" value={code} onChangeText={setCode} editable={!busy} />
-            <Button title="Confirmer le nouveau numéro" icon="checkmark-circle-outline" loading={busy} onPress={confirm} />
+            <Button title="Confirmer le nouveau numéro" icon="circle-check" loading={busy} onPress={confirm} />
             <Button
               title={wait > 0 ? `Renvoyer le code (${wait} s)` : 'Renvoyer le code'}
-              icon="refresh"
+              icon="arrows-rotate"
               variant="ghost"
               disabled={busy || wait > 0}
               onPress={resend}
@@ -107,7 +107,7 @@ export default function ChangePhoneScreen({ navigation }: any) {
           <>
             <Input
               label="Nouveau numéro"
-              icon="call-outline"
+              icon="phone"
               placeholder="081 234 5678"
               keyboardType="phone-pad"
               value={phone}
@@ -121,7 +121,7 @@ export default function ChangePhoneScreen({ navigation }: any) {
             />
             <Button
               title={wait > 0 ? `Recevoir un code (${wait} s)` : 'Recevoir un code'}
-              icon="paper-plane-outline"
+              icon="paper-plane"
               loading={busy}
               disabled={busy || wait > 0}
               onPress={request}

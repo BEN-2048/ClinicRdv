@@ -95,7 +95,7 @@ export function RecordSections({
                 return (
                   <Card key={e.id} style={[s.entry, severe && s.severe, (d.ended || e.entered_in_error) && s.ended]}>
                     <View style={s.titleRow}>
-                      {severe ? <Icon name="warning" size="sm" color={color.dangerInk} /> : null}
+                      {severe ? <Icon name="triangle-exclamation" size="sm" color={color.dangerInk} /> : null}
                       <Text style={[type.bodyMedium, s.flex, e.entered_in_error && s.strike]}>{d.title}</Text>
                       {e.confidential ? <Text style={s.tag}>Confidentiel</Text> : null}
                       {e.source === 'patient' ? <Text style={s.tag}>Déclaré par le patient</Text> : null}
@@ -228,13 +228,13 @@ export function RecordEntryForm({
       {clinician && facilities.length > 1 ? (
         <View style={s.chips}>
           {facilities.map((f) => (
-            <Chip key={f.id} icon="business-outline" label={f.name} selected={facilityId === f.id} onPress={() => setFacilityId(f.id)} />
+            <Chip key={f.id} icon="building" label={f.name} selected={facilityId === f.id} onPress={() => setFacilityId(f.id)} />
           ))}
         </View>
       ) : null}
       {clinician ? (
         <Chip
-          icon="lock-closed-outline"
+          icon="lock"
           label="Confidentiel (masqué aux parents et tuteurs)"
           selected={confidential}
           onPress={() => setConfidential(!confidential)}
@@ -243,7 +243,7 @@ export function RecordEntryForm({
       {error ? <Text style={s.error}>{error}</Text> : null}
       <View style={s.actions}>
         <Button title="Annuler" variant="secondary" onPress={onCancel} disabled={saving} style={s.flex} />
-        <Button title="Enregistrer" icon="save-outline" onPress={submit} loading={saving} style={s.flex} />
+        <Button title="Enregistrer" icon="floppy-disk" onPress={submit} loading={saving} style={s.flex} />
       </View>
     </Card>
   );

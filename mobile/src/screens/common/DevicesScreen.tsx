@@ -73,17 +73,17 @@ export default function DevicesScreen() {
   return (
     <Screen refreshing={false} onRefresh={load}>
       <Notice
-        icon="shield-checkmark-outline"
+        icon="shield-halved"
         message="Chaque connexion reste active 30 jours sans utilisation, et 90 jours au maximum. Déconnectez un appareil que vous ne reconnaissez pas."
       />
 
       {sessions.length === 0 ? (
-        <EmptyState icon="phone-portrait-outline" title="Aucun appareil connecté" />
+        <EmptyState icon="mobile-screen" title="Aucun appareil connecté" />
       ) : (
         sessions.map((s) => (
           <Card key={s.id} style={s.current ? [styles.card, styles.current] : styles.card}>
             <View style={styles.row}>
-              <Icon name="phone-portrait-outline" size="md" color={color.primary} />
+              <Icon name="mobile-screen" size="md" color={color.primary} />
               <View style={styles.flex}>
                 <Text style={type.bodyMedium}>{s.device_label || 'Appareil inconnu'}</Text>
                 <Text style={styles.muted}>Connecté le {formatDate(s.created_at)}</Text>
@@ -98,7 +98,7 @@ export default function DevicesScreen() {
         ))
       )}
 
-      <Button title="Déconnecter tous les appareils" icon="log-out-outline" variant="danger" loading={busy} onPress={logoutEverywhere} />
+      <Button title="Déconnecter tous les appareils" icon="right-from-bracket" variant="danger" loading={busy} onPress={logoutEverywhere} />
     </Screen>
   );
 }

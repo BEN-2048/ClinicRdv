@@ -40,7 +40,7 @@ export default function ForgotPasswordScreen({ route, navigation }: any) {
 
         <Input
           label="Téléphone ou adresse e-mail"
-          icon="person-circle-outline"
+          icon="circle-user"
           placeholder="081 234 5678 ou exemple@email.com"
           keyboardType="email-address"
           autoCapitalize="none"
@@ -60,7 +60,7 @@ export default function ForgotPasswordScreen({ route, navigation }: any) {
           message="Le code est envoyé par SMS à votre numéro vérifié, ou par e-mail si vous saisissez une adresse confirmée."
         />
 
-        <Button title="Recevoir un code" icon="paper-plane-outline" loading={busy} onPress={submit} />
+        <Button title="Recevoir un code" icon="paper-plane" loading={busy} onPress={submit} />
 
         <View style={auth.linkRow}>
           <Button

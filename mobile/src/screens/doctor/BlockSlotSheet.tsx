@@ -105,7 +105,7 @@ export default function BlockSlotSheet({
                 {date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
               </Text>
             </View>
-            <IconButton icon="close" accessibilityLabel="Fermer" onPress={onClose} />
+            <IconButton icon="xmark" accessibilityLabel="Fermer" onPress={onClose} />
           </View>
 
           <ScrollView contentContainerStyle={s.body} keyboardShouldPersistTaps="handled">
@@ -130,7 +130,7 @@ export default function BlockSlotSheet({
 
             <Input
               label="Motif (facultatif)"
-              icon="create-outline"
+              icon="pen-to-square"
               placeholder="Réunion, formation, pause..."
               value={reason}
               onChangeText={setReason}
@@ -155,7 +155,7 @@ export default function BlockSlotSheet({
 
             <Button
               title="Bloquer le créneau"
-              icon="lock-closed-outline"
+              icon="lock"
               loading={saving}
               disabled={!range || saving}
               onPress={submit}

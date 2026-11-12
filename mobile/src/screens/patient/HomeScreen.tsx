@@ -39,10 +39,10 @@ type Appointment = {
 };
 
 const SPECIALTIES: { label: string; icon: IconName }[] = [
-  { label: 'Généraliste', icon: 'medkit-outline' },
-  { label: 'Pédiatre', icon: 'happy-outline' },
-  { label: 'Dentiste', icon: 'sparkles-outline' },
-  { label: 'Cardiologie', icon: 'heart-outline' },
+  { label: 'Généraliste', icon: 'kit-medical' },
+  { label: 'Pédiatre', icon: 'face-smile' },
+  { label: 'Dentiste', icon: 'wand-magic-sparkles' },
+  { label: 'Cardiologie', icon: 'heart' },
 ];
 
 const formatDate = (iso: string) =>
@@ -144,7 +144,7 @@ export default function HomeScreen({ navigation }: any) {
           subtitle="Prenez soin de votre santé aujourd'hui"
           actions={[
             {
-              icon: 'notifications-outline',
+              icon: 'bell',
               onPress: () => navigation.navigate('Notifications'),
               accessibilityLabel: 'Ouvrir les notifications',
               badge: unreadCount > 0,
@@ -153,16 +153,16 @@ export default function HomeScreen({ navigation }: any) {
         />
       }
     >
-      <Button title="Nouveau rendez-vous" icon="add" onPress={openDoctors} />
+      <Button title="Nouveau rendez-vous" icon="plus" onPress={openDoctors} />
       <Button
         title="Quel médecin consulter ?"
-        icon="help-circle-outline"
+        icon="circle-question"
         variant="secondary"
         onPress={() => navigation.navigate('FindDoctor')}
       />
       <Button
         title="Urgence"
-        icon="medkit-outline"
+        icon="kit-medical"
         variant="danger"
         onPress={() => navigation.navigate('Emergency')}
       />
@@ -197,11 +197,11 @@ export default function HomeScreen({ navigation }: any) {
           </View>
           <View style={s.apptInfo}>
             <View style={s.infoItem}>
-              <Icon name="calendar-outline" size="sm" color={color.primary} />
+              <Icon name="calendar" size="sm" color={color.primary} />
               <Text style={s.infoText}>{formatDate(appointment.starts_at)}</Text>
             </View>
             <View style={s.infoItem}>
-              <Icon name="time-outline" size="sm" color={color.primary} />
+              <Icon name="clock" size="sm" color={color.primary} />
               <Text style={s.infoText}>{formatTime(appointment.starts_at)}</Text>
             </View>
           </View>
@@ -209,7 +209,7 @@ export default function HomeScreen({ navigation }: any) {
       ) : (
         <Card>
           <EmptyState
-            icon="calendar-outline"
+            icon="calendar"
             title="Aucun rendez-vous à venir"
             message="Réservez une consultation en quelques secondes."
           />
@@ -248,7 +248,7 @@ export default function HomeScreen({ navigation }: any) {
         </Card>
       ) : doctors.length === 0 ? (
         <Card>
-          <EmptyState icon="medkit-outline" title="Aucun médecin disponible" />
+          <EmptyState icon="kit-medical" title="Aucun médecin disponible" />
         </Card>
       ) : (
         <Card style={s.listCard}>

@@ -66,7 +66,7 @@ export default function VerifyPhoneScreen({ route, navigation }: any) {
         {message ? <Notice tone="success" message={message} /> : null}
 
         <Input
-          icon="key-outline"
+          icon="key"
           value={code}
           onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 6))}
           keyboardType="number-pad"
@@ -78,11 +78,11 @@ export default function VerifyPhoneScreen({ route, navigation }: any) {
           style={s.code}
         />
 
-        <Button title="Vérifier mon numéro" icon="checkmark-circle-outline" loading={busy} disabled={busy} onPress={verify} />
+        <Button title="Vérifier mon numéro" icon="circle-check" loading={busy} disabled={busy} onPress={verify} />
 
         <Button
           title={wait > 0 ? `Renvoyer le code (${wait} s)` : 'Renvoyer le code'}
-          icon="refresh"
+          icon="arrows-rotate"
           variant="ghost"
           disabled={busy || wait > 0}
           onPress={resend}

@@ -90,7 +90,7 @@ export default function EmergencyScreen() {
   return (
     <Screen>
       <View style={s.alarm}>
-        <Icon name="warning" size={22} color={color.onPrimary} />
+        <Icon name="triangle-exclamation" size={22} color={color.onPrimary} />
         <Text style={s.alarmText}>
           {directory?.disclaimer ??
             'En cas de danger immédiat, appelez les secours ou rendez-vous au service d’urgence le plus proche. ClinicRDV ne remplace pas les services d’urgence.'}
@@ -116,7 +116,7 @@ export default function EmergencyScreen() {
           {directory.numbers.map((n) => (
             <Pressable key={n.id} accessibilityRole="button" onPress={() => call(n.number)} style={s.numberRow}>
               <View style={s.numberBadge}>
-                <Icon name="call" size={20} color={color.onPrimary} />
+                <Icon name="phone" size={20} color={color.onPrimary} />
               </View>
               <View style={s.flex}>
                 <Text style={type.h2}>{n.number}</Text>
@@ -137,7 +137,7 @@ export default function EmergencyScreen() {
       <SectionTitle title="Services d’urgence" />
       <Button
         title={located ? 'Actualiser avec ma position' : 'Trouver les plus proches de moi'}
-        icon="locate-outline"
+        icon="location-crosshairs"
         variant="secondary"
         loading={locating}
         onPress={locate}
@@ -145,7 +145,7 @@ export default function EmergencyScreen() {
 
       {directory && directory.facilities.length === 0 ? (
         <Card>
-          <EmptyState icon="medkit-outline" title="Aucun service d’urgence enregistré" message="Aucun établissement n’a déclaré de service d’urgence disponible." />
+          <EmptyState icon="kit-medical" title="Aucun service d’urgence enregistré" message="Aucun établissement n’a déclaré de service d’urgence disponible." />
         </Card>
       ) : null}
 
@@ -159,12 +159,12 @@ export default function EmergencyScreen() {
           </Text>
           <View style={s.actions}>
             {f.emergency_phone ? (
-              <Button title="Urgences" icon="call" variant="danger" size="sm" fullWidth={false} onPress={() => call(f.emergency_phone!)} />
+              <Button title="Urgences" icon="phone" variant="danger" size="sm" fullWidth={false} onPress={() => call(f.emergency_phone!)} />
             ) : null}
             {f.phone ? (
-              <Button title="Accueil" icon="call-outline" variant="secondary" size="sm" fullWidth={false} onPress={() => call(f.phone!)} />
+              <Button title="Accueil" icon="phone" variant="secondary" size="sm" fullWidth={false} onPress={() => call(f.phone!)} />
             ) : null}
-            <Button title="Itinéraire" icon="navigate-outline" variant="secondary" size="sm" fullWidth={false} onPress={() => directions(f)} />
+            <Button title="Itinéraire" icon="location-arrow" variant="secondary" size="sm" fullWidth={false} onPress={() => directions(f)} />
           </View>
         </Card>
       ))}

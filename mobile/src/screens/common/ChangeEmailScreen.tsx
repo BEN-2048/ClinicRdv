@@ -86,10 +86,10 @@ export default function ChangeEmailScreen({ navigation }: any) {
           <>
             <Text style={s.help}>Code envoyé à {pending}. Pensez à regarder dans les courriers indésirables.</Text>
             <CodeInput label="Code reçu par e-mail" value={code} onChangeText={setCode} editable={!busy} />
-            <Button title="Confirmer l’adresse" icon="checkmark-circle-outline" loading={busy} onPress={confirm} />
+            <Button title="Confirmer l’adresse" icon="circle-check" loading={busy} onPress={confirm} />
             <Button
               title={wait > 0 ? `Renvoyer le code (${wait} s)` : 'Renvoyer le code'}
-              icon="refresh"
+              icon="arrows-rotate"
               variant="ghost"
               disabled={busy || wait > 0}
               onPress={resend}
@@ -109,7 +109,7 @@ export default function ChangeEmailScreen({ navigation }: any) {
           <>
             <Input
               label="Adresse e-mail"
-              icon="mail-outline"
+              icon="envelope"
               placeholder="exemple@email.com"
               keyboardType="email-address"
               autoCapitalize="none"
@@ -125,7 +125,7 @@ export default function ChangeEmailScreen({ navigation }: any) {
             />
             <Button
               title={wait > 0 ? `Recevoir un code (${wait} s)` : 'Recevoir un code'}
-              icon="paper-plane-outline"
+              icon="paper-plane"
               loading={busy}
               disabled={busy || wait > 0}
               onPress={request}
