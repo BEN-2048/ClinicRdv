@@ -6,10 +6,10 @@ import Icon, { IconName } from './Icon';
 export type NoticeTone = 'info' | 'success' | 'warning' | 'danger';
 
 const tones: Record<NoticeTone, { bg: string; fg: string; icon: IconName }> = {
-  info: { bg: color.primarySubtle, fg: color.primary, icon: 'information-circle' },
-  success: { bg: color.successSoft + '55', fg: color.successInk, icon: 'checkmark-circle' },
-  warning: { bg: color.warningSoft + '80', fg: color.warningInk, icon: 'warning' },
-  danger: { bg: color.dangerSoft, fg: color.dangerInk, icon: 'alert-circle' },
+  info: { bg: color.primarySubtle, fg: color.primary, icon: 'circle-info' },
+  success: { bg: color.successSoft + '55', fg: color.successInk, icon: 'circle-check' },
+  warning: { bg: color.warningSoft + '80', fg: color.warningInk, icon: 'triangle-exclamation' },
+  danger: { bg: color.dangerSoft, fg: color.dangerInk, icon: 'circle-exclamation' },
 };
 
 export default function Notice({
@@ -31,7 +31,7 @@ export default function Notice({
 
   return (
     <View style={[s.box, { backgroundColor: t.bg }, style]}>
-      <Icon name={icon ?? t.icon} size="md" color={t.fg} />
+      <Icon name={icon ?? t.icon} solid size="md" color={t.fg} />
       <View style={s.texts}>
         {title ? <Text style={[s.title, { color: t.fg }]}>{title}</Text> : null}
         {message ? <Text style={s.message}>{message}</Text> : null}

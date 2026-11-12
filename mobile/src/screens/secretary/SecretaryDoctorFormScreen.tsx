@@ -105,18 +105,18 @@ export default function SecretaryDoctorFormScreen() {
 
   return (
     <KeyboardAvoidingView style={shared.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Screen footer={<Button title="Enregistrer" icon="save-outline" loading={saving} onPress={submit} />}>
+      <Screen footer={<Button title="Enregistrer" icon="floppy-disk" loading={saving} onPress={submit} />}>
         {error ? <Notice tone="danger" message={error} /> : null}
 
         <Card style={shared.card}>
           <Text style={type.h2}>Compte</Text>
           {isEdit ? (
-            <InfoRow icon="mail-outline" label="E-mail de connexion" value={email} />
+            <InfoRow icon="envelope" label="E-mail de connexion" value={email} />
           ) : (
             <>
               <Input
                 label="E-mail"
-                icon="mail-outline"
+                icon="envelope"
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
@@ -124,7 +124,7 @@ export default function SecretaryDoctorFormScreen() {
               />
               <Input
                 label="Mot de passe initial"
-                icon="lock-closed-outline"
+                icon="lock"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -138,10 +138,10 @@ export default function SecretaryDoctorFormScreen() {
           <Text style={type.h2}>Identité</Text>
           <Input label="Prénom" value={firstName} onChangeText={setFirstName} />
           <Input label="Nom" value={lastName} onChangeText={setLastName} />
-          <Input label="Téléphone personnel (jamais montré aux patients)" icon="call-outline" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+          <Input label="Téléphone personnel (jamais montré aux patients)" icon="phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
           <Input
             label="Téléphone professionnel (visible par les patients, même hors ligne)"
-            icon="business-outline"
+            icon="building"
             value={professionalPhone}
             onChangeText={setProfessionalPhone}
             keyboardType="phone-pad"
@@ -165,10 +165,10 @@ export default function SecretaryDoctorFormScreen() {
           </Wrap>
           <View style={shared.actions}>
             <View style={shared.action}>
-              <Input label="Tarif (USD)" icon="cash-outline" value={fee} onChangeText={setFee} keyboardType="decimal-pad" />
+              <Input label="Tarif (USD)" icon="money-bill-1" value={fee} onChangeText={setFee} keyboardType="decimal-pad" />
             </View>
             <View style={shared.action}>
-              <Input label="Langues" icon="language-outline" value={languages} onChangeText={setLanguages} placeholder="fr, sw, en" />
+              <Input label="Langues" icon="language" value={languages} onChangeText={setLanguages} placeholder="fr, sw, en" />
             </View>
           </View>
           <Input label="Présentation" value={bio} onChangeText={setBio} multiline />

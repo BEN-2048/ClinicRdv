@@ -75,24 +75,24 @@ export default function SecretaryDashboardScreen() {
         <>
           <SectionTitle title="Aujourd'hui" />
           <View style={shared.grid}>
-            <StatCard style={shared.tile} icon="calendar-outline" label="Rendez-vous" value={data.today.total} />
+            <StatCard style={shared.tile} icon="calendar" label="Rendez-vous" value={data.today.total} />
             <StatCard
               style={shared.tile}
-              icon="checkmark-circle-outline"
+              icon="circle-check"
               tone="success"
               label="Confirmés"
               value={data.today.confirmed}
             />
             <StatCard
               style={shared.tile}
-              icon="close-circle-outline"
+              icon="circle-xmark"
               tone="danger"
               label="Annulés"
               value={data.today.cancelled}
             />
             <StatCard
               style={shared.tile}
-              icon="medkit-outline"
+              icon="kit-medical"
               tone="neutral"
               label="Médecins actifs"
               value={data.activeDoctors}
@@ -102,12 +102,12 @@ export default function SecretaryDashboardScreen() {
           {data.doctorsOnLeaveToday > 0 ? (
             <Notice
               tone="warning"
-              icon="airplane-outline"
+              icon="plane"
               message={`${data.doctorsOnLeaveToday} médecin(s) en congé aujourd'hui.`}
             />
           ) : null}
 
-          <Button title="Nouveau rendez-vous" icon="add" onPress={() => navigation.navigate('SecretaryBook')} />
+          <Button title="Nouveau rendez-vous" icon="plus" onPress={() => navigation.navigate('SecretaryBook')} />
 
           <SectionTitle
             title="Prochains rendez-vous"
@@ -116,7 +116,7 @@ export default function SecretaryDashboardScreen() {
           />
           {data.upcoming.length === 0 ? (
             <Card>
-              <EmptyState icon="calendar-clear-outline" title="Aucun rendez-vous à venir" />
+              <EmptyState icon="calendar-days" title="Aucun rendez-vous à venir" />
             </Card>
           ) : (
             data.upcoming.map((a) => (
@@ -127,8 +127,8 @@ export default function SecretaryDashboardScreen() {
                   </Text>
                   <StatusBadge status={a.status} />
                 </View>
-                <InfoRow icon="person-outline" label="Médecin" value={doctorName(a.doctor_name)} />
-                <InfoRow icon="time-outline" label="Horaire" value={formatDateTime(a.starts_at)} strong />
+                <InfoRow icon="user" label="Médecin" value={doctorName(a.doctor_name)} />
+                <InfoRow icon="clock" label="Horaire" value={formatDateTime(a.starts_at)} strong />
               </Card>
             ))
           )}

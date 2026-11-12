@@ -276,7 +276,7 @@ export default function WaitingListScreen() {
           {noSlotSoon ? (
             <View style={styles.badgeWrap}>
               <View style={styles.amberBadge}>
-                <Icon name="calendar-clear-outline" size={14} color={palette.amberDot} />
+                <Icon name="calendar-days" size={14} color={palette.amberDot} />
                 <Text style={styles.amberBadgeText}>Aucun créneau libre sous {LOOKAHEAD_DAYS} jours</Text>
               </View>
             </View>
@@ -287,7 +287,7 @@ export default function WaitingListScreen() {
       <View style={styles.section}>
         <View style={styles.infoCard}>
           <View style={[styles.infoIcon, shadow.soft]}>
-            <Icon name="notifications" size={18} color={palette.white} />
+            <Icon name="bell" solid size={18} color={palette.white} />
           </View>
           <View style={styles.flexText}>
             <Text style={type.h3}>Soyez le premier prévenu</Text>
@@ -364,7 +364,7 @@ export default function WaitingListScreen() {
 
           <Text style={[type.h2, styles.groupTitle]}>Canaux de notification prioritaire</Text>
           <ChannelRow
-            icon="phone-portrait-outline"
+            icon="mobile-screen"
             iconColor={palette.primary}
             title="Notifications push prioritaires"
             subtitle="Alerte sonore immédiate sur votre mobile"
@@ -372,7 +372,7 @@ export default function WaitingListScreen() {
             onChange={(v) => setPrefs((p) => ({ ...p, notifyPush: v }))}
           />
           <ChannelRow
-            icon="chatbubble-ellipses-outline"
+            icon="comment-dots"
             iconColor={palette.teal}
             title="SMS instantané"
             subtitle={maskedPhone || 'Ajoutez un numéro dans votre profil'}
@@ -414,7 +414,7 @@ export default function WaitingListScreen() {
             <ActivityIndicator color={palette.white} />
           ) : (
             <>
-              <Icon name="notifications" size={18} color={palette.white} />
+              <Icon name="bell" solid size={18} color={palette.white} />
               <Text style={styles.ctaText}>
                 {isActive ? 'Mettre à jour mon alerte' : "Activer l'alerte désistement"}
               </Text>
@@ -429,7 +429,7 @@ export default function WaitingListScreen() {
         ) : null}
 
         <View style={styles.rgpd}>
-          <Icon name="shield-checkmark-outline" size={14} color={palette.inkMuted} />
+          <Icon name="shield-halved" size={14} color={palette.inkMuted} />
           <Text style={styles.rgpdText}>
             Données médicales hébergées HDS & protégées par la réglementation RGPD santé.
           </Text>

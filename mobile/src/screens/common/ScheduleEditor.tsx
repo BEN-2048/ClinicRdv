@@ -212,7 +212,7 @@ export default function ScheduleEditor({ api, header }: { api: ScheduleApi; head
                 <Text style={type.bodyMedium}>{WEEKDAYS[weekday]}</Text>
                 <Button
                   title="Plage"
-                  icon="add"
+                  icon="plus"
                   size="sm"
                   variant="ghost"
                   fullWidth={false}
@@ -239,7 +239,7 @@ export default function ScheduleEditor({ api, header }: { api: ScheduleApi; head
                   />
                   <View style={shared.flex} />
                   <IconButton
-                    icon="trash-outline"
+                    icon="trash-can"
                     variant="plain"
                     iconColor={color.dangerInk}
                     accessibilityLabel="Retirer la plage"
@@ -251,7 +251,7 @@ export default function ScheduleEditor({ api, header }: { api: ScheduleApi; head
           );
         })}
       </Card>
-      <Button title="Enregistrer les horaires" icon="save-outline" loading={saving} onPress={saveHours} />
+      <Button title="Enregistrer les horaires" icon="floppy-disk" loading={saving} onPress={saveHours} />
 
       {conflicts.length ? (
         <>
@@ -263,7 +263,7 @@ export default function ScheduleEditor({ api, header }: { api: ScheduleApi; head
             {conflicts.map((c, i) => (
               <ListItem
                 key={c.id}
-                icon={c.cause === 'leave' ? 'airplane-outline' : 'remove-circle-outline'}
+                icon={c.cause === 'leave' ? 'plane' : 'circle-minus'}
                 iconColor={color.dangerInk}
                 title={`${formatConflict(c)} · ${c.patient_name}`}
                 subtitle={[c.facility_name, c.cause === 'leave' ? 'Congé' : 'Plage bloquée', c.cause_reason].filter(Boolean).join(' · ')}
@@ -280,7 +280,7 @@ export default function ScheduleEditor({ api, header }: { api: ScheduleApi; head
             />
             <Button
               title={`Annuler et prévenir ${conflicts.length} patient${conflicts.length > 1 ? 's' : ''}`}
-              icon="notifications-outline"
+              icon="bell"
               variant="danger"
               loading={cancelling}
               onPress={cancelConflicts}
@@ -292,21 +292,21 @@ export default function ScheduleEditor({ api, header }: { api: ScheduleApi; head
       <SectionTitle title="Congés" />
       {leaves.length === 0 ? (
         <Card>
-          <EmptyState icon="airplane-outline" title="Aucun congé enregistré" />
+          <EmptyState icon="plane" title="Aucun congé enregistré" />
         </Card>
       ) : (
         <Card style={s.list}>
           {leaves.map((l, i) => (
             <ListItem
               key={l.id}
-              icon="airplane-outline"
+              icon="plane"
               title={l.startDate === l.endDate ? formatLongDate(l.startDate) : `${l.startDate} → ${l.endDate}`}
               subtitle={l.reason}
               chevron={false}
               style={i > 0 ? s.divider : undefined}
               right={
                 <IconButton
-                  icon="trash-outline"
+                  icon="trash-can"
                   variant="plain"
                   iconColor={color.dangerInk}
                   accessibilityLabel="Supprimer le congé"
@@ -329,7 +329,7 @@ export default function ScheduleEditor({ api, header }: { api: ScheduleApi; head
           </View>
         </View>
         <Input label="Motif (facultatif)" value={leaveReason} onChangeText={setLeaveReason} maxLength={255} />
-        <Button title="Ajouter le congé" icon="add" variant="secondary" onPress={addLeave} />
+        <Button title="Ajouter le congé" icon="plus" variant="secondary" onPress={addLeave} />
       </Card>
     </Screen>
   );

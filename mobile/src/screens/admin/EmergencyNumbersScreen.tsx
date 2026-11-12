@@ -110,7 +110,7 @@ export default function EmergencyNumbersScreen() {
       <SectionTitle title="Numéros publiés" />
       {numbers.length === 0 ? (
         <Card>
-          <EmptyState icon="call-outline" title="Aucun numéro" message="L’écran Urgence affiche seulement les établissements tant qu’aucun numéro n’est vérifié." />
+          <EmptyState icon="phone" title="Aucun numéro" message="L’écran Urgence affiche seulement les établissements tant qu’aucun numéro n’est vérifié." />
         </Card>
       ) : (
         numbers.map((n) => (
@@ -121,8 +121,8 @@ export default function EmergencyNumbersScreen() {
             </Text>
             <View style={s.row}>
               <Chip label={n.active ? 'Affiché' : 'Masqué'} selected={n.active} onPress={() => toggle(n)} />
-              <Chip icon="checkmark-done-outline" label="Revérifié aujourd’hui" onPress={() => reverify(n)} />
-              <Chip icon="trash-outline" label="Supprimer" onPress={() => remove(n)} />
+              <Chip icon="check-double" label="Revérifié aujourd’hui" onPress={() => reverify(n)} />
+              <Chip icon="trash-can" label="Supprimer" onPress={() => remove(n)} />
             </View>
           </Card>
         ))
@@ -135,7 +135,7 @@ export default function EmergencyNumbersScreen() {
         <Input label="Province (facultatif)" value={province} onChangeText={setProvince} placeholder="Vide = national" maxLength={80} />
         <Input label="Source officielle" value={source} onChangeText={setSource} placeholder="Document, site ou autorité consultée" maxLength={255} />
         <Input label="Vérifié le" value={verifiedAt} onChangeText={setVerifiedAt} placeholder="AAAA-MM-JJ" maxLength={10} />
-        <Button title="Publier le numéro" icon="add" loading={busy} onPress={add} />
+        <Button title="Publier le numéro" icon="plus" loading={busy} onPress={add} />
       </Card>
     </Screen>
   );

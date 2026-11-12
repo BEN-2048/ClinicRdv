@@ -25,7 +25,7 @@ export function PrescriptionCard({ prescription, footer }: { prescription: Presc
   return (
     <Card style={s.card}>
       <View style={s.row}>
-        <Icon name="document-text-outline" size="md" color={color.primary} />
+        <Icon name="file-lines" size="md" color={color.primary} />
         <Text style={[type.bodyMedium, s.flex]}>
           Ordonnance{prescription.issued_at ? ` du ${formatDay(prescription.issued_at)}` : ''}
         </Text>
@@ -106,12 +106,12 @@ function PrescriptionEditor({
           <Input label="Consignes" value={it.instructions ?? ''} onChangeText={(v) => setField(index, 'instructions', v)} placeholder="Après les repas" />
         </View>
       ))}
-      <Button title="Ajouter un médicament" icon="add" variant="secondary" onPress={() => setItems((cur) => [...cur, emptyItem()])} />
+      <Button title="Ajouter un médicament" icon="plus" variant="secondary" onPress={() => setItems((cur) => [...cur, emptyItem()])} />
       <Input label="Remarques" value={notes} onChangeText={setNotes} multiline maxLength={2000} />
-      <Chip icon="lock-closed-outline" label="Confidentielle (masquée aux parents et tuteurs)" selected={confidential} onPress={() => setConfidential(!confidential)} />
+      <Chip icon="lock" label="Confidentielle (masquée aux parents et tuteurs)" selected={confidential} onPress={() => setConfidential(!confidential)} />
       <View style={s.pair}>
         <Button title="Annuler" variant="secondary" onPress={onCancel} disabled={saving} style={s.flex} />
-        <Button title="Enregistrer le brouillon" icon="save-outline" onPress={submit} loading={saving} style={s.flex} />
+        <Button title="Enregistrer le brouillon" icon="floppy-disk" onPress={submit} loading={saving} style={s.flex} />
       </View>
     </Card>
   );
@@ -178,7 +178,7 @@ export function AppointmentPrescriptions({ appointmentId, editable }: { appointm
           }}
         />
       ) : editable ? (
-        <Button title="Nouvelle ordonnance" icon="add" variant="secondary" onPress={() => setEditing('new')} />
+        <Button title="Nouvelle ordonnance" icon="plus" variant="secondary" onPress={() => setEditing('new')} />
       ) : null}
 
       {list.map((rx) => (
@@ -215,7 +215,7 @@ export function AppointmentPrescriptions({ appointmentId, editable }: { appointm
                 </View>
                 <View style={s.pair}>
                   <Button title="Modifier" size="sm" variant="secondary" onPress={() => setEditing(rx)} style={s.flex} />
-                  <Button title="Émettre" size="sm" icon="checkmark-circle-outline" onPress={() => issue(rx)} loading={saving} style={s.flex} />
+                  <Button title="Émettre" size="sm" icon="circle-check" onPress={() => issue(rx)} loading={saving} style={s.flex} />
                 </View>
               </View>
             ) : rx.status === 'issued' ? (

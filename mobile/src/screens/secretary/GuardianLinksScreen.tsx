@@ -96,7 +96,7 @@ export default function GuardianLinksScreen() {
 
       {tab === 'pending' ? (
         <Notice
-          icon="document-text-outline"
+          icon="file-lines"
           title="Vérification sur justificatif"
           message="Ne validez un lien qu’après avoir vu l’acte de naissance, le livret de famille ou le jugement de tutelle."
         />
@@ -107,23 +107,23 @@ export default function GuardianLinksScreen() {
       {loading ? (
         <Loader label="Chargement..." />
       ) : links.length === 0 ? (
-        <EmptyState icon="people-outline" title="Aucune demande" />
+        <EmptyState icon="users" title="Aucune demande" />
       ) : (
         links.map((link) => (
           <Card key={link.id} style={s.card}>
             <Text style={type.h3}>
               {link.patient_first_name} {link.patient_last_name}
             </Text>
-            <InfoRow icon="id-card-outline" label="N° patient" value={link.patient_number} strong />
-            <InfoRow icon="calendar-outline" label="Naissance" value={formatBirthDate(link.birth_date)} />
+            <InfoRow icon="id-card" label="N° patient" value={link.patient_number} strong />
+            <InfoRow icon="calendar" label="Naissance" value={formatBirthDate(link.birth_date)} />
             <InfoRow
-              icon="person-outline"
+              icon="user"
               label={RELATIONSHIP_LABEL[link.relationship]}
               value={link.guardian_name}
               strong
             />
-            <InfoRow icon="call-outline" label="Contact" value={link.guardian_phone || link.guardian_email} />
-            {link.status_reason ? <InfoRow icon="chatbox-outline" label="Motif" value={link.status_reason} /> : null}
+            <InfoRow icon="phone" label="Contact" value={link.guardian_phone || link.guardian_email} />
+            {link.status_reason ? <InfoRow icon="message" label="Motif" value={link.status_reason} /> : null}
 
             {link.possible_duplicates > 0 ? (
               <Notice
@@ -164,7 +164,7 @@ export default function GuardianLinksScreen() {
                 />
                 <Button
                   title="Vérifier"
-                  icon="checkmark-circle-outline"
+                  icon="circle-check"
                   loading={busyId === link.id}
                   onPress={() => confirmVerify(link)}
                   style={s.flex}
@@ -176,7 +176,7 @@ export default function GuardianLinksScreen() {
               <Button
                 title="Révoquer le lien"
                 variant="danger"
-                icon="close-circle-outline"
+                icon="circle-xmark"
                 loading={busyId === link.id}
                 onPress={() => confirmRevoke(link)}
               />

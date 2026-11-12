@@ -59,13 +59,13 @@ const formatDate = (date: string) =>
   }).format(new Date(date));
 
 const NOTIFICATION_ICONS: Record<NotificationType, { name: IconName; fg: string; bg: string }> = {
-  appointment_reminder: { name: 'alarm-outline', fg: color.primary, bg: color.primarySoft },
-  waiting_list: { name: 'hourglass-outline', fg: color.warning, bg: color.warningSoft },
-  prescription: { name: 'document-text-outline', fg: color.success, bg: color.successSoft },
-  appointment_confirmed: { name: 'checkmark-circle-outline', fg: color.success, bg: color.successSoft },
-  appointment_cancelled: { name: 'close-circle-outline', fg: color.dangerInk, bg: color.dangerSoft },
-  general: { name: 'notifications-outline', fg: color.textSecondary, bg: color.primarySubtle },
-  record_emergency_access: { name: 'alert-circle-outline', fg: color.dangerInk, bg: color.dangerSoft },
+  appointment_reminder: { name: 'stopwatch', fg: color.primary, bg: color.primarySoft },
+  waiting_list: { name: 'hourglass-half', fg: color.warning, bg: color.warningSoft },
+  prescription: { name: 'file-lines', fg: color.success, bg: color.successSoft },
+  appointment_confirmed: { name: 'circle-check', fg: color.success, bg: color.successSoft },
+  appointment_cancelled: { name: 'circle-xmark', fg: color.dangerInk, bg: color.dangerSoft },
+  general: { name: 'bell', fg: color.textSecondary, bg: color.primarySubtle },
+  record_emergency_access: { name: 'circle-exclamation', fg: color.dangerInk, bg: color.dangerSoft },
 };
 
 export default function NotificationsScreen() {
@@ -137,7 +137,7 @@ export default function NotificationsScreen() {
     navigation.setOptions({
       headerRight: () => (
         <IconButton
-          icon="checkmark-done-outline"
+          icon="check-double"
           variant="plain"
           accessibilityLabel="Tout marquer comme lu"
           disabled={unreadCount === 0}
@@ -206,7 +206,7 @@ export default function NotificationsScreen() {
       {notifications.length === 0 ? (
         <Card>
           <EmptyState
-            icon="notifications-off-outline"
+            icon="bell-slash"
             title="Aucune notification"
             message="Vous n'avez pas encore de notification dans cette catégorie. Vos prochaines actualités apparaîtront ici."
           />
@@ -249,7 +249,7 @@ export default function NotificationsScreen() {
       <SectionTitle title="Préférences de notification" />
       <Card style={s.prefs}>
         <PreferenceRow
-          icon="chatbubble-outline"
+          icon="comment"
           title="Notifications SMS"
           description="Recevoir les informations par SMS"
           value={preferences.sms_enabled}
@@ -258,7 +258,7 @@ export default function NotificationsScreen() {
         />
         <View style={s.divider} />
         <PreferenceRow
-          icon="mail-outline"
+          icon="envelope"
           title="Notifications e-mail"
           description="Recevoir les informations par e-mail"
           value={preferences.email_enabled}

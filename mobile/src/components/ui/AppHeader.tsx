@@ -35,7 +35,7 @@ export default function AppHeader({
       <View style={s.row}>
         {onBack ? (
           <IconButton
-            icon="arrow-back"
+            icon="arrow-left"
             variant="plain"
             accessibilityLabel="Retour"
             iconColor={color.text}

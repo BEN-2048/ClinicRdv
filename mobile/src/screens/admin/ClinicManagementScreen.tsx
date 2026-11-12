@@ -234,7 +234,7 @@ export default function ClinicManagementScreen() {
           subtitle="Administration"
           right={
             <IconButton
-              icon="share-outline"
+              icon="share-from-square"
               accessibilityLabel="Exporter les rendez-vous du jour"
               disabled={appointments.length === 0}
               onPress={exportDay}
@@ -250,7 +250,7 @@ export default function ClinicManagementScreen() {
           style={({ pressed }) => [s.hub, pressed && s.pressed]}
         >
           <View style={s.hubIcon}>
-            <Icon name="add-circle-outline" size="md" color={color.onPrimary} />
+            <Icon name="circle-plus" size="md" color={color.onPrimary} />
           </View>
           <View style={s.flex}>
             <Text style={s.hubTitle}>Réservation manuelle</Text>
@@ -258,7 +258,7 @@ export default function ClinicManagementScreen() {
           </View>
           <View style={s.hubCta}>
             <Text style={s.hubCtaText}>Nouveau RDV</Text>
-            <Icon name="chevron-forward" size="sm" color={color.onPrimary} />
+            <Icon name="chevron-right" size="sm" color={color.onPrimary} />
           </View>
         </Pressable>
       }
@@ -271,12 +271,12 @@ export default function ClinicManagementScreen() {
           <View style={s.kpis}>
             <StatCard
               style={s.kpi}
-              icon="medkit-outline"
+              icon="kit-medical"
               label="Praticiens présents"
               value={`${presentDoctors.length} / ${activeDoctors.length}`}
             />
-            <StatCard style={s.kpi} icon="calendar-outline" tone="success" label="RDV programmés" value={scheduled} />
-            <StatCard style={s.kpi} icon="hourglass-outline" tone="warning" label="En attente" value={pendingCount} />
+            <StatCard style={s.kpi} icon="calendar" tone="success" label="RDV programmés" value={scheduled} />
+            <StatCard style={s.kpi} icon="hourglass-half" tone="warning" label="En attente" value={pendingCount} />
           </View>
 
           <View style={s.sectionRow}>
@@ -291,14 +291,14 @@ export default function ClinicManagementScreen() {
               onPress={() => navigation.navigate('SecretaryDoctorForm')}
               style={s.link}
             >
-              <Icon name="person-add-outline" size="sm" color={color.primary} />
+              <Icon name="user-plus" size="sm" color={color.primary} />
               <Text style={s.linkText}>Ajouter un médecin</Text>
             </Pressable>
           </View>
 
           {doctors.length === 0 ? (
             <Card>
-              <EmptyState icon="medkit-outline" title="Aucun médecin" message="Ajoutez un premier praticien." />
+              <EmptyState icon="kit-medical" title="Aucun médecin" message="Ajoutez un premier praticien." />
             </Card>
           ) : (
             doctors.map((d) => {
@@ -331,19 +331,19 @@ export default function ClinicManagementScreen() {
                   </View>
                   <View style={s.doctorActions}>
                     <IconButton
-                      icon="create-outline"
+                      icon="pen-to-square"
                       size={36}
                       accessibilityLabel={`Modifier ${doctorName(name)}`}
                       onPress={() => navigation.navigate('SecretaryDoctorForm', { doctorId: d.id })}
                     />
                     <IconButton
-                      icon="calendar-outline"
+                      icon="calendar"
                       size={36}
                       accessibilityLabel={`Horaires et congés de ${doctorName(name)}`}
                       onPress={() => navigation.navigate('SecretaryDoctorSchedule', { doctorId: d.id, name })}
                     />
                     <IconButton
-                      icon={d.active ? 'pause-circle-outline' : 'play-circle-outline'}
+                      icon={d.active ? 'circle-pause' : 'circle-play'}
                       size={36}
                       accessibilityLabel={d.active ? `Suspendre ${doctorName(name)}` : `Réactiver ${doctorName(name)}`}
                       onPress={() => toggleActive(d)}
@@ -358,7 +358,7 @@ export default function ClinicManagementScreen() {
           <Text style={s.dateLabel}>{formatLongDate(today)}</Text>
 
           <Input
-            icon="search-outline"
+            icon="magnifying-glass"
             placeholder="Rechercher un patient (nom, téléphone, n° dossier)..."
             value={query}
             onChangeText={setQuery}
@@ -400,7 +400,7 @@ export default function ClinicManagementScreen() {
 
           {visible.length === 0 ? (
             <Card>
-              <EmptyState icon="calendar-clear-outline" title="Aucun rendez-vous" message="Aucun rendez-vous pour ces critères." />
+              <EmptyState icon="calendar-days" title="Aucun rendez-vous" message="Aucun rendez-vous pour ces critères." />
             </Card>
           ) : (
             visible.map((a) => {
@@ -430,7 +430,7 @@ export default function ClinicManagementScreen() {
                   ) : null}
                   <View style={s.apptBottom}>
                     <View style={s.assigned}>
-                      <Icon name="person-outline" size="sm" color={cancelled ? color.textMuted : color.primary} />
+                      <Icon name="user" size="sm" color={cancelled ? color.textMuted : color.primary} />
                       <Text style={s.assignedText} numberOfLines={1}>
                         {doctorName(a.doctor_name)} ({a.specialty})
                         {cancelled && !slotTaken(a) ? ' · Créneau rouvert' : ''}

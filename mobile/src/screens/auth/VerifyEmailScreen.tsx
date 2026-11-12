@@ -58,7 +58,7 @@ export default function VerifyEmailScreen({ route, navigation }: any) {
         {message ? <Notice tone="success" message={message} /> : null}
 
         <Input
-          icon="key-outline"
+          icon="key"
           value={code}
           onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 6))}
           keyboardType="number-pad"
@@ -70,9 +70,9 @@ export default function VerifyEmailScreen({ route, navigation }: any) {
           style={s.code}
         />
 
-        <Button title="Vérifier mon adresse" icon="checkmark-circle-outline" loading={busy} disabled={busy} onPress={verify} />
+        <Button title="Vérifier mon adresse" icon="circle-check" loading={busy} disabled={busy} onPress={verify} />
 
-        <Button title="Renvoyer le code" icon="refresh" variant="ghost" disabled={busy} onPress={resend} />
+        <Button title="Renvoyer le code" icon="arrows-rotate" variant="ghost" disabled={busy} onPress={resend} />
 
         <View style={auth.linkRow}>
           <Pressable accessibilityRole="link" onPress={() => navigation.navigate('Login')}>

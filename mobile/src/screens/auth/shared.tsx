@@ -22,7 +22,7 @@ export function AuthLayout({
         keyboardShouldPersistTaps="handled"
       >
         <View style={s.logo}>
-          <Icon name="medical" size={32} color={color.onPrimary} />
+          <Icon name="star-of-life" size={32} color={color.onPrimary} />
         </View>
         <Text style={s.brand}>ClinicRDV</Text>
         <Text style={s.title}>{title}</Text>
@@ -39,13 +39,13 @@ export function PasswordInput(props: TextInputProps & { label?: string; error?: 
 
   return (
     <Input
-      icon="lock-closed-outline"
+      icon="lock"
       secureTextEntry={!visible}
       autoCapitalize="none"
       autoCorrect={false}
       right={
         <IconButton
-          icon={visible ? 'eye-off-outline' : 'eye-outline'}
+          icon={visible ? 'eye-slash' : 'eye'}
           variant="plain"
           size={36}
           accessibilityLabel={visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
@@ -108,7 +108,7 @@ export function useCountdown(initial = 0) {
 export function CodeInput(props: TextInputProps & { label?: string }) {
   return (
     <Input
-      icon="key-outline"
+      icon="key"
       keyboardType="number-pad"
       maxLength={6}
       placeholder="000000"

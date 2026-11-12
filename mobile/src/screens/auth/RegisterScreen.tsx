@@ -72,11 +72,11 @@ export default function RegisterScreen({ navigation }: any) {
 
         {error ? <Notice tone="danger" message={error} /> : null}
 
-        <Input label="Prénom *" icon="person-outline" value={firstName} onChangeText={setFirstName} placeholder="Votre prénom" editable={!busy} />
-        <Input label="Nom *" icon="person-outline" value={lastName} onChangeText={setLastName} placeholder="Votre nom" editable={!busy} />
+        <Input label="Prénom *" icon="user" value={firstName} onChangeText={setFirstName} placeholder="Votre prénom" editable={!busy} />
+        <Input label="Nom *" icon="user" value={lastName} onChangeText={setLastName} placeholder="Votre nom" editable={!busy} />
         <Input
           label="Téléphone *"
-          icon="call-outline"
+          icon="phone"
           value={phone}
           onChangeText={setPhone}
           placeholder="081 234 5678"
@@ -85,7 +85,7 @@ export default function RegisterScreen({ navigation }: any) {
         />
         <Input
           label="Adresse e-mail (facultatif)"
-          icon="mail-outline"
+          icon="envelope"
           value={email}
           onChangeText={setEmail}
           placeholder="exemple@email.com"
@@ -116,7 +116,7 @@ export default function RegisterScreen({ navigation }: any) {
           label="J'accepte les conditions d'utilisation et la politique de confidentialité."
         />
 
-        <Button title="Créer mon compte" icon="person-add-outline" loading={busy} onPress={submit} />
+        <Button title="Créer mon compte" icon="user-plus" loading={busy} onPress={submit} />
 
         <View style={auth.linkRow}>
           <Text style={auth.muted}>Déjà un compte ?</Text>

@@ -183,7 +183,7 @@ export default function SlotPickerScreen() {
     return (
       <Screen>
         <ErrorState message={error || 'Médecin introuvable.'} />
-        <Button title="Retour" variant="secondary" icon="arrow-back" onPress={() => navigation.goBack()} />
+        <Button title="Retour" variant="secondary" icon="arrow-left" onPress={() => navigation.goBack()} />
       </Screen>
     );
   }
@@ -197,8 +197,8 @@ export default function SlotPickerScreen() {
       footer={
         <Button
           title={rescheduleId ? 'Confirmer le nouveau créneau' : 'Continuer vers la confirmation'}
-          iconRight={rescheduleId ? undefined : 'arrow-forward'}
-          icon={rescheduleId ? 'checkmark' : undefined}
+          iconRight={rescheduleId ? undefined : 'arrow-right'}
+          icon={rescheduleId ? 'check' : undefined}
           loading={booking}
           disabled={!selectedSlot || loadingSlots || !doctor.active}
           onPress={bookAppointment}
@@ -244,13 +244,13 @@ export default function SlotPickerScreen() {
       {!loadingSlots && !slotError && availableSlots.length === 0 ? (
         <Card>
           <EmptyState
-            icon="calendar-clear-outline"
+            icon="calendar-days"
             title="Aucun créneau disponible"
             message="Essayez une autre date ou activez une alerte désistement."
           />
           <Button
             title="Voir d’autres médecins disponibles"
-            icon="swap-horizontal-outline"
+            icon="right-left"
             variant="secondary"
             onPress={() =>
               navigation.navigate(
@@ -291,15 +291,15 @@ export default function SlotPickerScreen() {
 
       <Card style={s.summary}>
         <Text style={type.h2}>Récapitulatif</Text>
-        <InfoRow icon="person-outline" label="Médecin" value={doctorName(fullName)} strong />
-        <InfoRow icon="calendar-outline" label="Date" value={formatLongDate(selectedDate)} />
+        <InfoRow icon="user" label="Médecin" value={doctorName(fullName)} strong />
+        <InfoRow icon="calendar" label="Date" value={formatLongDate(selectedDate)} />
         <InfoRow
-          icon="time-outline"
+          icon="clock"
           label="Heure"
           value={selectedSlot ? formatLocalTime(selectedSlot.startsAt, timeZone) : 'Non sélectionnée'}
           strong={!!selectedSlot}
         />
-        <InfoRow icon="cash-outline" label="Tarif" value={`${doctor.fee} USD`} />
+        <InfoRow icon="money-bill-1" label="Tarif" value={`${doctor.fee} USD`} />
       </Card>
     </Screen>
   );

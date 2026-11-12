@@ -60,7 +60,7 @@ export default function EmergencyAccessScreen() {
     <Screen>
       <Notice
         tone="danger"
-        icon="alert-circle-outline"
+        icon="circle-exclamation"
         title="Réservé aux situations d’urgence"
         message="Pour un patient qui ne peut pas donner son consentement. L’accès dure 24 heures et se limite à la synthèse : allergies, antécédents, traitements et vaccins non confidentiels."
       />
@@ -77,7 +77,7 @@ export default function EmergencyAccessScreen() {
           autoCapitalize="characters"
           autoCorrect={false}
         />
-        <Button title="Rechercher" icon="search" variant="secondary" loading={busy && !found} disabled={number.trim().length < 14} onPress={lookup} />
+        <Button title="Rechercher" icon="magnifying-glass" variant="secondary" loading={busy && !found} disabled={number.trim().length < 14} onPress={lookup} />
       </Card>
 
       {found ? (
@@ -89,7 +89,7 @@ export default function EmergencyAccessScreen() {
           {found.facilities.length > 1 ? (
             <View style={s.chips}>
               {found.facilities.map((f) => (
-                <Chip key={f.id} icon="business-outline" label={f.name} selected={facilityId === f.id} onPress={() => setFacilityId(f.id)} />
+                <Chip key={f.id} icon="building" label={f.name} selected={facilityId === f.id} onPress={() => setFacilityId(f.id)} />
               ))}
             </View>
           ) : null}
@@ -105,7 +105,7 @@ export default function EmergencyAccessScreen() {
           <Text style={s.muted}>{reason.trim().length}/15 caractères minimum</Text>
           <Button
             title="Ouvrir la synthèse en urgence"
-            icon="medkit-outline"
+            icon="kit-medical"
             variant="danger"
             loading={busy}
             disabled={reason.trim().length < 15 || (found.facilities.length > 1 && !facilityId)}

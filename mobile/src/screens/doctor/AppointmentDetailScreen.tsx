@@ -281,12 +281,12 @@ export default function AppointmentDetailScreen() {
       <Screen
         footer={
           isCompleted ? (
-            <Button title="Retour" icon="arrow-back" variant="secondary" onPress={() => navigation.goBack()} />
+            <Button title="Retour" icon="arrow-left" variant="secondary" onPress={() => navigation.goBack()} />
           ) : (
             <View style={s.actions}>
               <Button
                 title="Brouillon"
-                icon="save-outline"
+                icon="floppy-disk"
                 variant="secondary"
                 loading={saving}
                 disabled={busy}
@@ -295,7 +295,7 @@ export default function AppointmentDetailScreen() {
               />
               <Button
                 title="Terminer"
-                icon="checkmark-circle-outline"
+                icon="circle-check"
                 loading={completing}
                 disabled={busy}
                 onPress={completeConsultation}
@@ -312,14 +312,14 @@ export default function AppointmentDetailScreen() {
               {patient}
             </Text>
             <View style={s.contact}>
-              <Icon name="mail-outline" size={14} color={color.textMuted} />
+              <Icon name="envelope" size={14} color={color.textMuted} />
               <Text style={s.muted} numberOfLines={1}>
                 {consultation.patient_email}
               </Text>
             </View>
             {consultation.patient_phone ? (
               <View style={s.contact}>
-                <Icon name="call-outline" size={14} color={color.textMuted} />
+                <Icon name="phone" size={14} color={color.textMuted} />
                 <Text style={s.muted}>{consultation.patient_phone}</Text>
               </View>
             ) : null}
@@ -329,7 +329,7 @@ export default function AppointmentDetailScreen() {
         {consultation.patient_profile_id ? (
           <Button
             title="Dossier du patient"
-            icon="folder-open-outline"
+            icon="folder-open"
             variant="secondary"
             onPress={() => navigation.navigate('PatientRecord', { patientId: consultation.patient_profile_id })}
           />
@@ -340,15 +340,15 @@ export default function AppointmentDetailScreen() {
             <Text style={type.h2}>Rendez-vous</Text>
             <StatusBadge status={consultation.appointment_status} />
           </View>
-          <InfoRow icon="calendar-outline" label="Date" value={formatDate(consultation.starts_at)} strong />
+          <InfoRow icon="calendar" label="Date" value={formatDate(consultation.starts_at)} strong />
           <InfoRow
-            icon="time-outline"
+            icon="clock"
             label="Horaire"
             value={`${formatTime(consultation.starts_at)} – ${formatTime(consultation.ends_at)}`}
             strong
           />
           <InfoRow
-            icon="document-text-outline"
+            icon="file-lines"
             label="Motif initial"
             value={consultation.appointment_reason || 'Non renseigné'}
           />
@@ -362,14 +362,14 @@ export default function AppointmentDetailScreen() {
           />
         ) : null}
 
-        <FormSection step={1} title="Motif de consultation" icon="chatbubble-ellipses-outline">
+        <FormSection step={1} title="Motif de consultation" icon="comment-dots">
           {field('Motif principal', 'chiefComplaint', {
             multiline: true,
             placeholder: 'Décrire le motif de consultation...',
           })}
         </FormSection>
 
-        <FormSection step={2} title="Constantes vitales" icon="pulse-outline">
+        <FormSection step={2} title="Constantes vitales" icon="heart-pulse">
           <View style={s.grid}>
             {VITALS.map((v) => (
               <View key={v.field} style={s.gridItem}>
@@ -379,7 +379,7 @@ export default function AppointmentDetailScreen() {
           </View>
         </FormSection>
 
-        <FormSection step={3} title="Antécédents médicaux" icon="time-outline">
+        <FormSection step={3} title="Antécédents médicaux" icon="clock">
           {field('Historique médical', 'medicalHistory', {
             multiline: true,
             placeholder: 'Antécédents médicaux du patient...',
@@ -390,25 +390,25 @@ export default function AppointmentDetailScreen() {
           })}
         </FormSection>
 
-        <FormSection step={4} title="Examen clinique" icon="body-outline">
+        <FormSection step={4} title="Examen clinique" icon="person">
           {field('Observations et résultats', 'clinicalExamination', {
             multiline: true,
             placeholder: 'Saisir les observations de l’examen clinique...',
           })}
         </FormSection>
 
-        <FormSection step={5} title="Diagnostic" icon="search-outline">
+        <FormSection step={5} title="Diagnostic" icon="magnifying-glass">
           {field('Diagnostic retenu', 'diagnosis', { multiline: true, placeholder: 'Saisir le diagnostic...' })}
         </FormSection>
 
-        <FormSection step={6} title="Notes complémentaires" icon="create-outline">
+        <FormSection step={6} title="Notes complémentaires" icon="pen-to-square">
           {field('Notes du médecin', 'notes', {
             multiline: true,
             placeholder: 'Ajouter des remarques complémentaires...',
           })}
         </FormSection>
 
-        <FormSection step={7} title="Prescription médicale" icon="medical-outline">
+        <FormSection step={7} title="Prescription médicale" icon="star-of-life">
           {field('Ordonnance et prescriptions', 'prescription', {
             multiline: true,
             placeholder: 'Saisir la prescription médicale...',
@@ -444,7 +444,7 @@ export default function AppointmentDetailScreen() {
             />
             <Button
               title="Ajouter le complément"
-              icon="add"
+              icon="plus"
               variant="secondary"
               disabled={!addendum.trim()}
               loading={savingAddendum}

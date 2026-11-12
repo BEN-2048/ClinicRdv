@@ -71,53 +71,51 @@ type TabDef = {
   name: string;
   component: React.ComponentType<any>;
   icon: IconName;
-  iconActive: IconName;
   headerShown?: boolean;
 };
 
 const profileTab: TabDef = {
   name: 'Profil',
   component: ProfileScreen,
-  icon: 'person-outline',
-  iconActive: 'person',
+  icon: 'user',
 };
 
 const tabsByRole: Record<Role, { headerShown: boolean; tabs: TabDef[] }> = {
   patient: {
     headerShown: false,
     tabs: [
-      { name: 'Accueil', component: HomeScreen, icon: 'home-outline', iconActive: 'home' },
-      { name: 'Médecins', component: DoctorListScreen, icon: 'medkit-outline', iconActive: 'medkit' },
-      { name: 'Établissements', component: FacilityListScreen, icon: 'business-outline', iconActive: 'business' },
-      { name: 'Mes RDV', component: MyAppointmentsScreen, icon: 'calendar-outline', iconActive: 'calendar' },
+      { name: 'Accueil', component: HomeScreen, icon: 'house' },
+      { name: 'Médecins', component: DoctorListScreen, icon: 'kit-medical' },
+      { name: 'Établissements', component: FacilityListScreen, icon: 'building' },
+      { name: 'Mes RDV', component: MyAppointmentsScreen, icon: 'calendar' },
       profileTab,
     ],
   },
   doctor: {
     headerShown: false,
     tabs: [
-      { name: 'Tableau de bord', component: DoctorDashboardScreen, icon: 'grid-outline', iconActive: 'grid' },
-      { name: 'Agenda', component: DoctorAgendaScreen, icon: 'calendar-outline', iconActive: 'calendar' },
+      { name: 'Tableau de bord', component: DoctorDashboardScreen, icon: 'table-cells-large' },
+      { name: 'Agenda', component: DoctorAgendaScreen, icon: 'calendar' },
       profileTab,
     ],
   },
   admin: {
     headerShown: false,
     tabs: [
-      { name: 'Cabinet', component: ClinicManagementScreen, icon: 'business-outline', iconActive: 'business' },
-      { name: 'Rendez-vous', component: SecretaryAppointmentsScreen, icon: 'calendar-outline', iconActive: 'calendar' },
-      { name: 'Médecins', component: SecretaryDoctorsScreen, icon: 'medkit-outline', iconActive: 'medkit' },
-      { name: 'Statistiques', component: SecretaryStatsScreen, icon: 'stats-chart-outline', iconActive: 'stats-chart' },
+      { name: 'Cabinet', component: ClinicManagementScreen, icon: 'building' },
+      { name: 'Rendez-vous', component: SecretaryAppointmentsScreen, icon: 'calendar' },
+      { name: 'Médecins', component: SecretaryDoctorsScreen, icon: 'kit-medical' },
+      { name: 'Statistiques', component: SecretaryStatsScreen, icon: 'chart-column' },
       profileTab,
     ],
   },
   secretary: {
     headerShown: false,
     tabs: [
-      { name: 'Accueil', component: SecretaryDashboardScreen, icon: 'home-outline', iconActive: 'home' },
-      { name: 'Rendez-vous', component: SecretaryAppointmentsScreen, icon: 'calendar-outline', iconActive: 'calendar' },
-      { name: 'Médecins', component: SecretaryDoctorsScreen, icon: 'medkit-outline', iconActive: 'medkit' },
-      { name: 'Statistiques', component: SecretaryStatsScreen, icon: 'stats-chart-outline', iconActive: 'stats-chart' },
+      { name: 'Accueil', component: SecretaryDashboardScreen, icon: 'house' },
+      { name: 'Rendez-vous', component: SecretaryAppointmentsScreen, icon: 'calendar' },
+      { name: 'Médecins', component: SecretaryDoctorsScreen, icon: 'kit-medical' },
+      { name: 'Statistiques', component: SecretaryStatsScreen, icon: 'chart-column' },
       profileTab,
     ],
   },
@@ -167,7 +165,7 @@ const makeRoleTabs = (role: Role) =>
             options={{
               ...(t.headerShown !== undefined ? { headerShown: t.headerShown } : {}),
               tabBarIcon: ({ focused, color: tint }) => (
-                <Icon name={focused ? t.iconActive : t.icon} size="lg" color={tint} />
+                <Icon name={t.icon} solid={focused} size="lg" color={tint} />
               ),
             }}
           />

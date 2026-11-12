@@ -273,7 +273,7 @@ export default function MyAppointmentsScreen() {
         subtitle="Gérez votre suivi de santé en toute sérénité"
         actions={[
           {
-            icon: searchOpen ? 'close' : 'search',
+            icon: searchOpen ? 'xmark' : 'magnifying-glass',
             accessibilityLabel: 'Rechercher un rendez-vous',
             active: searchOpen,
             onPress: () => {
@@ -282,13 +282,13 @@ export default function MyAppointmentsScreen() {
             },
           },
           {
-            icon: 'swap-vertical',
+            icon: 'arrows-up-down',
             accessibilityLabel: "Inverser l'ordre d'affichage",
             active: reverse,
             onPress: () => setReverse((r) => !r),
           },
           {
-            icon: 'notifications-outline',
+            icon: 'bell',
             accessibilityLabel: 'Ouvrir les notifications',
             onPress: () => navigation.navigate('Notifications'),
           },
@@ -399,7 +399,7 @@ export default function MyAppointmentsScreen() {
                 <Rect width="100%" height="100%" fill="url(#alertGradient)" />
               </Svg>
               <View style={[styles.alertIcon, shadow.soft]}>
-                <Icon name="notifications" size={20} color={palette.primary} />
+                <Icon name="bell" solid size={20} color={palette.primary} />
                 <View style={styles.alertIconDot} />
               </View>
               <View style={styles.flex}>
@@ -422,7 +422,7 @@ export default function MyAppointmentsScreen() {
                   style={styles.alertLink}
                 >
                   <Text style={[type.label, { color: palette.primary }]}>Gérer mes alertes</Text>
-                  <Icon name="arrow-forward" size={14} color={palette.primary} />
+                  <Icon name="arrow-right" size={14} color={palette.primary} />
                 </Pressable>
               </View>
             </View>
@@ -431,7 +431,7 @@ export default function MyAppointmentsScreen() {
           {!loading && !error && tab === 'upcoming' ? (
             <View style={[styles.tipCard, shadow.soft]}>
               <View style={styles.tipIcon}>
-                <Icon name="information-circle" size={18} color={palette.tealDark} />
+                <Icon name="circle-info" size={18} color={palette.tealDark} />
               </View>
               <View style={styles.flex}>
                 <Text style={[type.label, { color: palette.ink }]}>Rappel bienveillant</Text>
@@ -450,7 +450,7 @@ export default function MyAppointmentsScreen() {
           onPress={() => navigation.navigate('Médecins')}
           style={({ pressed }) => [styles.cta, shadow.raised, pressed && { opacity: 0.9 }]}
         >
-          <Icon name="add" size={20} color={palette.white} />
+          <Icon name="plus" size={20} color={palette.white} />
           <Text style={styles.ctaText} numberOfLines={1} adjustsFontSizeToFit>
             Prendre un nouveau rendez-vous
           </Text>
@@ -505,7 +505,7 @@ function AppointmentCard({
         </View>
         {showActions ? (
           <View style={styles.countdown}>
-            <Icon name="hourglass-outline" size={14} color={palette.primary} />
+            <Icon name="hourglass-half" size={14} color={palette.primary} />
             <Text style={styles.countdownText}>{countdown(a.starts_at)}</Text>
           </View>
         ) : null}
@@ -526,16 +526,16 @@ function AppointmentCard({
 
       <View style={styles.details}>
         <DetailRow
-          icon="calendar-outline"
+          icon="calendar"
           label="Date & heure"
           value={formatDateTime(a.starts_at, a.facility_timezone)}
           strong
         />
         {a.facility_name ? (
-          <DetailRow icon="business-outline" label="Établissement" value={a.facility_name} />
+          <DetailRow icon="building" label="Établissement" value={a.facility_name} />
         ) : null}
         {a.reason ? (
-          <DetailRow icon="document-text-outline"label="Motif" value={a.reason} />
+          <DetailRow icon="file-lines"label="Motif" value={a.reason} />
         ) : null}
       </View>
 
@@ -553,7 +553,7 @@ function AppointmentCard({
               onPress={onRebook}
               style={[styles.actionButton, { backgroundColor: palette.tint200, flex: 0, alignSelf: 'stretch' }]}
             >
-              <Icon name="calendar-outline" size={16} color={palette.primary} />
+              <Icon name="calendar" size={16} color={palette.primary} />
               <Text style={[type.bodyMedium, { color: palette.primary }]}>Voir les solutions proposées</Text>
             </Pressable>
           ) : null}
@@ -562,7 +562,7 @@ function AppointmentCard({
 
       {showActions ? (
         <Pressable accessibilityRole="link" disabled={busy} onPress={onRebook} style={styles.otherLink}>
-          <Icon name="swap-horizontal-outline" size={16} color={palette.primary} />
+          <Icon name="right-left" size={16} color={palette.primary} />
           <Text style={[type.bodyMedium, { color: palette.primary }]}>Changer de médecin ou d’établissement</Text>
         </Pressable>
       ) : null}
@@ -588,7 +588,7 @@ function AppointmentCard({
               <ActivityIndicator color={palette.dangerInk} />
             ) : (
               <>
-                <Icon name="close-circle-outline" size={16} color={palette.dangerInk} />
+                <Icon name="circle-xmark" size={16} color={palette.dangerInk} />
                 <Text style={[type.bodyMedium, { color: palette.dangerInk }]}>Annuler</Text>
               </>
             )}

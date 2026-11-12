@@ -60,7 +60,7 @@ export default function ChangePasswordScreen({ navigation }: any) {
           onSubmitEditing={submit}
         />
         <Notice tone="info" message="Vos autres appareils seront déconnectés. Celui-ci reste connecté." />
-        <Button title="Changer le mot de passe" icon="lock-closed-outline" loading={busy} onPress={submit} />
+        <Button title="Changer le mot de passe" icon="lock" loading={busy} onPress={submit} />
       </Card>
     </Screen>
   );

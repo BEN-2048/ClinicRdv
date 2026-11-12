@@ -21,7 +21,7 @@ function CardView({ card }: { card: EmergencyCard }) {
   return (
     <Card style={s.card}>
       <View style={s.head}>
-        <Icon name="medkit" size="lg" color={color.dangerInk} />
+        <Icon name="kit-medical" size="lg" color={color.dangerInk} />
         <View style={s.flex}>
           <Text style={type.h2}>{card.name}</Text>
           <Text style={s.muted}>{[card.patientNumber, card.birthDate ? `Né(e) le ${formatDay(card.birthDate)}` : null].filter(Boolean).join(' · ')}</Text>
@@ -135,7 +135,7 @@ export default function EmergencyCardScreen() {
     <Screen>
       <Notice
         tone="danger"
-        icon="call-outline"
+        icon="phone"
         title="En cas d’urgence vitale, appelez d’abord les secours."
         message="Cette fiche résume vos informations essentielles pour les soignants. Elle ne remplace pas un avis médical."
       />
@@ -165,23 +165,23 @@ export default function EmergencyCardScreen() {
             Seule la synthèse est enregistrée sur ce téléphone, chiffrée par le système : allergies, antécédents et traitements en cours, vaccinations. Les informations confidentielles et les documents n’y figurent jamais. Tout est effacé à la déconnexion.
           </Text>
           {enabled.length ? (
-            <Button title="Mettre à jour mes fiches" icon="refresh" variant="secondary" loading={busy === 'all'} onPress={refreshAll} />
+            <Button title="Mettre à jour mes fiches" icon="arrows-rotate" variant="secondary" loading={busy === 'all'} onPress={refreshAll} />
           ) : null}
         </>
       ) : (
-        <Notice icon="cloud-offline-outline" message="Vous êtes hors ligne : la fiche affichée est la dernière version enregistrée sur ce téléphone." />
+        <Notice icon="cloud" message="Vous êtes hors ligne : la fiche affichée est la dernière version enregistrée sur ce téléphone." />
       )}
 
       {cards === null ? (
         enabled.length ? (
-          <Button title="Afficher la fiche d’urgence" icon="lock-open-outline" variant="danger" onPress={show} />
+          <Button title="Afficher la fiche d’urgence" icon="lock-open" variant="danger" onPress={show} />
         ) : (
-          <EmptyState icon="medkit-outline" title="Aucune fiche enregistrée" message={online ? 'Activez une fiche ci-dessus.' : 'Connectez-vous à Internet pour activer une fiche.'} />
+          <EmptyState icon="kit-medical" title="Aucune fiche enregistrée" message={online ? 'Activez une fiche ci-dessus.' : 'Connectez-vous à Internet pour activer une fiche.'} />
         )
       ) : (
         <>
           {unprotected ? (
-            <Notice tone="warning" icon="warning-outline" message="Votre téléphone n’a pas de code de verrouillage : n’importe qui peut afficher cette fiche. Activez un code dans les réglages." />
+            <Notice tone="warning" icon="triangle-exclamation" message="Votre téléphone n’a pas de code de verrouillage : n’importe qui peut afficher cette fiche. Activez un code dans les réglages." />
           ) : null}
           {cards.map((c) => <CardView key={c.patientId} card={c} />)}
           <Button title="Masquer" variant="secondary" onPress={() => setCards(null)} />

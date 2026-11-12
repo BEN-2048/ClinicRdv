@@ -125,7 +125,7 @@ export default function ProfileScreen() {
             {phoneLocked ? null : (
               <Input
                 label="Téléphone"
-                icon="call-outline"
+                icon="phone"
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
@@ -140,28 +140,28 @@ export default function ProfileScreen() {
                 onPress={() => setEditing(false)}
                 style={s.flex}
               />
-              <Button title="Enregistrer" icon="save-outline" loading={saving} onPress={saveProfile} style={s.flex} />
+              <Button title="Enregistrer" icon="floppy-disk" loading={saving} onPress={saveProfile} style={s.flex} />
             </View>
           </>
         ) : (
           <>
             {user?.role === 'patient' ? (
               <InfoRow
-                icon="id-card-outline"
+                icon="id-card"
                 label="N° patient"
                 value={user.patient_number || 'En cours d’attribution'}
                 strong
               />
             ) : null}
-            <InfoRow icon="person-outline" label="Prénom" value={user?.first_name || 'Non renseigné'} strong />
-            <InfoRow icon="person-outline" label="Nom" value={user?.last_name || 'Non renseigné'} strong />
+            <InfoRow icon="user" label="Prénom" value={user?.first_name || 'Non renseigné'} strong />
+            <InfoRow icon="user" label="Nom" value={user?.last_name || 'Non renseigné'} strong />
             <InfoRow
-              icon="mail-outline"
+              icon="envelope"
               label="E-mail"
               value={user?.email || (user?.pending_email ? `${user.pending_email} (à confirmer)` : 'Non renseigné')}
             />
-            <InfoRow icon="call-outline" label="Téléphone" value={user?.phone || 'Non renseigné'} />
-            <InfoRow icon="shield-outline" label="Type de compte" value={role} />
+            <InfoRow icon="phone" label="Téléphone" value={user?.phone || 'Non renseigné'} />
+            <InfoRow icon="shield" label="Type de compte" value={role} />
           </>
         )}
       </Card>
@@ -169,20 +169,20 @@ export default function ProfileScreen() {
       <SectionTitle title="Sécurité du compte" />
       <Card style={s.list}>
         <ListItem
-          icon="key-outline"
+          icon="key"
           title="Changer le mot de passe"
           subtitle="Vos autres appareils seront déconnectés"
           onPress={() => navigation.navigate('ChangePassword')}
         />
         <ListItem
-          icon="call-outline"
+          icon="phone"
           title="Changer de numéro"
           subtitle="Le nouveau numéro est confirmé par SMS"
           onPress={() => navigation.navigate('ChangePhone')}
           style={s.divider}
         />
         <ListItem
-          icon="mail-outline"
+          icon="envelope"
           title={user?.email ? 'Changer d’adresse e-mail' : 'Ajouter une adresse e-mail'}
           subtitle={
             user?.pending_email
@@ -198,7 +198,7 @@ export default function ProfileScreen() {
       <Card style={s.list}>
         {isPatient ? (
           <ListItem
-            icon="folder-open-outline"
+            icon="folder-open"
             title="Mon dossier médical"
             subtitle="Historique de vos consultations et prescriptions"
             onPress={() => navigation.navigate('MedicalRecord')}
@@ -206,7 +206,7 @@ export default function ProfileScreen() {
         ) : null}
         {isPatient ? (
           <ListItem
-            icon="people-outline"
+            icon="users"
             title="Ma famille"
             subtitle="Enfants et personnes à charge"
             onPress={() => navigation.navigate('Family')}
@@ -215,7 +215,7 @@ export default function ProfileScreen() {
         ) : null}
         {isPatient ? (
           <ListItem
-            icon="share-social-outline"
+            icon="share-nodes"
             title="Partage et historique des accès"
             subtitle="Autoriser un établissement, voir qui a consulté votre dossier"
             onPress={() => navigation.navigate('Sharing')}
@@ -224,7 +224,7 @@ export default function ProfileScreen() {
         ) : null}
         {isPatient ? (
           <ListItem
-            icon="medkit-outline"
+            icon="kit-medical"
             iconColor={color.dangerInk}
             title="Fiche d’urgence hors ligne"
             subtitle="Allergies, antécédents et traitements, même sans Internet"
@@ -234,7 +234,7 @@ export default function ProfileScreen() {
         ) : null}
         {user?.role === 'secretary' || user?.role === 'admin' ? (
           <ListItem
-            icon="people-circle-outline"
+            icon="users"
             title="Liens familiaux à vérifier"
             subtitle="Valider les parents et tuteurs sur justificatif"
             onPress={() => navigation.navigate('GuardianLinks')}
@@ -242,7 +242,7 @@ export default function ProfileScreen() {
         ) : null}
         {user?.role === 'secretary' || user?.role === 'admin' ? (
           <ListItem
-            icon="business-outline"
+            icon="building"
             title="Établissements"
             subtitle={user?.role === 'admin' ? 'Créer, valider et suspendre les établissements' : 'Fiche, services et personnel de vos établissements'}
             onPress={() => navigation.navigate('FacilitiesManage')}
@@ -251,7 +251,7 @@ export default function ProfileScreen() {
         ) : null}
         {isDoctor ? (
           <ListItem
-            icon="time-outline"
+            icon="clock"
             title="Horaires et congés"
             subtitle="Plages de consultation, durée et absences"
             onPress={() => navigation.navigate('AgendaSettings')}
@@ -259,7 +259,7 @@ export default function ProfileScreen() {
         ) : null}
         {isDoctor ? (
           <ListItem
-            icon="medkit-outline"
+            icon="kit-medical"
             iconColor={color.dangerInk}
             title="Accès d’urgence à un dossier"
             subtitle="Patient hors d’état de consentir · justification obligatoire"
@@ -268,7 +268,7 @@ export default function ProfileScreen() {
           />
         ) : null}
         <ListItem
-          icon="notifications-outline"
+          icon="bell"
           title="Notifications et alertes"
           subtitle={isPatient ? 'Préférences SMS et e-mail' : 'Bientôt disponible'}
           onPress={isPatient ? () => navigation.navigate('Notifications') : undefined}
@@ -276,7 +276,7 @@ export default function ProfileScreen() {
         />
         {user?.role === 'admin' ? (
           <ListItem
-            icon="call-outline"
+            icon="phone"
             iconColor={color.dangerInk}
             title="Numéros d’urgence"
             subtitle="Publier les numéros vérifiés, avec leur source"
@@ -285,21 +285,21 @@ export default function ProfileScreen() {
           />
         ) : null}
         <ListItem
-          icon="lock-closed-outline"
+          icon="lock"
           title="Mes appareils"
           subtitle="Appareils connectés · déconnecter un appareil perdu"
           onPress={() => navigation.navigate('Devices')}
           style={s.divider}
         />
         <ListItem
-          icon="help-circle-outline"
+          icon="circle-question"
           title="Assistance"
           subtitle="Pour toute question, contactez l'administration de votre clinique."
           style={s.divider}
         />
       </Card>
 
-      <Button title="Se déconnecter" icon="log-out-outline" variant="danger" onPress={handleLogout} />
+      <Button title="Se déconnecter" icon="right-from-bracket" variant="danger" onPress={handleLogout} />
     </Screen>
   );
 }

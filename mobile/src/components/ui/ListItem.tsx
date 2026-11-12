@@ -47,7 +47,7 @@ export default function ListItem({
         ) : null}
       </View>
       {right}
-      {chevron ? <Icon name="chevron-forward" size="md" color={color.textMuted} /> : null}
+      {chevron ? <Icon name="chevron-right" size="md" color={color.textMuted} /> : null}
     </>
   );
 

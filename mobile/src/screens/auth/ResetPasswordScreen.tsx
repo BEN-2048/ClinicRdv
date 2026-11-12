@@ -83,10 +83,10 @@ export default function ResetPasswordScreen({ route, navigation }: any) {
           onSubmitEditing={submit}
         />
 
-        <Button title="Enregistrer le mot de passe" icon="checkmark-circle-outline" loading={busy} onPress={submit} />
+        <Button title="Enregistrer le mot de passe" icon="circle-check" loading={busy} onPress={submit} />
         <Button
           title={wait > 0 ? `Renvoyer le code (${wait} s)` : 'Renvoyer le code'}
-          icon="refresh"
+          icon="arrows-rotate"
           variant="ghost"
           disabled={busy || wait > 0}
           onPress={resend}

@@ -193,7 +193,7 @@ export default function FindDoctorScreen() {
             <Text key={f.code} style={type.body}>• {f.label}</Text>
           ))}
         </Card>
-        <Button title="Ouvrir l’écran Urgence" icon="medkit-outline" variant="danger" onPress={() => navigation.navigate('Emergency')} />
+        <Button title="Ouvrir l’écran Urgence" icon="kit-medical" variant="danger" onPress={() => navigation.navigate('Emergency')} />
         <Button title="Recommencer" variant="ghost" onPress={restart} />
         <Text style={s.disclaimer}>{triage.disclaimer}</Text>
       </Screen>
@@ -207,7 +207,7 @@ export default function FindDoctorScreen() {
         {triage.suggestions.length === 0 ? (
           <Card>
             <EmptyState
-              icon="medkit-outline"
+              icon="kit-medical"
               title="Aucune spécialité disponible"
               message="Aucun médecin adapté n’est enregistré pour le moment. Consultez la liste des médecins."
             />
@@ -228,7 +228,7 @@ export default function FindDoctorScreen() {
           </Card>
         ))}
         {specialty ? (
-          <Button title="Voir les médecins" icon="search" loading={busy} onPress={() => search(specialty)} />
+          <Button title="Voir les médecins" icon="magnifying-glass" loading={busy} onPress={() => search(specialty)} />
         ) : null}
         <Button title="Modifier les symptômes" variant="ghost" onPress={() => setStep('symptoms')} />
         <Text style={s.disclaimer}>{triage.disclaimer}</Text>
@@ -242,7 +242,7 @@ export default function FindDoctorScreen() {
         <Text style={type.h2}>{specialty.name}</Text>
         <View style={s.chips}>
           <Chip
-            icon="location-outline"
+            icon="location-dot"
             label={position ? 'Position utilisée' : locating ? 'Localisation...' : 'Utiliser ma position'}
             selected={!!position}
             onPress={locating || position ? undefined : locate}
@@ -261,7 +261,7 @@ export default function FindDoctorScreen() {
         {result && !busy && result.doctors.length === 0 ? (
           <Card>
             <EmptyState
-              icon="calendar-clear-outline"
+              icon="calendar-days"
               title="Aucun créneau libre"
               message="Aucun médecin de cette spécialité n’a de créneau dans les 14 prochains jours. Vous pouvez activer une alerte désistement depuis la fiche d’un médecin."
             />
@@ -286,12 +286,12 @@ export default function FindDoctorScreen() {
                 ))}
                 <View style={s.chips}>
                   <Chip
-                    icon="time-outline"
+                    icon="clock"
                     label={formatSlot(d.nextSlot.startsAt, d.timezone)}
                     onPress={() => navigation.navigate('SlotPicker', { doctorId: d.doctorId, facilityId: d.facilityId })}
                   />
                   <Chip
-                    icon="person-outline"
+                    icon="user"
                     label="Voir la fiche"
                     onPress={() => navigation.navigate('DoctorProfile', { doctorId: d.doctorId })}
                   />
@@ -346,7 +346,7 @@ export default function FindDoctorScreen() {
       <Button
         title={hasFlag ? 'Voir que faire maintenant' : 'Trouver la bonne spécialité'}
         variant={hasFlag ? 'danger' : 'primary'}
-        icon="arrow-forward"
+        icon="arrow-right"
         disabled={!selected.length}
         loading={busy}
         onPress={orient}

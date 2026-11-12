@@ -65,7 +65,7 @@ export default function FacilityListScreen() {
       onRefresh={load}
     >
       <Input
-        icon="search"
+        icon="magnifying-glass"
         value={query}
         onChangeText={setQuery}
         placeholder="Nom, ville ou adresse"
@@ -89,7 +89,7 @@ export default function FacilityListScreen() {
         <Loader label="Recherche des établissements..." />
       ) : facilities.length === 0 ? (
         <EmptyState
-          icon="business-outline"
+          icon="building"
           title="Aucun établissement trouvé"
           message="Modifiez votre recherche ou retirez un filtre."
         />
@@ -103,7 +103,7 @@ export default function FacilityListScreen() {
           >
             <View style={s.head}>
               <View style={s.iconBox}>
-                <Icon name="business" size="md" color={color.primary} />
+                <Icon name="building" solid size="md" color={color.primary} />
               </View>
               <View style={s.flex}>
                 <Text style={type.h3} numberOfLines={2}>{f.name}</Text>
@@ -127,7 +127,7 @@ export default function FacilityListScreen() {
               {f.phone ? (
                 <Button
                   title="Appeler"
-                  icon="call-outline"
+                  icon="phone"
                   size="sm"
                   variant="secondary"
                   fullWidth={false}

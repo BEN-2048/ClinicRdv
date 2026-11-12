@@ -74,24 +74,24 @@ export default function SecretaryStatsScreen() {
       {!loading && !error && stats ? (
         <>
           <View style={shared.grid}>
-            <StatCard style={shared.tile} icon="calendar-outline" label="Rendez-vous" value={stats.total} />
+            <StatCard style={shared.tile} icon="calendar" label="Rendez-vous" value={stats.total} />
             <StatCard
               style={shared.tile}
-              icon="checkmark-done-outline"
+              icon="check-double"
               tone="success"
               label="Terminés"
               value={stats.byStatus.done ?? 0}
             />
             <StatCard
               style={shared.tile}
-              icon="trending-down-outline"
+              icon="arrow-trend-down"
               tone="danger"
               label="Taux d'annulation"
               value={`${stats.cancellationRate} %`}
             />
             <StatCard
               style={shared.tile}
-              icon="person-add-outline"
+              icon="user-plus"
               tone="neutral"
               label="Nouveaux patients"
               value={stats.newPatients}
@@ -101,7 +101,7 @@ export default function SecretaryStatsScreen() {
           <SectionTitle title="Par médecin" />
           {stats.byDoctor.length === 0 ? (
             <Card>
-              <EmptyState icon="bar-chart-outline" title="Aucune activité sur la période" />
+              <EmptyState icon="chart-bar" title="Aucune activité sur la période" />
             </Card>
           ) : (
             <Card style={s.list}>

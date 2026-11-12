@@ -90,7 +90,7 @@ export default function DoctorListScreen() {
       }
     >
       <Input
-        icon="search"
+        icon="magnifying-glass"
         placeholder="Rechercher un médecin ou une spécialité"
         value={search}
         onChangeText={setSearch}
@@ -135,18 +135,18 @@ export default function DoctorListScreen() {
 
           <View style={s.meta}>
             <View style={s.metaItem}>
-              <Icon name="time-outline" size="sm" color={color.textMuted} />
+              <Icon name="clock" size="sm" color={color.textMuted} />
               <Text style={s.metaText}>{doctor.consultation_minutes} min</Text>
             </View>
             <View style={s.metaItem}>
-              <Icon name="cash-outline" size="sm" color={color.textMuted} />
+              <Icon name="money-bill-1" size="sm" color={color.textMuted} />
               <Text style={s.metaText}>{doctor.fee} USD</Text>
             </View>
           </View>
 
           <Button
             title="Voir le profil"
-            iconRight="arrow-forward"
+            iconRight="arrow-right"
             size="sm"
             variant="secondary"
             onPress={() => navigation.navigate('DoctorProfile', { doctorId: doctor.id })}
@@ -156,7 +156,7 @@ export default function DoctorListScreen() {
 
       {!loading && !error && filteredDoctors.length === 0 ? (
         <EmptyState
-          icon="search-outline"
+          icon="magnifying-glass"
           title="Aucun médecin trouvé"
           message="Essayez une autre recherche ou spécialité."
         />

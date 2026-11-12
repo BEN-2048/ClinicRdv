@@ -122,7 +122,7 @@ export default function SecretaryBookScreen() {
       footer={
         <Button
           title={isReschedule ? 'Confirmer le report' : 'Créer le rendez-vous'}
-          icon="checkmark"
+          icon="check"
           loading={saving}
           disabled={!canSubmit}
           onPress={submit}
@@ -134,9 +134,9 @@ export default function SecretaryBookScreen() {
       {isReschedule ? (
         <Card style={shared.card}>
           <Text style={type.h2}>Rendez-vous actuel</Text>
-          <InfoRow icon="person-outline" label="Patient" value={existing!.patient_name} strong />
-          <InfoRow icon="medkit-outline" label="Médecin" value={doctorName(existing!.doctor_name)} />
-          <InfoRow icon="time-outline" label="Créneau actuel" value={formatDateTime(existing!.starts_at)} />
+          <InfoRow icon="user" label="Patient" value={existing!.patient_name} strong />
+          <InfoRow icon="kit-medical" label="Médecin" value={doctorName(existing!.doctor_name)} />
+          <InfoRow icon="clock" label="Créneau actuel" value={formatDateTime(existing!.starts_at)} />
         </Card>
       ) : (
         <>
@@ -157,14 +157,14 @@ export default function SecretaryBookScreen() {
           ) : (
             <>
               <Input
-                icon="search"
+                icon="magnifying-glass"
                 value={query}
                 onChangeText={setQuery}
                 placeholder="Nom, e-mail, téléphone ou N° patient"
                 autoCapitalize="none"
               />
               {patients.length === 0 ? (
-                <EmptyState icon="person-outline" title="Aucun patient trouvé" />
+                <EmptyState icon="user" title="Aucun patient trouvé" />
               ) : (
                 <Card style={s.list}>
                   {patients.slice(0, 8).map((p, i) => (
@@ -218,7 +218,7 @@ export default function SecretaryBookScreen() {
           {loadingSlots ? <Loading label="Recherche des disponibilités..." /> : null}
           {!loadingSlots && slots.length === 0 ? (
             <Card>
-              <EmptyState icon="calendar-clear-outline" title="Aucun créneau disponible ce jour" />
+              <EmptyState icon="calendar-days" title="Aucun créneau disponible ce jour" />
             </Card>
           ) : null}
           <SlotGrid

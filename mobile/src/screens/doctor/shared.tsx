@@ -80,7 +80,7 @@ export function AppointmentRow({
           <KindTag kind={appointmentKind(appointment.reason)} />
         </View>
       </View>
-      <Icon name="chevron-forward" size="md" color={color.textMuted} />
+      <Icon name="chevron-right" size="md" color={color.textMuted} />
     </Pressable>
   );
 }

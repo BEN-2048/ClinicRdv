@@ -67,13 +67,13 @@ export default function SecretaryDoctorsScreen() {
         <AppHeader title="Médecins" subtitle={`${activeCount} actif${activeCount > 1 ? 's' : ''}`} />
       }
     >
-      <Button title="Ajouter un médecin" icon="person-add-outline" onPress={() => navigation.navigate('SecretaryDoctorForm')} />
+      <Button title="Ajouter un médecin" icon="user-plus" onPress={() => navigation.navigate('SecretaryDoctorForm')} />
 
       {loading ? <Loading label="Chargement des médecins..." /> : null}
       {error ? <ErrorCard message={error} onRetry={() => load()} /> : null}
       {!loading && !error && doctors.length === 0 ? (
         <Card>
-          <EmptyState icon="medkit-outline" title="Aucun médecin enregistré" />
+          <EmptyState icon="kit-medical" title="Aucun médecin enregistré" />
         </Card>
       ) : null}
 
@@ -90,9 +90,9 @@ export default function SecretaryDoctorsScreen() {
                     </Text>
                     <Text style={s.specialty}>{d.specialty}</Text>
                     <View style={s.meta}>
-                      <Icon name="time-outline" size={14} color={color.textMuted} />
+                      <Icon name="clock" size={14} color={color.textMuted} />
                       <Text style={shared.muted}>{d.consultation_minutes} min</Text>
-                      <Icon name="cash-outline" size={14} color={color.textMuted} />
+                      <Icon name="money-bill-1" size={14} color={color.textMuted} />
                       <Text style={shared.muted}>{d.fee} USD</Text>
                     </View>
                   </View>
@@ -105,7 +105,7 @@ export default function SecretaryDoctorsScreen() {
                 <View style={shared.actions}>
                   <Button
                     title="Horaires"
-                    icon="time-outline"
+                    icon="clock"
                     size="sm"
                     variant="secondary"
                     style={shared.action}
@@ -115,7 +115,7 @@ export default function SecretaryDoctorsScreen() {
                   />
                   <Button
                     title="Modifier"
-                    icon="create-outline"
+                    icon="pen-to-square"
                     size="sm"
                     variant="secondary"
                     style={shared.action}
@@ -123,7 +123,7 @@ export default function SecretaryDoctorsScreen() {
                   />
                   <Button
                     title={d.active ? 'Désactiver' : 'Activer'}
-                    icon={d.active ? 'pause-circle-outline' : 'play-circle-outline'}
+                    icon={d.active ? 'circle-pause' : 'circle-play'}
                     size="sm"
                     variant={d.active ? 'danger' : 'primary'}
                     style={shared.action}

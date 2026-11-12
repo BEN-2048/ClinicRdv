@@ -282,7 +282,7 @@ export default function DoctorAgendaScreen() {
             subtitle={fullName ? doctorName(fullName) : 'Espace médecin'}
             right={
               <IconButton
-                icon="settings-outline"
+                icon="gear"
                 accessibilityLabel="Horaires et congés"
                 onPress={() => navigation.navigate('AgendaSettings')}
               />
@@ -292,7 +292,7 @@ export default function DoctorAgendaScreen() {
       >
         <View style={s.dateNav}>
           <IconButton
-            icon="chevron-back"
+            icon="chevron-left"
             accessibilityLabel={viewMode === 'day' ? 'Jour précédent' : `${stepLabel} précédente`}
             onPress={() => changeDate(-1)}
           />
@@ -306,7 +306,7 @@ export default function DoctorAgendaScreen() {
             <Text style={s.dateYear}>{lastDay.getFullYear()}</Text>
           </Pressable>
           <IconButton
-            icon="chevron-forward"
+            icon="chevron-right"
             accessibilityLabel={viewMode === 'day' ? 'Jour suivant' : `${stepLabel} suivante`}
             onPress={() => changeDate(1)}
           />
@@ -446,7 +446,7 @@ export default function DoctorAgendaScreen() {
         ) : selectedLeave ? (
           <Notice
             tone="danger"
-            icon="airplane-outline"
+            icon="plane"
             title="Jour d'absence"
             message={selectedLeave.reason || 'Vous êtes absent ce jour.'}
           />
@@ -531,14 +531,14 @@ export default function DoctorAgendaScreen() {
               <Notice
                 key={`freed-${a.id}`}
                 tone="warning"
-                icon="alert-circle-outline"
+                icon="circle-exclamation"
                 title={`Créneau libéré · ${multiDay ? `${new Date(a.starts_at).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })} ` : ''}${formatTime(a.starts_at)} – ${formatTime(a.ends_at)}`}
                 message={`${patientName(a)} a annulé. Le créneau est de nouveau réservable par les patients.`}
               >
                 <View style={s.freedActions}>
                   <Button
                     title="Bloquer"
-                    icon="lock-closed-outline"
+                    icon="lock"
                     size="sm"
                     variant="secondary"
                     fullWidth={false}
@@ -559,7 +559,7 @@ export default function DoctorAgendaScreen() {
       <View style={s.fab} pointerEvents="box-none">
         <Button
           title="Nouveau créneau"
-          icon="add"
+          icon="plus"
           fullWidth={false}
           style={s.fabButton}
           onPress={() => openSheet()}
