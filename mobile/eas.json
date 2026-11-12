@@ -12,6 +12,15 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "http://172.20.10.2:4000/api"
       }
+    },
+    "production-apk": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://DOMAINE/api"
+      }
     }
   }
 }

@@ -130,6 +130,16 @@ Sans Mac ni compte Apple Developer payant : l'IPA est compilé sans signature su
 - Au premier lancement, accepter l'autorisation **Réseau local**.
 - Dépôt privé : les minutes macOS comptent 10 fois (environ 200 min par mois offertes, soit 6 à 8 builds). Un dépôt public n'a pas cette limite.
 
+### 6. Mise en ligne (VPS Hostinger)
+L'API est hébergée sur un VPS Hostinger KVM 1 (Ubuntu 24.04, Nginx, HTTPS Let's Encrypt, PM2). La base reste sur Neon. Guide complet : `docs/deploiement-vps.md`.
+
+```bash
+bash setup-vps.sh <domaine> <email>                          # une seule fois, en root
+sudo -u clinicrdv -H bash /srv/clinicrdv/app/deploy/deploy.sh  # à chaque mise à jour
+```
+
+Une fois l'API en ligne, l'APK (`--profile production-apk`) et l'IPA pointent sur `https://<domaine>/api` : plus besoin d'être sur le même Wi-Fi que le PC.
+
 ## Variables d'environnement (backend/.env)
 
 | Variable | Rôle | Valeur par défaut |
@@ -194,6 +204,7 @@ Les deux jobs doivent passer avant la fusion.
 - `docs/backlog-jira.md` : backlog
 - `docs/sms-passerelle.md` : envoi des SMS gratuit
 - `docs/sauvegardes.md` : sauvegardes et restauration
+- `docs/deploiement-vps.md` : mise en ligne sur le VPS Hostinger
 
 ## Liens
 - Jira : _à compléter_
