@@ -19,7 +19,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://DOMAINE/api"
+        "EXPO_PUBLIC_API_URL": "https://72-62-213-242.sslip.io/api"
       }
     }
   }
