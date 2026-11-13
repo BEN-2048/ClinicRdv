@@ -228,6 +228,7 @@ Les deux jobs doivent passer avant la fusion.
 - `docs/sms-passerelle.md` : envoi des SMS gratuit
 - `docs/sauvegardes.md` : sauvegardes et restauration
 - `docs/deploiement-vps.md` : mise en ligne sur le VPS Hostinger
+- `docs/installation-ipa.md` : installation de l'application iOS (IPA)
 
 ## Liens
 - Jira : _à compléter_
