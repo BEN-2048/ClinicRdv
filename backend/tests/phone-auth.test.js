@@ -30,10 +30,18 @@ const setup = (routes = []) => {
 const calls = (part) => pool.query.mock.calls.filter(([sql]) => sql.includes(part));
 
 let logSpy;
+let originalSmsDriver;
+
 beforeEach(() => {
+  originalSmsDriver = env.smsDriver;
+  env.smsDriver = 'console';
   logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 });
-afterEach(() => logSpy.mockRestore());
+
+afterEach(() => {
+  env.smsDriver = originalSmsDriver;
+  logSpy.mockRestore();
+});
 
 describe('Normalisation des numéros de RDC', () => {
   test.each([

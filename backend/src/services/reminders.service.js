@@ -33,6 +33,7 @@ exports.message = (row, kind) => {
 const due = (db, { kind, within, after, freshMinutes }, now) =>
   db.query(
     `SELECT a.id, a.patient_id, a.starts_at,
+            to_char(a.starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.US') AS starts_at_exact,
             du.last_name AS doctor_last_name,
             f.name AS facility_name, f.timezone,
             p.first_name AS profile_first_name,
@@ -52,7 +53,8 @@ const due = (db, { kind, within, after, freshMinutes }, now) =>
         AND a.created_at <= $1::timestamptz - make_interval(mins => $4)
         AND NOT EXISTS (
           SELECT 1 FROM appointment_reminders r
-           WHERE r.appointment_id = a.id AND r.kind = $5 AND r.starts_at = a.starts_at)
+           WHERE r.appointment_id = a.id AND r.kind = $5
+             AND date_trunc('milliseconds', r.starts_at) = date_trunc('milliseconds', a.starts_at))
       ORDER BY a.starts_at
       LIMIT 200`,
     [now.toISOString(), after, within, freshMinutes, kind]
@@ -62,15 +64,19 @@ const sendOne = async (row, spec) => {
   const client = await pool.connect();
   let text;
   let claimed = false;
+  let claimedStartsAt;
   try {
     await client.query('BEGIN');
     const claim = await client.query(
       `INSERT INTO appointment_reminders (appointment_id, kind, starts_at)
-       VALUES ($1, $2, $3) ON CONFLICT DO NOTHING RETURNING appointment_id`,
-      [row.id, spec.kind, row.starts_at]
+       SELECT a.id, $2, a.starts_at
+       FROM (SELECT id, starts_at FROM appointments WHERE id = $1 AND status IN ('pending', 'confirmed') AND starts_at = ($3::timestamp AT TIME ZONE 'UTC') FOR UPDATE) a
+       ON CONFLICT DO NOTHING RETURNING appointment_id, to_char(starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.US') AS starts_at_exact`,
+      [row.id, spec.kind, row.starts_at_exact]
     );
     if (claim.rowCount) {
       claimed = true;
+      claimedStartsAt = claim.rows[0].starts_at_exact;
       text = exports.message(row, spec.kind);
       const notification = await client.query(
         `INSERT INTO notifications (user_id, appointment_id, title, body, type)
@@ -78,8 +84,9 @@ const sendOne = async (row, spec) => {
         [row.patient_id, row.id, text.title, text.body]
       );
       await client.query(
-        'UPDATE appointment_reminders SET notification_id = $4 WHERE appointment_id = $1 AND kind = $2 AND starts_at = $3',
-        [row.id, spec.kind, row.starts_at, notification.rows[0].id]
+        `UPDATE appointment_reminders SET notification_id = $3 WHERE appointment_id = $1 AND kind = $2
+         AND starts_at = ($4::timestamp AT TIME ZONE 'UTC')`,
+        [row.id, spec.kind, notification.rows[0].id, claimedStartsAt]
       );
     }
     await client.query('COMMIT');
@@ -93,10 +100,20 @@ const sendOne = async (row, spec) => {
 
   let sms = 'none';
   if (spec.sms && row.sms_enabled && row.phone_e164 && row.phone_verified_at) {
-    sms = (await phoneOtp.notify(row.phone_e164, text.sms)) ? 'sent' : 'failed';
+    const validity = await pool.query(
+      `SELECT EXISTS (
+         SELECT 1 FROM appointments
+         WHERE id = $1 AND status IN ('pending', 'confirmed')
+           AND starts_at = ($2::timestamp AT TIME ZONE 'UTC')
+       ) AS valid`,
+      [row.id, claimedStartsAt]
+    );
+    if (!validity.rows[0]?.valid) return { created: true, sms: 'none' };
+    sms = await phoneOtp.notify(row.phone_e164, text.sms);
     await pool.query(
-      'UPDATE appointment_reminders SET sms_status = $4 WHERE appointment_id = $1 AND kind = $2 AND starts_at = $3',
-      [row.id, spec.kind, row.starts_at, sms]
+      `UPDATE appointment_reminders SET sms_status = $3 WHERE appointment_id = $1 AND kind = $2
+         AND starts_at = ($4::timestamp AT TIME ZONE 'UTC')`,
+      [row.id, spec.kind, sms, claimedStartsAt]
     ).catch(() => {});
   }
   return { created: true, sms };
