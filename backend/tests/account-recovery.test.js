@@ -466,6 +466,6 @@ describe('Pilotes et avertissements', () => {
     const res = await request(app).post('/api/users/me/password').set(bearer)
       .send({ currentPassword: 'ancienmotdepasse', newPassword: 'nouveaumotdepasse' });
     expect(res.status).toBe(200);
-    expect(calls("'notice', $2, 'failed'")).toHaveLength(1);
+    expect(calls('INSERT INTO sms_outbox').filter(([, params]) => params[2] === 'failed')).toHaveLength(1);
   });
 });

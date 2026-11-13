@@ -152,25 +152,38 @@ exports.resendSignup = async (phone) => {
   }
 };
 
+
 exports.notify = async (phone, text) => {
   let driverName = env.smsDriver;
+  let status = 'failed';
+  let errorMessage = null;
+
   try {
     await assertCaps(pool, phone, true);
+
     const driver = getSmsDriver();
     driverName = driver.name;
+
     await driver.send(phone, toGsm7(text));
-    await pool.query(
-      `INSERT INTO sms_outbox (destination, purpose, driver, status) VALUES ($1, 'notice', $2, 'sent')`,
-      [phone, driverName]
-    );
-    return true;
+
+    status = 'sent';
   } catch (error) {
-    await pool.query(
-      `INSERT INTO sms_outbox (destination, purpose, driver, status, error) VALUES ($1, 'notice', $2, 'failed', $3)`,
-      [phone, String(driverName).slice(0, 20), String(error.message).slice(0, 255)]
-    ).catch(() => {});
-    return false;
+    status = error.deliveryStatus === 'unknown' ? 'unknown' : 'failed';
+    errorMessage = String(error.message).slice(0, 255);
   }
+
+  try {
+    await pool.query(
+      `INSERT INTO sms_outbox
+        (destination, purpose, driver, status, error)
+       VALUES ($1, 'notice', $2, $3, $4)`,
+      [phone, String(driverName).slice(0, 20), status, errorMessage]
+    );
+  } catch (dbError) {
+    console.error('Impossible d enregistrer le resultat SMS :', dbError.message);
+  }
+
+  return status;
 };
 
 exports.httpError = httpError;
