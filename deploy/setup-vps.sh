@@ -10,11 +10,11 @@ BASE=/srv/clinicrdv
 APP_DIR="$BASE/app"
 
 if [ "$(id -u)" -ne 0 ]; then
-  echo "Lancer ce script en root : sudo bash setup-vps.sh <domaine> <email>" >&2
+  echo "Lancer ce script en root : sudo bash setup-vps.sh <domaine> [email]" >&2
   exit 1
 fi
-if [ -z "$DOMAIN" ] || [ -z "$EMAIL" ]; then
-  echo "Usage : sudo bash setup-vps.sh <domaine> <email-letsencrypt>" >&2
+if [ -z "$DOMAIN" ]; then
+  echo "Usage : sudo bash setup-vps.sh <domaine> [email-letsencrypt]" >&2
   exit 1
 fi
 
@@ -33,8 +33,10 @@ fi
 npm install -g pm2
 
 echo "==> Outils clients PostgreSQL 18 (sauvegardes)"
-/usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
-apt-get install -y postgresql-client-18
+if ! apt-get install -y postgresql-client-18; then
+  /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+  apt-get install -y postgresql-client-18
+fi
 
 echo "==> Utilisateur et dossiers"
 id "$APP_USER" >/dev/null 2>&1 || useradd --system --create-home --home-dir "$BASE" --shell /bin/bash "$APP_USER"
@@ -66,7 +68,12 @@ ufw allow 'Nginx Full'
 ufw --force enable
 
 echo "==> Certificat HTTPS"
-certbot --nginx -d "$DOMAIN" -m "$EMAIL" --agree-tos --redirect --non-interactive
+if [ -n "$EMAIL" ]; then
+  CERTBOT_CONTACT=(-m "$EMAIL")
+else
+  CERTBOT_CONTACT=(--register-unsafely-without-email)
+fi
+certbot --nginx -d "$DOMAIN" "${CERTBOT_CONTACT[@]}" --agree-tos --redirect --non-interactive
 
 echo "==> PM2 au démarrage"
 env PATH="$PATH" pm2 startup systemd -u "$APP_USER" --hp "$BASE"

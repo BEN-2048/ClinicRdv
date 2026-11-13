@@ -18,6 +18,7 @@ git pull --ff-only origin "$BRANCH"
 cd backend
 echo "==> Dépendances"
 npm ci --omit=dev
+node -e "require('bcrypt')"
 
 echo "==> Migrations"
 npm run db:migrate
