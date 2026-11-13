@@ -100,45 +100,68 @@ npx jest                         # tests
 ```
 
 ### 4. APK Android
-L'APK est généré dans le cloud par **EAS Build** (offre gratuite Expo) avec le profil `preview` de `mobile/eas.json`.
+L'APK est généré dans le cloud par **EAS Build** (offre gratuite Expo). L'URL de l'API est **figée dans l'APK** : elle vient de `EXPO_PUBLIC_API_URL` dans `mobile/eas.json` (les fichiers `.env` ne sont pas envoyés à EAS).
+
+| Profil | API appelée | Usage |
+|--------|-------------|-------|
+| `production-apk` | `https://72-62-213-242.sslip.io/api` (VPS) | Démonstration, fonctionne en Wi-Fi comme en 4G |
+| `preview` | `http://<IP du PC>:4000/api` | Développement avec le backend lancé sur un PC |
 
 ```bash
 cd mobile
-npx eas-cli login                # une seule fois, compte Expo
-npx eas-cli build -p android --profile preview
+npx eas-cli login                                    # une seule fois, compte Expo
+npx eas-cli build -p android --profile production-apk
 ```
 
 Le lien de téléchargement de l'APK s'affiche à la fin du build, avec un QR code sur la page du build.
 
-- L'URL de l'API est **figée dans l'APK** : elle vient de `EXPO_PUBLIC_API_URL` dans `mobile/eas.json` (les fichiers `.env` ne sont pas envoyés à EAS). Mettre l'IP du PC qui fait tourner le backend avant chaque build.
-- Le téléphone Android doit être sur le même réseau que ce PC, backend lancé (`npm start`). Vérifier depuis son navigateur : `http://<IP du PC>:4000/health`.
-- Si la page ne répond pas, autoriser le port 4000 dans le pare-feu Windows.
-- L'APK ne s'installe que sur **Android**. Pour l'iPhone, voir la section suivante.
+Avec le profil `preview` :
+- mettre l'IP du PC dans `mobile/eas.json` avant chaque build ;
+- le téléphone doit être sur le même réseau que ce PC, backend lancé (`npm start`) ; vérifier depuis son navigateur : `http://<IP du PC>:4000/health` ;
+- si la page ne répond pas, autoriser le port 4000 dans le pare-feu Windows.
+
+L'APK ne s'installe que sur **Android**. Pour l'iPhone, voir la section suivante.
 
 ### 5. Application iOS (IPA)
 Sans Mac ni compte Apple Developer payant : l'IPA est compilé sans signature sur un runner macOS de **GitHub Actions**, puis signé et installé depuis Windows avec **Sideloadly** et un Apple ID gratuit.
 
 1. Pousser le dépôt sur GitHub (miroir du dépôt GitLab) : `git push github main`.
-2. Sur GitHub : **Actions → iOS IPA → Run workflow**, saisir l'URL de l'API (`http://<IP du PC>:4000/api`).
+2. Sur GitHub : **Actions → iOS IPA → Run workflow**, saisir l'URL de l'API : `https://72-62-213-242.sslip.io/api` pour le VPS, ou `http://<IP du PC>:4000/api` pour le développement.
 3. À la fin du build (20 à 30 min), télécharger l'artefact **ClinicRDV-ipa** et le décompresser pour obtenir `ClinicRDV.ipa`.
 4. Sur le PC : installer [iTunes](https://www.apple.com/itunes/) (version du site Apple, pas celle du Microsoft Store) et [Sideloadly](https://sideloadly.io).
 5. Brancher l'iPhone en USB, faire confiance à l'ordinateur, glisser `ClinicRDV.ipa` dans Sideloadly, saisir son Apple ID, puis **Start**.
 6. Sur l'iPhone : **Réglages → Confidentialité et sécurité → Mode développeur** (activer, redémarrer), puis **Réglages → Général → VPN et gestion de l'appareil** → faire confiance à son Apple ID.
 
 - Avec un Apple ID gratuit, l'application **expire au bout de 7 jours** : relancer l'étape 5 avec le même IPA pour la renouveler (pas besoin de recompiler). Trois applications au maximum par appareil.
-- Comme pour l'APK, l'URL de l'API est figée dans l'IPA : relancer le workflow si l'IP du PC change.
-- Au premier lancement, accepter l'autorisation **Réseau local**.
+- Comme pour l'APK, l'URL de l'API est figée dans l'IPA : avec l'URL du PC, relancer le workflow si son IP change.
+- Avec l'URL du PC, accepter l'autorisation **Réseau local** au premier lancement.
 - Dépôt privé : les minutes macOS comptent 10 fois (environ 200 min par mois offertes, soit 6 à 8 builds). Un dépôt public n'a pas cette limite.
 
 ### 6. Mise en ligne (VPS Hostinger)
-L'API est hébergée sur un VPS Hostinger KVM 1 (Ubuntu 24.04, Nginx, HTTPS Let's Encrypt, PM2). La base reste sur Neon. Guide complet : `docs/deploiement-vps.md`.
+L'API de production tourne sur un VPS Hostinger KVM 1. Guide complet : `docs/deploiement-vps.md`.
 
-```bash
-bash setup-vps.sh <domaine> <email>                          # une seule fois, en root
-sudo -u clinicrdv -H bash /srv/clinicrdv/app/deploy/deploy.sh  # à chaque mise à jour
-```
+| Élément | Valeur |
+|---------|--------|
+| URL de l'API | `https://72-62-213-242.sslip.io/api` (santé : `/health`) |
+| Serveur | Ubuntu 26.04, Node.js 24, Nginx en proxy inverse, PM2 (processus `clinicrdv-api`, une seule instance) |
+| Nom de domaine | [sslip.io](https://sslip.io) (gratuit, dérivé de l'IP `72.62.213.242`) |
+| HTTPS | Let's Encrypt, renouvelé automatiquement ; HTTP redirigé vers HTTPS |
+| Base de données | Neon (inchangée) |
+| Pare-feu | Seuls SSH (22), HTTP (80) et HTTPS (443) sont ouverts ; le port 4000 reste interne |
+| Accès SSH | `ssh root@72.62.213.242`, **par clé uniquement** (mot de passe désactivé). Sans la clé : terminal du navigateur dans hPanel |
+| Fichiers sur le serveur | Code `/srv/clinicrdv/app`, documents `/srv/clinicrdv/storage`, sauvegardes `/srv/clinicrdv/backups` |
+| Sauvegardes | Chiffrées, chaque nuit à 3 h, conservées 14 jours |
 
-Une fois l'API en ligne, l'APK (`--profile production-apk`) et l'IPA pointent sur `https://<domaine>/api` : plus besoin d'être sur le même Wi-Fi que le PC.
+**Mettre à jour la production** : le serveur récupère `main` depuis **GitHub**.
+1. Fusionner la merge request sur GitLab.
+2. Pousser sur GitHub : `git push github main`.
+3. Sur le serveur : `sudo -u clinicrdv -H bash /srv/clinicrdv/app/deploy/deploy.sh` (code, dépendances, migrations, redémarrage, vérification de `/health`).
+
+Le `.env` de production (`/srv/clinicrdv/app/backend/.env`) n'est pas dans Git ; modèle : `backend/.env.production.example`. Après une modification : `sudo -u clinicrdv -H pm2 restart clinicrdv-api`.
+
+Installation d'un nouveau serveur (une seule fois, en root) : `bash setup-vps.sh <domaine> [email]`.
+
+À faire : configurer SMSGate en mode *Cloud Server* (`SMSGATE_USERNAME`, `SMSGATE_PASSWORD`). D'ici là, les SMS (codes, rappels) échouent en production ; la connexion par e-mail fonctionne.
 
 ## Variables d'environnement (backend/.env)
 
@@ -156,7 +179,7 @@ Une fois l'API en ligne, l'APK (`--profile production-apk`) et l'IPA pointent su
 | `CORS_ORIGINS` | Origines web autorisées, séparées par des virgules. Vide : toutes en développement, aucune en production. L'app mobile n'est pas concernée | vide |
 | `RATE_LIMIT_ENABLED`, `TRUST_PROXY` | Limitation des tentatives ; proxy de confiance pour l'adresse IP | activée hors tests |
 | `STORAGE_DRIVER`, `STORAGE_LOCAL_DIR`, `FILE_URL_SECRET`, `PUBLIC_API_URL` | Stockage des documents médicaux et liens signés | `local` |
-| `BACKUP_ENCRYPTION_KEY`, `BACKUP_DIR`, `PG_DUMP_PATH`, `PG_RESTORE_PATH`, `RESTORE_DATABASE_URL` | Sauvegardes chiffrées, voir `docs/sauvegardes.md` | — |
+| `BACKUP_ENCRYPTION_KEY`, `BACKUP_DIR`, `PG_DUMP_PATH`, `PG_RESTORE_PATH`, `RESTORE_DATABASE_URL`, `PGSSLROOTCERT` | Sauvegardes chiffrées, voir `docs/sauvegardes.md` ; `PGSSLROOTCERT=system` permet à `pg_dump` de vérifier le certificat de Neon sur Linux | — |
 
 En production (`NODE_ENV=production`), les pilotes `console` sont refusés et `CORS_ORIGINS=*` empêche le démarrage.
 
