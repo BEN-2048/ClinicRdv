@@ -16,6 +16,7 @@ exports.scope = wrap(async (req, res) => res.json({
 }));
 exports.dashboard = wrap(async (req, res) => res.json(await svc.dashboard(req.scope)));
 exports.stats = wrap(async (req, res) => res.json(await svc.stats(req.scope, req.query)));
+exports.listUsers = wrap(async (req, res) => res.json(await svc.listUsers(req.query)));
 exports.patients = wrap(async (req, res) => res.json(await svc.searchPatients(req.scope, req.query)));
 exports.specialties = wrap(async (req, res) => res.json(await svc.listSpecialties()));
 

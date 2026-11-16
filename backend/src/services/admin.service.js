@@ -107,6 +107,18 @@ exports.stats = async (scope, { from, to } = {}) => {
   };
 };
 
+exports.listUsers = async ({ role, q } = {}) => {
+  const r = await pool.query(
+    `SELECT id, email, phone, role, first_name, last_name, created_at
+       FROM users
+      WHERE ($1::user_role IS NULL OR role = $1::user_role)
+        AND ($2::text IS NULL OR first_name ILIKE '%' || $2 || '%' OR last_name ILIKE '%' || $2 || '%'
+             OR email ILIKE '%' || $2 || '%' OR phone ILIKE '%' || $2 || '%')
+      ORDER BY created_at DESC, id DESC`,
+    [role ?? null, q || null]);
+  return { total: r.rowCount, users: r.rows };
+};
+
 exports.searchPatients = async (scope, { q } = {}) => {
   requireScope(scope);
   const term = q?.trim() || null;

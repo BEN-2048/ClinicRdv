@@ -524,6 +524,8 @@ staff.get(
   admin.patients
 );
 
+staff.get('/users', platformOnly, validate(s.usersQuery, 'query'), admin.listUsers);
+
 staff.get('/specialties', admin.specialties);
 
 staff.get(
