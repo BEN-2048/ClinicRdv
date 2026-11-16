@@ -155,6 +155,10 @@ exports.adminAppointmentsQuery = z.object({
 });
 exports.statsQuery = z.object({ from: isoDate.optional(), to: isoDate.optional() });
 exports.patientsQuery = z.object({ q: z.string().max(80).optional() });
+exports.usersQuery = z.object({
+  role: z.enum(['patient', 'doctor', 'admin', 'secretary']).optional(),
+  q: z.string().trim().max(80).optional(),
+});
 
 exports.updateProfile = z.object({
   firstName: z.string().trim().min(1).max(80).optional(),
