@@ -161,7 +161,7 @@ Le `.env` de production (`/srv/clinicrdv/app/backend/.env`) n'est pas dans Git ;
 
 Installation d'un nouveau serveur (une seule fois, en root) : `bash setup-vps.sh <domaine> [email]`.
 
-À faire : configurer SMSGate en mode *Cloud Server* (`SMSGATE_USERNAME`, `SMSGATE_PASSWORD`). D'ici là, les SMS (codes, rappels) échouent en production ; la connexion par e-mail fonctionne.
+SMS : la production utilise SMSGate en mode *Cloud Server* (`SMSGATE_USERNAME`, `SMSGATE_PASSWORD`). Le téléphone passerelle doit rester allumé et connecté à Internet. En cas d'échec d'envoi, consulter la colonne `error` de la table `sms_outbox` ; un 401 indique des identifiants invalides.
 
 ## Variables d'environnement (backend/.env)
 
