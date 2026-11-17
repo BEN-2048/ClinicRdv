@@ -1,4 +1,3 @@
-
 const pool = require('../config/db');
 const { getAvailableSlots, resolveFacility } = require('./slots.service');
 const { isStaff } = require('../middleware/auth');
@@ -10,8 +9,10 @@ const staffFacilities = async (user) => {
   const scope = await scopes.loadStaffScope(user);
   return { staff: true, facilities: scopes.scopeParam(scope) };
 };
+
 const { accessibleProfilesSql, resolveBookingProfile } = require('./patients.service');
 const { localDateString } = require('../utils/timezone');
+const { notify } = require('./phoneOtp.service');
 
 const httpError = (status, message) =>
   Object.assign(new Error(message), { status });
@@ -87,6 +88,45 @@ exports.book = async (patientId, { doctorId, startsAt, reason, patientProfileId,
       body: 'Votre rendez-vous a été réservé avec succès.',
       type: 'appointment_confirmed',
     });
+
+    // Envoi immédiat du SMS de confirmation, si le patient l'autorise.
+    // Une erreur SMS ne doit jamais annuler une réservation déjà créée.
+    try {
+      const patientResult = await pool.query(
+        `SELECT u.phone,
+                COALESCE(np.sms_enabled, true) AS sms_enabled
+           FROM users u
+           LEFT JOIN notification_preferences np ON np.user_id = u.id
+          WHERE u.id = $1`,
+        [patientId]
+      );
+
+      const patient = patientResult.rows[0];
+
+      if (patient?.phone && patient.sms_enabled) {
+        const dateFormatted = new Intl.DateTimeFormat('fr-CD', {
+          dateStyle: 'long',
+          timeStyle: 'short',
+          timeZone: facility.timezone,
+        }).format(new Date(appointment.starts_at));
+
+        const message =
+          `ClinicRDV : votre rendez-vous est confirmé pour le ${dateFormatted}. Merci de votre confiance.`;
+
+        const smsStatus = await notify(patient.phone, message);
+
+        if (smsStatus !== 'sent') {
+          console.warn(
+            `SMS de confirmation non envoyé pour le rendez-vous ${appointment.id}. Statut : ${smsStatus}`
+          );
+        }
+      }
+    } catch (smsError) {
+      console.error(
+        `Erreur lors de l'envoi du SMS pour le rendez-vous ${appointment.id} :`,
+        smsError.message
+      );
+    }
 
     return appointment;
   } catch (e) {
@@ -175,13 +215,13 @@ exports.reschedule = async (id, user, startsAt) => {
     );
 
     if (!slots) {
-      throw httpError(404, 'M\u00e9decin introuvable');
+      throw httpError(404, 'Médecin introuvable');
     }
 
     const slot = slots.find((s) => s.startsAt === iso);
 
     if (!slot || !slot.available) {
-      throw httpError(409, 'Cr\u00e9neau indisponible');
+      throw httpError(409, 'Créneau indisponible');
     }
 
     const updated = await client.query(
@@ -199,7 +239,7 @@ exports.reschedule = async (id, user, startsAt) => {
     await client.query('ROLLBACK');
 
     if (error.code === '23P01') {
-      throw httpError(409, 'Ce cr\u00e9neau vient d\'\u00eatre r\u00e9serv\u00e9');
+      throw httpError(409, 'Ce créneau vient d\'être réservé');
     }
 
     throw error;
