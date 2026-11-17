@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       api_url:
-        description: URL de l'API (IP du PC qui fait tourner le backend)
+        description: URL de l'API (production par défaut, ou IP du PC pour le développement)
         required: true
-        default: http://172.20.10.2:4000/api
+        default: https://clinicrdv.tech/api
 
 jobs:
   build:
